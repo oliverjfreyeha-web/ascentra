@@ -1,15 +1,19 @@
 import { describe, expect, it } from "vitest";
 import { EnvError, parseServerEnv, REQUIRED_ENV_VARS } from "@/lib/env";
+import { TEST_ENV } from "../fixtures/env";
 
-const valid = {
-  SUPABASE_URL: "https://example.supabase.co",
-  SUPABASE_SERVICE_ROLE_KEY: "service-key-value",
-  CLERK_SECRET_KEY: "sk_test_value",
-};
+const valid = { ...TEST_ENV };
 
 describe("server env", () => {
   it("lists every required variable", () => {
-    expect(REQUIRED_ENV_VARS.sort()).toEqual(["CLERK_SECRET_KEY", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_URL"]);
+    expect([...REQUIRED_ENV_VARS].sort()).toEqual([
+      "CLERK_SECRET_KEY",
+      "CLERK_WEBHOOK_SIGNING_SECRET",
+      "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
+      "OWNER_EMAIL",
+      "SUPABASE_SERVICE_ROLE_KEY",
+      "SUPABASE_URL",
+    ]);
   });
 
   it("accepts a complete environment", () => {

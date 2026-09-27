@@ -1,5 +1,6 @@
 import "server-only";
 import { z } from "zod";
+import secretEnv from "./secret-env-names.json";
 
 /**
  * Every environment variable the server needs. There are no defaults:
@@ -9,11 +10,17 @@ export const serverEnvSchema = z.object({
   SUPABASE_URL: z.url({ protocol: /^https?$/ }),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
   CLERK_SECRET_KEY: z.string().startsWith("sk_"),
+  CLERK_WEBHOOK_SIGNING_SECRET: z.string().startsWith("whsec_"),
+  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string().startsWith("pk_"),
+  OWNER_EMAIL: z.email(),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
 
 export const REQUIRED_ENV_VARS = Object.keys(serverEnvSchema.shape) as (keyof ServerEnv)[];
+
+/** Secrets never present at build time. Kept in a JSON file so scripts/build.mjs can read the same list. */
+export const SECRET_ENV_VARS = secretEnv.names as readonly (keyof ServerEnv)[];
 
 export class EnvError extends Error {
   constructor(readonly problems: string[]) {
@@ -39,9 +46,16 @@ export function parseServerEnv(source: Record<string, string | undefined>): Serv
   throw new EnvError(problems);
 }
 
-let cached: ServerEnv | undefined;
-
+/**
+ * Reads and validates the environment at request time. Deliberately not cached and
+ * never indexed with a literal name, so nothing about the values is fixed at build time.
+ */
 export function getServerEnv(): ServerEnv {
-  cached ??= parseServerEnv(process.env);
-  return cached;
+  return parseServerEnv(process.env);
+}
+
+/** One variable, read at request time. Undefined when unset; callers decide what that means. */
+export function readEnv(name: keyof ServerEnv): string | undefined {
+  const value = process.env[name];
+  return value === "" ? undefined : value;
 }

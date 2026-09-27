@@ -1,6 +1,7 @@
 import "server-only";
 import { createServiceClient } from "@/lib/db";
-import { connected, disconnected, type ConnectionStatus } from "@/lib/connection-status";
+import { connected, disconnected, type ConnectionStatus, type ServiceName } from "@/lib/connection-status";
+import { readEnv } from "@/lib/env";
 
 const TIMEOUT_MS = 5000;
 const CLERK_API = "https://api.clerk.com/v1";
@@ -53,4 +54,33 @@ export async function probeClerk(config: { secretKey?: string }, opts: ProbeOpti
   } catch (err) {
     return disconnected("clerk", describe(err));
   }
+}
+
+export const HEALTH_CACHE_SECONDS = 30;
+
+type Services = Record<ServiceName, ConnectionStatus>;
+let cache: { expiresAt: number; services: Promise<Services> } | undefined;
+
+async function checkServices(): Promise<Services> {
+  const [supabase, clerk] = await Promise.all([
+    probeSupabase({ url: readEnv("SUPABASE_URL"), serviceRoleKey: readEnv("SUPABASE_SERVICE_ROLE_KEY") }),
+    probeClerk({ secretKey: readEnv("CLERK_SECRET_KEY") }),
+  ]);
+  return { supabase, clerk };
+}
+
+/**
+ * Service statuses, checked at most once per HEALTH_CACHE_SECONDS per server instance.
+ * Concurrent callers share one in-flight check. Each status keeps its own checkedAt,
+ * so a cached answer never looks fresher than it is.
+ */
+export async function getServiceStatuses(now = Date.now()): Promise<{ services: Services; cached: boolean }> {
+  if (cache && cache.expiresAt > now) return { services: await cache.services, cached: true };
+  const services = checkServices();
+  cache = { expiresAt: now + HEALTH_CACHE_SECONDS * 1000, services };
+  return { services: await services, cached: false };
+}
+
+export function resetHealthCacheForTests() {
+  cache = undefined;
 }
