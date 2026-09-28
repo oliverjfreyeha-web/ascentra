@@ -55,7 +55,7 @@ jobs:
           OWNER_EMAIL=build-only@example.com CRON_SECRET=build-only-0123456789abcdefghijklmnop npm run build
       - name: Journeys
         run: npx playwright test -c playwright.journeys.config.ts
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: journeys-report

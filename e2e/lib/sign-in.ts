@@ -1,4 +1,4 @@
-import { expect, type Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 import { setupClerkTestingToken } from "@clerk/testing/playwright";
 import { freshTotp } from "./totp";
 
@@ -29,20 +29,51 @@ export async function pageReady(page: Page) {
 }
 
 /**
- * If Clerk asks to re-verify (a sensitive action more than 10 minutes after the last check), answers it
- * with the password and authenticator code. Otherwise does nothing.
+ * After a sensitive action: waits until either `done` shows (no check was needed) or Clerk's
+ * re-verification dialog opens, and if it opens, answers each step (password, then authenticator code)
+ * until it closes. Locator.isVisible() doesn't wait, so every check here waits explicitly.
  */
-export async function answerReverification(page: Page, u: { password: string; totpSecret?: string }) {
-  const dialog = page.locator(".cl-userVerification-root, [role=dialog]:has-text('Verification required')").first();
-  if (!(await dialog.isVisible({ timeout: 3_000 }).catch(() => false))) return;
-  const password = dialog.locator("input[name=password]");
-  if (await password.isVisible({ timeout: 2_000 }).catch(() => false)) {
-    await password.fill(u.password);
-    await dialog.getByRole("button", { name: /^Continue$/ }).click();
+export async function answerReverification(page: Page, u: { password: string; totpSecret?: string }, done: Locator) {
+  const modal = page.locator(".cl-userVerification-root");
+  const first = await Promise.race([
+    modal.waitFor({ state: "visible", timeout: 20_000 }).then(() => "modal" as const, () => "none" as const),
+    done.first().waitFor({ state: "visible", timeout: 20_000 }).then(() => "done" as const, () => "none" as const),
+  ]);
+  if (first !== "modal") return;
+
+  const password = modal.locator("input[name=password]");
+  const otp = modal.locator("input[autocomplete=one-time-code], input[name=code], input[data-otp-input]").first();
+  for (let step = 0; step < 3; step++) {
+    const next = await Promise.race([
+      password.waitFor({ state: "visible", timeout: 15_000 }).then(() => "password" as const, () => "none" as const),
+      otp.waitFor({ state: "visible", timeout: 15_000 }).then(() => "otp" as const, () => "none" as const),
+      modal.waitFor({ state: "detached", timeout: 15_000 }).then(() => "closed" as const, () => "none" as const),
+    ]);
+    if (next === "closed" || next === "none") return;
+    if (next === "password") {
+      await password.fill(u.password);
+      await modal.getByRole("button", { name: /^Continue$/ }).click();
+      await password.waitFor({ state: "detached", timeout: 15_000 }).catch(() => {});
+    } else if (u.totpSecret) {
+      await otp.click();
+      await page.keyboard.type(await freshTotp(u.totpSecret));
+      await otp.waitFor({ state: "detached", timeout: 15_000 }).catch(() => {});
+    } else {
+      return;
+    }
   }
-  const otp = dialog.locator("input[autocomplete=one-time-code], input[name=code]").first();
-  if (u.totpSecret && (await otp.isVisible({ timeout: 5_000 }).catch(() => false))) {
-    await otp.click();
-    await page.keyboard.type(await freshTotp(u.totpSecret));
-  }
+}
+
+/**
+ * Records every response from an API path on this page (status, error code and plain reason, never
+ * headers or tokens), so a failed step can say what the server answered.
+ */
+export function watchApi(page: Page, pathPart: string) {
+  const seen: { method: string; status: number; error?: string; reason?: string }[] = [];
+  page.on("response", async (r) => {
+    if (!r.url().includes(pathPart)) return;
+    const body = (await r.json().catch(() => ({}))) as { error?: string; reason?: string; clerk_error?: { reason?: string } };
+    seen.push({ method: r.request().method(), status: r.status(), error: body.error ?? body.clerk_error?.reason, reason: body.reason });
+  });
+  return { seen, describe: () => `server answered: ${JSON.stringify(seen)}` };
 }

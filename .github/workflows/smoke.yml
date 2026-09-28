@@ -44,7 +44,7 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Live smoke
         run: npx playwright test -c playwright.smoke.config.ts
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: smoke-report
