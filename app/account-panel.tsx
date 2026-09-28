@@ -19,16 +19,26 @@ export function AccountPanel() {
   useEffect(() => {
     if (!isSignedIn) return;
     let live = true;
-    fetch("/api/v1/me", { cache: "no-store" })
-      .then(async (res) => {
-        if (!live) return;
-        if (res.status === 401) router.replace("/not-open");
-        else if (res.ok) setMe(((await res.json()) as { account: Me }).account);
-        else setFailed(true);
-      })
-      .catch(() => live && setFailed(true));
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    // Right after sign-in, the first answer can be a refusal while this browser's device check is still
+    // settling; try a few more times before saying the account couldn't be loaded. The API still decides.
+    const load = (attempt: number) =>
+      fetch("/api/v1/me", { cache: "no-store" })
+        .then(async (res) => {
+          if (!live) return;
+          if (res.status === 401) router.replace("/not-open");
+          else if (res.ok) setMe(((await res.json()) as { account: Me }).account);
+          else throw new Error(String(res.status));
+        })
+        .catch(() => {
+          if (!live) return;
+          if (attempt < 4) timer = setTimeout(() => void load(attempt + 1), 1000 * (attempt + 1));
+          else setFailed(true);
+        });
+    void load(0);
     return () => {
       live = false;
+      if (timer) clearTimeout(timer);
     };
   }, [isSignedIn, router]);
 
