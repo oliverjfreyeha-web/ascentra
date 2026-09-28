@@ -11,14 +11,15 @@ import { answerReverification, expectDone, expectShown, pageReady, signInWithPas
 import { deliverUserEvent } from "../lib/webhook";
 import { E2E_PREFIX, STATE_FILE } from "./constants";
 
-type State = { baseURL: string; dbUrl: string; webhookSecret: string; owner: TestUser };
+type State = { baseURL: string; dbUrl: string; webhookSecret: string; owner: TestUser; supportEmail: string; replayEmail: string };
 const state = (): State => JSON.parse(readFileSync(STATE_FILE, "utf8"));
 const REASON = "E2E journey: quarterly access review";
 
 let db: pg.Client;
 let ownerCtx: BrowserContext;
 let owner: Page;
-const supportEmail = `${E2E_PREFIX}support+clerk_test@example.com`;
+// Set per run by global-setup.ts.
+let supportEmail = "";
 let support: TestUser;
 
 async function browserFor(browser: Browser, u: { email: string; password: string; totpSecret?: string }) {
@@ -34,6 +35,7 @@ const audit = async (action: string) =>
 test.describe.configure({ mode: "serial" });
 
 test.beforeAll(async ({ browser }) => {
+  supportEmail = state().supportEmail;
   db = new pg.Client({ connectionString: state().dbUrl });
   await db.connect();
   ({ ctx: ownerCtx, page: owner } = await browserFor(browser, state().owner));
@@ -112,7 +114,7 @@ test.describe("admin invite", () => {
     const outcome = await deliverUserEvent(state().baseURL, state().webhookSecret, "user.created", support.raw);
     expect(["admin_claimed", "admin_activated"]).toContain(outcome);
     // Replayed for a second person: refused.
-    const replay = await createTestUser(`${E2E_PREFIX}replay+clerk_test@example.com`, { label: "E2E replay", metadata: { ascentra_invite_id: invite.id } });
+    const replay = await createTestUser(state().replayEmail, { label: "E2E replay", metadata: { ascentra_invite_id: invite.id } });
     expect(await deliverUserEvent(state().baseURL, state().webhookSecret, "user.created", replay.raw)).toBe("invite_refused");
     if (outcome !== "admin_activated") await deliverUserEvent(state().baseURL, state().webhookSecret, "user.updated", await rawUser(support.id));
     expect((await db.query("select status from public.role_assignments where id = $1", [invite.id])).rows[0].status).toBe("active");

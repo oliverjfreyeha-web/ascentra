@@ -16,7 +16,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import { clerkSetup } from "@clerk/testing/playwright";
 import { startStack } from "../../tests/integration/stack";
-import { clearTestEmails, createTestUser, deleteTestUsers, guardTestEmail, revokeTestInvitations } from "../lib/clerk-users";
+import { createTestUser, deleteTestUsers, guardTestEmail, revokeTestInvitations } from "../lib/clerk-users";
 import { deliverUserEvent } from "../lib/webhook";
 import { E2E_PREFIX, STATE_FILE } from "./constants";
 
@@ -30,9 +30,12 @@ export default async function globalSetup() {
 
   const stack = await startStack();
   await deleteTestUsers(E2E_PREFIX);
-  await revokeTestInvitations(E2E_PREFIX);
-  // The emails the journeys invite or create: nothing may be left of them from an earlier run.
-  await clearTestEmails([`${E2E_PREFIX}support+clerk_test@example.com`, `${E2E_PREFIX}replay+clerk_test@example.com`]);
+  console.log(`[journeys] cleared ${await revokeTestInvitations(E2E_PREFIX)} leftover test invitation(s).`);
+  // This run's own emails for the people it invites: a leftover invitation or user from an earlier run
+  // (Clerk refuses a second pending invitation to one email) can then never block it.
+  const tag = randomBytes(4).toString("hex");
+  const supportEmail = `${E2E_PREFIX}support-${tag}+clerk_test@example.com`;
+  const replayEmail = `${E2E_PREFIX}replay-${tag}+clerk_test@example.com`;
   const testOwnerEmail = `${E2E_PREFIX}owner+clerk_test@example.com`;
   guardTestEmail(testOwnerEmail);
   const owner = await createTestUser(testOwnerEmail, { label: "E2E Owner" });
@@ -66,7 +69,7 @@ export default async function globalSetup() {
   if (outcome !== "owner_seeded") throw new Error(`Owner not seeded: ${outcome}`);
 
   mkdirSync("e2e/.state", { recursive: true });
-  writeFileSync(STATE_FILE, JSON.stringify({ baseURL, dbUrl: stack.db.url, webhookSecret, owner }, null, 2));
+  writeFileSync(STATE_FILE, JSON.stringify({ baseURL, dbUrl: stack.db.url, webhookSecret, owner, supportEmail, replayEmail }, null, 2));
   process.env.E2E_BASE_URL = baseURL;
 
   return async () => {
