@@ -16,7 +16,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import { clerkSetup } from "@clerk/testing/playwright";
 import { startStack } from "../../tests/integration/stack";
-import { createTestUser, deleteTestUsers, guardTestEmail, revokeTestInvitations } from "../lib/clerk-users";
+import { clearTestEmails, createTestUser, deleteTestUsers, guardTestEmail, revokeTestInvitations } from "../lib/clerk-users";
 import { deliverUserEvent } from "../lib/webhook";
 import { E2E_PREFIX, STATE_FILE } from "./constants";
 
@@ -31,6 +31,8 @@ export default async function globalSetup() {
   const stack = await startStack();
   await deleteTestUsers(E2E_PREFIX);
   await revokeTestInvitations(E2E_PREFIX);
+  // The emails the journeys invite or create: nothing may be left of them from an earlier run.
+  await clearTestEmails([`${E2E_PREFIX}support+clerk_test@example.com`, `${E2E_PREFIX}replay+clerk_test@example.com`]);
   const testOwnerEmail = `${E2E_PREFIX}owner+clerk_test@example.com`;
   guardTestEmail(testOwnerEmail);
   const owner = await createTestUser(testOwnerEmail, { label: "E2E Owner" });

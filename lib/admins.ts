@@ -119,7 +119,10 @@ export async function createInvite(owner: Account, grant: RoleGrant & { email: s
     clerkInvitationId = invitation.id;
   } catch (err) {
     await db.from("role_assignments").delete().eq("id", row.id);
-    return fail(502, `Clerk couldn't create the invitation: ${err instanceof Error ? err.message : "unknown error"}. Nothing was saved.`, A, who);
+    // Clerk's own error code and message (e.g. an existing user or a pending invitation for this email).
+    const detail = (err as { errors?: { code?: string; longMessage?: string; message?: string }[] })?.errors?.[0];
+    const why = detail ? `${detail.longMessage ?? detail.message ?? ""} (${detail.code ?? "no code"})` : err instanceof Error ? err.message : "unknown error";
+    return fail(502, `Clerk couldn't create the invitation: ${why}. Nothing was saved.`, A, who);
   }
   const upd = await db.from("role_assignments").update({ clerk_invitation_id: clerkInvitationId }).eq("id", row.id);
   if (upd.error) throw new Error(`invite update failed: ${upd.error.message}`);
