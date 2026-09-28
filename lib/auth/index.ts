@@ -1,31 +1,61 @@
 import "server-only";
 import { auth } from "@clerk/nextjs/server";
-import { findAccountByClerkId, findProfile, type AccountRow, type Role } from "@/lib/accounts";
+import {
+  findAccountByClerkId,
+  findLiveAssignment,
+  findProfile,
+  type AccountRow,
+  type AssignmentRow,
+  type Role,
+} from "@/lib/accounts";
+import { fromDbRole } from "@/lib/admin-rules";
+import type { AdminRole, RoleKey } from "@/lib/caps";
+import { readEnv } from "@/lib/env";
 
 export type Account = {
   id: string;
   email: string;
   role: Role;
   displayName: string;
+  /** The capability role: owner, one of ADMIN_ROLES, guardian or learner. */
+  roleKey: RoleKey;
+  adminRole: AdminRole | null;
+  assignedCourses: string[];
 };
 
+/** A signed-in request: the Account, and whether the session re-verified a second factor recently. */
+export type AuthContext = { account: Account; recentlyVerified: () => boolean };
+
 /**
- * Why a row is not usable, or null when it is. A password must always be paired with a
- * second factor; passkey-only accounts need none (the passkey is the strong factor).
+ * Why an account row can't be used, or null when it can.
+ * - A password must be paired with a second factor; passkey-only learners need none.
+ * - The Owner and every admin must have a second factor, whatever else they use.
+ * - An admin needs an active role assignment (claimed invites don't count until then).
+ * - The Owner row must also match OWNER_EMAIL, so an edited database row can't create an Owner.
  */
-export function accountRefusal(row: AccountRow): string | null {
+export function accountRefusal(row: AccountRow, assignment: AssignmentRow | null, ownerEmail: string | undefined): string | null {
   if (row.status !== "active") return "disabled";
   if (!row.email_verified) return "email_unverified";
   if (row.password_enabled && !row.two_factor_enabled) return "second_factor_missing";
+  if ((row.role === "owner" || row.role === "admin") && !row.two_factor_enabled) return "second_factor_missing";
+  if (row.role === "owner" && (!ownerEmail || row.email.toLowerCase() !== ownerEmail.trim().toLowerCase())) {
+    return "owner_mismatch";
+  }
+  if (row.role === "admin" && (assignment?.status !== "active" || !fromDbRole(assignment.role))) return "no_active_role";
   return null;
 }
 
+export function roleKeyOf(row: AccountRow, assignment: AssignmentRow | null): RoleKey | null {
+  if (row.role === "owner" || row.role === "guardian" || row.role === "learner") return row.role;
+  return fromDbRole(assignment?.role) ?? null;
+}
+
 /**
- * The server's single way to turn a request into an Account.
- * Returns null for a missing, expired, pending or invalid session, an unverified email,
- * or a Clerk user with no Account (not the Owner and not invited).
+ * The server's single way to turn a request into an Account (and its capability role).
+ * Returns null for a missing, expired, pending or invalid session, an unverified email, a missing
+ * second factor, an admin without an active role, or a Clerk user with no Account.
  */
-export async function getAccount(): Promise<Account | null> {
+export async function getAuthContext(): Promise<AuthContext | null> {
   let session;
   try {
     session = await auth();
@@ -38,20 +68,35 @@ export async function getAccount(): Promise<Account | null> {
   if (!session.isAuthenticated || !session.userId) return null;
 
   const row = await findAccountByClerkId(session.userId);
-  if (!row || accountRefusal(row)) return null;
+  if (!row) return null;
+  const assignment = row.role === "admin" ? await findLiveAssignment(row.id) : null;
+  if (accountRefusal(row, assignment, readEnv("OWNER_EMAIL"))) return null;
+  const roleKey = roleKeyOf(row, assignment);
+  if (!roleKey) return null;
+
   const profile = await findProfile(row.id);
-  return { id: row.id, email: row.email, role: row.role, displayName: profile?.display_name ?? row.email };
+  const adminRole = row.role === "admin" ? fromDbRole(assignment?.role) : null;
+  return {
+    account: {
+      id: row.id,
+      email: row.email,
+      role: row.role,
+      displayName: profile?.display_name ?? row.email,
+      roleKey,
+      adminRole,
+      assignedCourses: adminRole ? [...(assignment?.scope ?? [])] : [],
+    },
+    // Second factor verified within the last 10 minutes (Clerk's strict_mfa level).
+    recentlyVerified: () => session.has({ reverification: "strict_mfa" }),
+  };
+}
+
+export async function getAccount(): Promise<Account | null> {
+  return (await getAuthContext())?.account ?? null;
 }
 
 export function unauthorized(): Response {
   return Response.json({ error: "unauthorized" }, { status: 401, headers: { "Cache-Control": "no-store" } });
 }
 
-/** Wraps an /api/v1 handler: no Account, no handler. Every /api/v1 route except /health uses this. */
-export function withAccount<Ctx>(handler: (req: Request, ctx: Ctx, account: Account) => Promise<Response>) {
-  return async (req: Request, ctx: Ctx): Promise<Response> => {
-    const account = await getAccount();
-    if (!account) return unauthorized();
-    return handler(req, ctx, account);
-  };
-}
+export { requireCap, withCap } from "./require-cap";

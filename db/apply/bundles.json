@@ -3,7 +3,17 @@
   "bundles": {
     "F3": {
       "requires": "0001_accounts",
-      "migrations": ["0002_foundation", "0003_data_model", "0004_row_level_security"]
+      "migrations": [
+        "0002_foundation",
+        "0003_data_model",
+        "0004_row_level_security"
+      ]
+    },
+    "F4": {
+      "requires": "0004_row_level_security",
+      "migrations": [
+        "0005_roles_and_invites"
+      ]
     }
   }
 }

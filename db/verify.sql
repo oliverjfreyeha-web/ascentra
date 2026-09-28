@@ -1,4 +1,4 @@
--- Run in the Supabase SQL Editor after applying the migrations.
+-- Run in the Supabase SQL Editor after applying the migrations (F3 and F4).
 -- The first row is the verdict. The rest lists every expected table with whether it exists and
 -- whether row-level security is on, then any other table in public (which should not exist).
 with expected(table_name) as (values
@@ -27,16 +27,27 @@ insert_only as (
   select count(*) as triggers from pg_trigger t
   where t.tgname in ('reject_update_delete', 'reject_truncate')
     and t.tgrelid in ('public.audit_events'::regclass, 'public.consent_records'::regclass)
+),
+f4 as (
+  select
+    (select count(*) from pg_trigger where tgrelid = 'public.accounts'::regclass
+       and tgname in ('protect_owner', 'protect_owner_truncate')) as owner_triggers,
+    exists (select 1 from information_schema.columns where table_schema = 'public'
+       and table_name = 'role_assignments' and column_name = 'expires_at') as invite_columns,
+    exists (select 1 from private.schema_migrations where version = '0005_roles_and_invites') as recorded
 )
 select 0 as sort,
        case when (select count(*) from report where expected and table_exists and rls_on) = 39
              and not exists (select 1 from report where not expected)
              and (select triggers from insert_only) = 4
-            then 'OK: all 39 tables exist with row-level security on; audit_events and consent_records are insert-only'
+             and (select owner_triggers from f4) = 2 and (select invite_columns from f4) and (select recorded from f4)
+            then 'OK: all 39 tables exist with row-level security on; audit_events and consent_records are insert-only; F4 admin invites and Owner protections are in place'
             else 'PROBLEM: ' || (select count(*) from report where expected and not table_exists) || ' missing, '
                  || (select count(*) from report where table_exists and not rls_on) || ' without RLS, '
                  || (select count(*) from report where not expected) || ' unexpected, '
-                 || (select triggers from insert_only) || '/4 insert-only triggers'
+                 || (select triggers from insert_only) || '/4 insert-only triggers, '
+                 || (select owner_triggers from f4) || '/2 Owner protection triggers, F4 '
+                 || case when (select recorded from f4) then 'applied' else 'NOT applied' end
        end as table_name,
        null::boolean as table_exists, null::boolean as rls_on
 union all

@@ -77,14 +77,21 @@ describe("syncClerkUser", () => {
     );
     expect(recordAuditEvent).toHaveBeenCalledTimes(1);
     expect(recordAuditEvent).toHaveBeenCalledWith(
-      expect.objectContaining({ type: "account.password_changed", role: "owner", accountId: db.data.accounts[0].id }),
+      expect.objectContaining({ type: "account.password_changed", targetAccountId: db.data.accounts[0].id }),
     );
   });
 
   it("disables (not deletes) an Account when the Clerk user is deleted", async () => {
-    await syncClerkUser(clerkUser(), OWNER);
-    await disableClerkUser("user_1");
+    db.data.accounts.push({ id: "acc_learner", clerk_user_id: "user_9", role: "learner", status: "active" });
+    await disableClerkUser("user_9");
     expect(db.data.accounts[0].status).toBe("disabled");
     expect(recordAuditEvent).toHaveBeenCalledWith(expect.objectContaining({ type: "account.disabled" }));
+  });
+
+  it("never disables the Owner, even if Clerk reports the Owner deleted", async () => {
+    await syncClerkUser(clerkUser(), OWNER);
+    await disableClerkUser("user_1");
+    expect(db.data.accounts[0].status).toBe("active");
+    expect(recordAuditEvent).toHaveBeenCalledWith(expect.objectContaining({ type: "owner.protected" }));
   });
 });
