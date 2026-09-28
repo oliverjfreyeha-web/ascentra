@@ -20,6 +20,12 @@
       "migrations": [
         "0006_audit_store"
       ]
+    },
+    "F6": {
+      "requires": "0006_audit_store",
+      "migrations": [
+        "0007_devices_and_sessions"
+      ]
     }
   }
 }

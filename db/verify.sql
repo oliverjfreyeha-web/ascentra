@@ -1,4 +1,4 @@
--- Run in the Supabase SQL Editor after applying the migrations (F3, F4 and F5).
+-- Run in the Supabase SQL Editor after applying the migrations (F3, F4, F5 and F6).
 -- The first row is the verdict. The rest lists every expected table with whether it exists and
 -- whether row-level security is on, then any other table in public (which should not exist).
 with expected(table_name) as (values
@@ -9,7 +9,9 @@ with expected(table_name) as (values
   ('assignments'), ('projects'), ('capstones'), ('review_items'), ('schedules'), ('progress_records'),
   ('mastery_records'), ('retention_signals'), ('mentor_threads'), ('notes'), ('uploads'),
   ('world_preferences'), ('notification_preferences'), ('legal_document_versions'), ('consent_records'),
-  ('safety_events'), ('audit_events'), ('connection_statuses')
+  ('safety_events'), ('audit_events'), ('connection_statuses'),
+  -- F6: the sharing tracker and the graduated steps.
+  ('sharing_signals'), ('sharing_flags'), ('enforcement_steps'), ('appeals')
 ),
 public_tables as (
   select c.relname as table_name, c.relrowsecurity as rls_on
@@ -41,14 +43,26 @@ f5 as (
     exists (select 1 from private.schema_migrations where version = '0006_audit_store') as recorded,
     exists (select 1 from pg_trigger where tgrelid = 'public.audit_events'::regclass and tgname = 'audit_chain') as chain_trigger,
     to_regprocedure('public.audit_verify_chain()') is not null as verifier
+),
+f6 as (
+  select
+    exists (select 1 from private.schema_migrations where version = '0007_devices_and_sessions') as recorded,
+    to_regprocedure('public.claim_device_slot(uuid, text, text, text, text, integer, uuid)') is not null as slot_claim,
+    exists (select 1 from pg_trigger where tgrelid = to_regclass('public.enforcement_steps') and tgname = 'protect_owner') as owner_guard,
+    coalesce((select not has_function_privilege('anon', p, 'execute') and not has_function_privilege('authenticated', p, 'execute')
+              from to_regprocedure('public.claim_device_slot(uuid, text, text, text, text, integer, uuid)') p where p is not null), false) as slot_claim_private,
+    exists (select 1 from information_schema.columns where table_schema = 'public'
+       and table_name = 'session_events' and column_name = 'last_heartbeat_at') as session_columns
 )
 select 0 as sort,
-       case when (select count(*) from report where expected and table_exists and rls_on) = 39
+       case when (select count(*) from report where expected and table_exists and rls_on) = 43
              and not exists (select 1 from report where not expected)
              and (select triggers from insert_only) = 4
              and (select owner_triggers from f4) = 2 and (select invite_columns from f4) and (select recorded from f4)
              and (select recorded from f5) and (select chain_trigger from f5) and (select verifier from f5)
-            then 'OK: all 39 tables exist with row-level security on; audit_events and consent_records are insert-only; F4 admin invites and Owner protections are in place; F5 audit chain is in place'
+             and (select recorded from f6) and (select slot_claim from f6) and (select owner_guard from f6)
+             and (select slot_claim_private from f6) and (select session_columns from f6)
+            then 'OK: all 43 tables exist with row-level security on; audit_events and consent_records are insert-only; F4 admin invites and Owner protections are in place; F5 audit chain is in place; F6 devices, sessions and safeguards are in place'
             else 'PROBLEM: ' || (select count(*) from report where expected and not table_exists) || ' missing, '
                  || (select count(*) from report where table_exists and not rls_on) || ' without RLS, '
                  || (select count(*) from report where not expected) || ' unexpected, '
@@ -56,6 +70,9 @@ select 0 as sort,
                  || (select owner_triggers from f4) || '/2 Owner protection triggers, F4 '
                  || case when (select recorded from f4) then 'applied' else 'NOT applied' end
                  || ', F5 ' || case when (select recorded from f5) and (select chain_trigger from f5) and (select verifier from f5)
+                                    then 'applied' else 'NOT applied' end
+                 || ', F6 ' || case when (select recorded from f6) and (select slot_claim from f6) and (select owner_guard from f6)
+                                         and (select slot_claim_private from f6) and (select session_columns from f6)
                                     then 'applied' else 'NOT applied' end
        end as table_name,
        null::boolean as table_exists, null::boolean as rls_on

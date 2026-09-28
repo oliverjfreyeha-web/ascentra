@@ -23,8 +23,11 @@ export type Account = {
   assignedCourses: string[];
 };
 
-/** A signed-in request: the Account, and whether the session re-verified a second factor recently. */
-export type AuthContext = { account: Account; recentlyVerified: () => boolean };
+/**
+ * A signed-in request: the Account, the Clerk session id (one per signed-in browser), and whether the
+ * session re-verified a second factor recently.
+ */
+export type AuthContext = { account: Account; sessionId: string | null; recentlyVerified: () => boolean };
 
 /**
  * Why an account row can't be used, or null when it can.
@@ -86,6 +89,7 @@ export async function getAuthContext(): Promise<AuthContext | null> {
       adminRole,
       assignedCourses: adminRole ? [...(assignment?.scope ?? [])] : [],
     },
+    sessionId: session.sessionId ?? null,
     // Second factor verified within the last 10 minutes (Clerk's strict_mfa level).
     recentlyVerified: () => session.has({ reverification: "strict_mfa" }),
   };

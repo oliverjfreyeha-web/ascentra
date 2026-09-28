@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createFakeDb } from "../fixtures/fake-db";
+import { deviceCookie, deviceIdFor, trustedDeviceRow } from "../fixtures/devices";
 
 const fake = vi.hoisted(() => ({ db: null as unknown }));
 vi.mock("@/lib/db", () => ({ getDb: () => (fake.db as { client: unknown }).client }));
@@ -54,6 +55,8 @@ beforeEach(() => {
       id: `ra-${r}`, account_id: ID[r], role: dbRole, scope: r === "courseAdmin" || r === "reviewer" ? ["mkt"] : [],
       status: "active", invited_email: null,
     })),
+    // F6: every role signs in from a trusted device.
+    trusted_devices: ROLES.map((r) => trustedDeviceRow(ID[r])),
   });
   fake.db = db;
   session.userId = "user_owner";
@@ -62,8 +65,12 @@ beforeEach(() => {
   clerk.revokeInvitation.mockClear();
 });
 
+const currentId = () => ID[(session.userId ?? "user_owner").replace("user_", "") as RoleKey];
 const req = (method: string, body?: unknown, url = "http://localhost/api/v1/x") =>
-  new Request(url, { method, body: body ? JSON.stringify(body) : undefined, headers: { "content-type": "application/json" } });
+  new Request(url, {
+    method, body: body ? JSON.stringify(body) : undefined,
+    headers: { "content-type": "application/json", cookie: deviceCookie(currentId()) },
+  });
 const params = (p: Record<string, string> = {}) => ({ params: Promise.resolve(p) });
 const as = (role: RoleKey) => (session.userId = `user_${role}`);
 const call = async (res: Promise<Response>) => {
@@ -110,7 +117,8 @@ describe.each(SENSITIVE_ROUTES)("$name writes exactly one audit event, for every
       expect(added[0]).toMatchObject({ result: "blocked", status: "No change made", actor_account_id: ID[role] });
     }
     expect(added[0].request_id).toEqual(expect.any(String));
-    expect(added[0].device_id).toBeNull();
+    // F6: the event carries the trusted device the request came from.
+    expect(added[0].device_id).toBe(deviceIdFor(ID[role]));
   });
 });
 

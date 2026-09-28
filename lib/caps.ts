@@ -83,15 +83,23 @@ export const CAPABILITIES = {
   "guardian_links.inspect": { scope: "global", from: "support: See entitlement, lifecycle, security, and Guardian link state" },
   "support.recovery.send": { scope: "global", from: "support: Send recovery links, free a device slot, decide appeals", sensitive: true, reason: true },
   "support.device.free": { scope: "global", from: "support: Send recovery links, free a device slot, decide appeals", sensitive: true, reason: true },
-  "support.appeal.decide": { scope: "global", from: "support: Send recovery links, free a device slot, decide appeals", sensitive: true, reason: true },
+  "support.appeal.decide": { scope: "global", from: "support: decide appeals; decideAppeal needs inspectAccounts (owner, superAdmin, support)", sensitive: true, reason: true },
 
   // ---- The audit log (F5): Owner and Super Admin read it; only the Owner verifies the chain ----
   "audit.view": { scope: "global", from: "F5: Owner and Super Admin get a searchable audit view" },
   "audit.export": { scope: "global", from: "F5: exporting the audit log is itself audited (privacy)", sensitive: true, reason: true },
   "audit.verify": { scope: "global", from: "F5: the Owner can run the chain verification" },
 
+  // ---- Devices and account-sharing safeguards (F6) ----
+  "security.limit": { scope: "global", from: "F6: Limit needs Support (ENF: Temporary restriction)", sensitive: true, reason: true },
+  "security.suspend": { scope: "global", from: "F6: Suspend needs a Super Admin or the Owner after human review", sensitive: true, reason: true },
+
   // ---- Everyone signed in, guardians, learners ----
   "self.view": { scope: "global", from: "Every signed-in Account can see itself" },
+  "devices.manage": { scope: "global", from: "securityView: your trusted devices, sign one out or remove it" },
+  "devices.replace": { scope: "global", from: "securityView: a new device past the limit replaces one, after a second-factor check", sensitive: true },
+  "security.verify": { scope: "global", from: "ENF: Verification challenge (confirm it's you)", sensitive: true },
+  "security.appeal.submit": { scope: "global", from: "ENF: every step explains what happened and how to appeal" },
   "learn": { scope: "global", from: "ROLE_PERMS: learn (every role except guardian)" },
   "guardian.controls": { scope: "global", from: "ROLE_PERMS: guardianControls" },
 
@@ -129,28 +137,33 @@ const SUPER_ADMIN: Cap[] = [
   "entitlements.inspect", "security.inspect", "support_states.inspect",
   "access.pro",
   "audit.view", "audit.export",
+  // decideAppeal checks inspectAccounts, which the prototype gives the Super Admin too.
+  "support.appeal.decide", "security.suspend",
 ];
+
+/** Every signed-in Account manages its own devices and can answer a safeguard step. */
+const SELF_SECURITY: Cap[] = ["devices.manage", "devices.replace", "security.verify", "security.appeal.submit"];
 
 /** ROLE_CAPS as named capabilities. */
 export const ROLE_CAPS: Record<RoleKey, readonly Cap[]> = {
   owner: ALL_CAPS.filter((c) => !(NOBODY_CAPS as readonly Cap[]).includes(c) && c !== "guardian.controls" && c !== "access.basic"),
-  superAdmin: SUPER_ADMIN,
+  superAdmin: [...SUPER_ADMIN, ...SELF_SECURITY],
   courseAdmin: [
     "self.view", "learn",
     "courses.edit.assigned", "courses.publish.assigned", "courses.archive.assigned", "courses.restore.assigned",
-    "sources.flag.assigned", "access.basic",
+    "sources.flag.assigned", "access.basic", ...SELF_SECURITY,
   ],
   reviewer: [
     "self.view", "learn",
-    "courses.review.assigned", "sources.resolve.assigned", "work.evaluate.assigned", "access.basic",
+    "courses.review.assigned", "sources.resolve.assigned", "work.evaluate.assigned", "access.basic", ...SELF_SECURITY,
   ],
   support: [
     "self.view", "learn",
     "entitlements.inspect", "lifecycle.inspect", "security.inspect", "guardian_links.inspect",
-    "support.recovery.send", "support.device.free", "support.appeal.decide", "access.basic",
+    "support.recovery.send", "support.device.free", "support.appeal.decide", "security.limit", "access.basic", ...SELF_SECURITY,
   ],
-  guardian: ["self.view", "guardian.controls"],
-  learner: ["self.view", "learn"],
+  guardian: ["self.view", "guardian.controls", ...SELF_SECURITY],
+  learner: ["self.view", "learn", ...SELF_SECURITY],
 };
 
 /** What a request is about. Course actions name the academy (course) they touch. */

@@ -5,6 +5,7 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createFakeDb } from "../fixtures/fake-db";
+import { deviceCookie, trustedDeviceRow } from "../fixtures/devices";
 
 const fake = vi.hoisted(() => ({ db: null as unknown }));
 vi.mock("@/lib/db", () => ({ getDb: () => (fake.db as { client: unknown }).client }));
@@ -33,6 +34,7 @@ beforeEach(() => {
       id: `ra-${r}`, account_id: `00000000-0000-4000-8000-00000000000${ROLES.indexOf(r)}`, role: ADMIN_DB[r],
       scope: r === "courseAdmin" || r === "reviewer" ? ["mkt"] : [], status: "active",
     })),
+    trusted_devices: ROLES.map((r, i) => trustedDeviceRow(`00000000-0000-4000-8000-00000000000${i}`)),
   });
   fake.db = db;
 });
@@ -58,7 +60,10 @@ describe.each(REASON_ACTIONS)("%s", (action) => {
       for (const reason of ["Monthly access review", undefined]) {
         const before = db.data.audit_events.length;
         const res = await route(
-          new Request("http://localhost/x", { method: "POST", body: JSON.stringify(reason ? { reason } : {}), headers: { "content-type": "application/json" } }),
+          new Request("http://localhost/x", {
+            method: "POST", body: JSON.stringify(reason ? { reason } : {}),
+            headers: { "content-type": "application/json", cookie: deviceCookie(`00000000-0000-4000-8000-00000000000${ROLES.indexOf(role)}`) },
+          }),
           { params: Promise.resolve({}) },
         );
         const added = db.data.audit_events.slice(before);
