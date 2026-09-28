@@ -91,3 +91,14 @@ export async function expectDone(page: Page, done: Locator, api: { seen: { metho
     throw new Error(`${(e as Error).message}\n${api.describe()}\nPage shows: ${shown}`);
   }
 }
+
+/** Waits for a locator; on failure, says what the page shows and what /api/v1/me answered (status, error code). */
+export async function expectShown(page: Page, shown: Locator, timeout = 20_000) {
+  try {
+    await expect(shown.first()).toBeVisible({ timeout });
+  } catch (e) {
+    const text = (await page.locator("body").innerText().catch(() => "(no page)")).replace(/\s+/g, " ").slice(0, 600);
+    const me = await page.request.get("/api/v1/me").then(async (r) => `${r.status()} ${JSON.stringify(((await r.json().catch(() => ({}))) as { error?: string; reason?: string }), ["error", "reason"])}`).catch(() => "unreachable");
+    throw new Error(`${(e as Error).message}\nURL: ${new URL(page.url()).pathname}\n/api/v1/me: ${me}\nPage shows: ${text}`);
+  }
+}

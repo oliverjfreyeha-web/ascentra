@@ -7,7 +7,7 @@ import { readFileSync } from "node:fs";
 import { expect, test, type Browser, type BrowserContext, type Page } from "@playwright/test";
 import pg from "pg";
 import { createTestUser, rawUser, type TestUser } from "../lib/clerk-users";
-import { answerReverification, expectDone, pageReady, signInWithPassword, watchApi } from "../lib/sign-in";
+import { answerReverification, expectDone, expectShown, pageReady, signInWithPassword, watchApi } from "../lib/sign-in";
 import { deliverUserEvent } from "../lib/webhook";
 import { E2E_PREFIX, STATE_FILE } from "./constants";
 
@@ -110,7 +110,7 @@ test.describe("admin invite", () => {
     // Clerk copies the invitation's public metadata onto the user who accepts it.
     support = await createTestUser(supportEmail, { label: "E2E Support Admin", metadata: { ascentra_invite_id: invite.id } });
     const outcome = await deliverUserEvent(state().baseURL, state().webhookSecret, "user.created", support.raw);
-    expect(["invite_claimed", "admin_activated"]).toContain(outcome);
+    expect(["admin_claimed", "admin_activated"]).toContain(outcome);
     // Replayed for a second person: refused.
     const replay = await createTestUser(`${E2E_PREFIX}replay+clerk_test@example.com`, { label: "E2E replay", metadata: { ascentra_invite_id: invite.id } });
     expect(await deliverUserEvent(state().baseURL, state().webhookSecret, "user.created", replay.raw)).toBe("invite_refused");
@@ -118,7 +118,7 @@ test.describe("admin invite", () => {
     expect((await db.query("select status from public.role_assignments where id = $1", [invite.id])).rows[0].status).toBe("active");
 
     const { ctx, page } = await browserFor(browser, support);
-    await expect(page.getByText(/Signed in as .*\(Support Admin\)/)).toBeVisible();
+    await expectShown(page, page.getByText(/Signed in as .*\(Support Admin\)/));
     await expect(page.getByRole("link", { name: "Administrators" })).toHaveCount(0);
     // Super Admin and Support can't manage admins: the page says so, the API refuses and records it.
     await page.goto("/admin");
