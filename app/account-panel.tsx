@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { SignOutButton, useAuth } from "@clerk/nextjs";
+import { useAuth } from "@clerk/nextjs";
 import { ROLE_LABEL, type RoleKey } from "@/lib/caps";
+import { SignOut } from "./sign-out";
 
 type Me = { email: string; roleKey: RoleKey; displayName: string };
 
@@ -52,12 +53,12 @@ export function AccountPanel() {
           <Link href="/admin/audit">Audit log</Link> ·{" "}
         </>
       )}
-      <Link href="/account">Account security</Link> ·{" "}
-      <SignOutButton>
-        <button type="button" className="link">
-          Sign out
-        </button>
-      </SignOutButton>
+      {(me?.roleKey === "owner" || me?.roleKey === "superAdmin" || me?.roleKey === "support") && (
+        <>
+          <Link href="/admin/security">Account safeguards</Link> ·{" "}
+        </>
+      )}
+      <Link href="/account">Account and devices</Link> · <SignOut />
     </p>
   );
 }

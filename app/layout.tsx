@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
+import { DeviceGate } from "./device-gate";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -11,7 +12,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <ClerkProvider signInUrl="/sign-in" afterSignOutUrl="/">
       <html lang="en">
-        <body>{children}</body>
+        <body>
+          <DeviceGate>{children}</DeviceGate>
+        </body>
       </html>
     </ClerkProvider>
   );

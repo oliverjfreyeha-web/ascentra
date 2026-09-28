@@ -7,7 +7,8 @@ import { getDb } from "@/lib/db";
  *
  * Fields follow the prototype's audit() (reference/ascentra.html): actor with role, time, action,
  * context, target, previous value, new value, reason, result (Completed | Blocked) and status
- * (Recorded | No change made), plus the request id and device id (null until F6).
+ * (Recorded | No change made), plus the request id and the trusted device the request came from (F6;
+ * null for system events and requests from a device that isn't trusted).
  */
 
 /** The prototype's SENSITIVE_RX: events matching it are flagged Sensitive. */

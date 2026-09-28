@@ -18,7 +18,7 @@ export const migrationFiles = () =>
 
 export const readSql = (path: string) => readFileSync(path, "utf8");
 
-/** The 39 prototype entities (reference/ascentra.html, DATA_MODEL) as tables. */
+/** The 39 prototype entities (reference/ascentra.html, DATA_MODEL) as tables, plus F6's four safeguard tables. */
 export const EXPECTED_TABLES = [
   "accounts", "profiles", "role_assignments", "guardian_relationships", "trusted_devices", "session_events",
   "subscriptions", "trial_consents", "entitlements", "academies", "courses", "academy_blueprints", "modules",
@@ -27,6 +27,7 @@ export const EXPECTED_TABLES = [
   "schedules", "progress_records", "mastery_records", "retention_signals", "mentor_threads", "notes", "uploads",
   "world_preferences", "notification_preferences", "legal_document_versions", "consent_records",
   "safety_events", "audit_events", "connection_statuses",
+  "sharing_signals", "sharing_flags", "enforcement_steps", "appeals",
 ].sort();
 
 export type TestDb = { client: pg.Client; url: string; drop: () => Promise<void> };

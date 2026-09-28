@@ -17,6 +17,13 @@ export function createFakeDb(tables: Record<string, Row[]> = {}) {
       if (candidate.role === "owner" && others.some((r) => r.role === "owner")) return dup("accounts_single_owner");
       if (others.some((r) => r.clerk_user_id === candidate.clerk_user_id)) return dup("accounts_clerk_user_id_key");
     }
+    if (table === "appeals" && candidate.status === "under_review" && others.some((r) => r.status === "under_review" && r.account_id === candidate.account_id)) {
+      return dup("appeals_one_open");
+    }
+    if (table === "session_events" && candidate.event_type === "session" && candidate.ended_at == null
+      && others.some((r) => r.event_type === "session" && r.ended_at == null && r.clerk_session_id === candidate.clerk_session_id)) {
+      return dup("session_events_one_open");
+    }
     if (table === "role_assignments") {
       const open = (r: Row) => r.status === "invited" || r.status === "claimed";
       const live = (r: Row) => r.status === "claimed" || r.status === "active";
@@ -45,7 +52,8 @@ export function createFakeDb(tables: Record<string, Row[]> = {}) {
     const run = (): { data: unknown; error: Err; count?: number } => {
       const match = (r: Row) => filters.every((f) => f(r));
       if (op === "insert") {
-        const row: Row = { id: randomUUID(), status: table === "accounts" ? "active" : undefined, ...payload };
+        const now = new Date().toISOString();
+        const row: Row = { id: randomUUID(), status: table === "accounts" ? "active" : undefined, created_at: now, ...defaults(table, now), ...payload };
         // audit_events: the database numbers rows (0006's chain trigger); mirror the numbering here.
         if (table === "audit_events") Object.assign(row, { seq: rows().length + 1, occurred_at: new Date().toISOString(), row_hash: `hash${rows().length + 1}` });
         const err = violates(table, row);
@@ -68,7 +76,12 @@ export function createFakeDb(tables: Record<string, Row[]> = {}) {
         return { data: null, error: null };
       }
       let hit = rows().filter(match);
-      if (orderBy) hit = [...hit].sort((a, b) => ((a[orderBy!.col] as number) - (b[orderBy!.col] as number)) * (orderBy!.asc ? 1 : -1));
+      if (orderBy) {
+        const { col, asc } = orderBy;
+        const cmp = (x: unknown, y: unknown) => (typeof x === "number" && typeof y === "number" ? x - y : String(x ?? "").localeCompare(String(y ?? "")));
+        // Stable: rows inserted later sort after earlier ones with the same value (as with created_at ties).
+        hit = hit.map((r, i) => [r, i] as const).sort(([a, i], [b, j]) => (cmp(a[col], b[col]) || i - j) * (asc ? 1 : -1)).map(([r]) => r);
+      }
       if (limitN != null) hit = hit.slice(0, limitN);
       return head ? { data: null, error: null, count: hit.length } : { data: hit, error: null };
     };
@@ -103,6 +116,14 @@ export function createFakeDb(tables: Record<string, Row[]> = {}) {
       or(expr: string) {
         const parts = expr.split(",").map((p) => p.split(".ilike."));
         filters.push((r) => parts.some(([k, pat]) => like(r[k], pat)));
+        return q;
+      },
+      is(k: string, v: null) {
+        filters.push((r) => (r[k] ?? null) === v);
+        return q;
+      },
+      gt(k: string, v: unknown) {
+        filters.push((r) => String(r[k]) > String(v));
         return q;
       },
       gte(k: string, v: unknown) {
@@ -158,10 +179,50 @@ export function createFakeDb(tables: Record<string, Row[]> = {}) {
     return q;
   }
 
-  const rpc = async (fn: string) =>
+  let appealRef = 200;
+  function defaults(table: string, now: string): Row {
+    if (table === "appeals") return { reference: `AP-${++appealRef}`, status: "under_review", decided_at: null };
+    if (table === "sharing_signals") return { occurred_at: now };
+    if (table === "sharing_flags") return { raised_at: now, step_applied: null };
+    if (table === "enforcement_steps") return { acknowledged_at: null, limit_until: null };
+    if (table === "session_events") return { occurred_at: now, ended_at: null, end_reason: null, conflict: false };
+    if (table === "trusted_devices") return { revoked_at: null, trust_state: "pending_verification" };
+    return {};
+  }
+
+  /** Mirrors public.claim_device_slot (0007). JavaScript is single-threaded, so the lock is implicit. */
+  function claimDeviceSlot(a: Record<string, unknown>) {
+    const devices = (data.trusted_devices ??= []);
+    const now = new Date().toISOString();
+    const trusted = devices.filter((d) => d.account_id === a.p_account && d.trust_state === "trusted");
+    const existing = trusted.find((d) => d.device_key_hash === a.p_key_hash);
+    if (existing) {
+      existing.last_seen_at = now;
+      return { outcome: "existing", device_id: existing.id, replaced_id: null };
+    }
+    if (a.p_replace) {
+      if (!trusted.some((d) => d.id === a.p_replace)) return { outcome: "not_found", device_id: null, replaced_id: null };
+    } else if (trusted.length >= (a.p_limit as number)) {
+      return { outcome: "full", device_id: null, replaced_id: null };
+    }
+    const row: Row = {
+      id: randomUUID(), account_id: a.p_account, name: a.p_name, kind: a.p_kind, trust_state: "trusted", approx_region: a.p_region,
+      last_seen_at: now, device_key_hash: a.p_key_hash, trusted_at: now, created_at: now, revoked_at: null,
+    };
+    devices.push(row);
+    if (a.p_replace) {
+      Object.assign(devices.find((d) => d.id === a.p_replace)!, { trust_state: "revoked", revoked_at: now, revoked_reason: "replaced", replaced_by_id: row.id });
+      return { outcome: "replaced", device_id: row.id, replaced_id: a.p_replace };
+    }
+    return { outcome: "registered", device_id: row.id, replaced_id: null };
+  }
+
+  const rpc = async (fn: string, args: Record<string, unknown> = {}) =>
     fn === "audit_verify_chain"
       ? { data: [{ ok: true, checked: data.audit_events.length, broken_at_seq: null, problem: null, head_seq: data.audit_events.length || null, head_hash: data.audit_events.at(-1)?.row_hash ?? null }], error: null }
-      : { data: null, error: { code: "42883", message: `no function ${fn}` } };
+      : fn === "claim_device_slot"
+        ? { data: [claimDeviceSlot(args)], error: null }
+        : { data: null, error: { code: "42883", message: `no function ${fn}` } };
 
   return { data, client: { from: query, rpc } };
 }

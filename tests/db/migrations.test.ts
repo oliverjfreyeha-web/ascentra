@@ -31,7 +31,7 @@ describe("applying every migration, in order, to an empty database", () => {
     expect(rows.map((r) => r.version)).toEqual(migrationFiles().map((f) => f.replace(/\.sql$/, "")));
   });
 
-  it("creates exactly the 39 tables", async () => {
+  it("creates exactly the 43 tables (39 entities + 4 F6 safeguard tables)", async () => {
     const { rows } = await db.client.query(
       "select tablename from pg_tables where schemaname = 'public' order by tablename",
     );
@@ -46,7 +46,7 @@ describe("applying every migration, in order, to an empty database", () => {
         on c.table_schema = 'public' and c.table_name = t.tablename
       where t.schemaname = 'public' group by t.tablename`);
     for (const r of rows) expect(r.cols, r.tablename).toEqual(["created_at", "id", "retention_class", "updated_at"]);
-    expect(rows).toHaveLength(39);
+    expect(rows).toHaveLength(43);
   });
 
   it("refuses to apply a migration twice, and changes nothing when it does", async () => {
@@ -61,8 +61,8 @@ describe("applying every migration, in order, to an empty database", () => {
 
   it("passes the verification query in db/verify.sql", async () => {
     const { rows } = await db.client.query(readSql("db/verify.sql"));
-    expect(rows[0].table_name).toMatch(/^OK: all 39 tables/);
-    expect(rows.filter((r) => r.sort === 1 && r.table_exists && r.rls_on)).toHaveLength(39);
+    expect(rows[0].table_name).toMatch(/^OK: all 43 tables.*F6 devices, sessions and safeguards are in place$/);
+    expect(rows.filter((r) => r.sort === 1 && r.table_exists && r.rls_on)).toHaveLength(43);
   });
 });
 
@@ -83,6 +83,7 @@ describe("the F3 then F4 SQL Editor bundles on a database that has only 0001", (
     await db.client.query(readSql("db/apply/F3.sql"));
     await db.client.query(readSql("db/apply/F4.sql"));
     await db.client.query(readSql("db/apply/F5.sql"));
+    await db.client.query(readSql("db/apply/F6.sql"));
     const { rows } = await db.client.query(
       "select a.role, a.is_minor, a.retention_class, p.id is not null as has_id from public.accounts a join public.profiles p on p.account_id = a.id",
     );
@@ -100,6 +101,8 @@ describe("the F3 then F4 SQL Editor bundles on a database that has only 0001", (
     await expect(db.client.query(readSql("db/apply/F4.sql"))).rejects.toThrow(/already applied/);
     await db.client.query("rollback");
     await expect(db.client.query(readSql("db/apply/F5.sql"))).rejects.toThrow(/already applied/);
+    await db.client.query("rollback");
+    await expect(db.client.query(readSql("db/apply/F6.sql"))).rejects.toThrow(/already applied/);
     await db.client.query("rollback");
     expect(await count()).toBe(before);
   });
@@ -141,7 +144,8 @@ describe("the F5 bundle on a database at F4 that already has audit rows", () => 
     const { rows } = await db.client.query("select seq, action from public.audit_events order by seq");
     expect(rows).toEqual([{ seq: "1", action: "older" }, { seq: "2", action: "newer" }]);
     expect((await db.client.query("select ok, checked from public.audit_verify_chain()")).rows[0]).toEqual({ ok: true, checked: "2" });
-    expect((await db.client.query(readSql("db/verify.sql"))).rows[0].table_name).toMatch(/F5 audit chain is in place/);
+    // Until F6 is applied, the verdict names what's missing.
+    expect((await db.client.query(readSql("db/verify.sql"))).rows[0].table_name).toMatch(/^PROBLEM: 4 missing.*F5 applied, F6 NOT applied$/);
   });
 
   it("leaves the insert-only trigger on", async () => {
@@ -153,6 +157,42 @@ describe("the F5 bundle on a database at F4 that already has audit rows", () => 
     try {
       for (const f of migrationFiles().filter((f) => f < "0005")) await early.client.query(readSql(`${MIGRATIONS_DIR}/${f}`));
       await expect(early.client.query(readSql("db/apply/F5.sql"))).rejects.toThrow(/apply F4 \(0005\) first/);
+    } finally {
+      await early.client.query("rollback").catch(() => {});
+      await early.drop();
+    }
+  });
+});
+
+describe("the F6 bundle on the live F5 database (Owner, audit rows)", () => {
+  let db: TestDb;
+  beforeAll(async () => {
+    db = await createTestDb({ migrate: false });
+    for (const f of migrationFiles().filter((f) => f < "0007")) await db.client.query(readSql(`${MIGRATIONS_DIR}/${f}`));
+    await db.client.query(`insert into public.accounts (clerk_user_id, email, email_verified, role, clerk_updated_at, two_factor_enabled)
+                           values ('user_live_owner', 'owner@example.com', true, 'owner', now(), true)`);
+    await db.client.query(`insert into public.audit_events (actor_label, action) values ('System', 'f5 event'), ('Owner (Owner)', 'admins.invite')`);
+  });
+  afterAll(() => db.drop());
+
+  it("applies in one go; the audit chain, the Owner and verify.sql are all fine afterwards", async () => {
+    await db.client.query(readSql("db/apply/F6.sql"));
+    expect((await db.client.query("select ok, checked from public.audit_verify_chain()")).rows[0]).toEqual({ ok: true, checked: "2" });
+    expect((await db.client.query("select count(*)::int as n from public.accounts where role = 'owner'")).rows[0].n).toBe(1);
+    expect((await db.client.query("select count(*)::int as n from public.trusted_devices")).rows[0].n).toBe(0);
+    expect((await db.client.query(readSql("db/verify.sql"))).rows[0].table_name).toMatch(/^OK: all 43 tables.*F6 devices, sessions and safeguards are in place$/);
+  });
+
+  it("keeps working with what the F5 code writes (an audit row with no device)", async () => {
+    await db.client.query(`insert into public.audit_events (actor_label, action, device_id) values ('System', 'after f6', null)`);
+    expect((await db.client.query("select ok from public.audit_verify_chain()")).rows[0].ok).toBe(true);
+  });
+
+  it("refuses F6 on a database without F5", async () => {
+    const early = await createTestDb({ migrate: false });
+    try {
+      for (const f of migrationFiles().filter((f) => f < "0006")) await early.client.query(readSql(`${MIGRATIONS_DIR}/${f}`));
+      await expect(early.client.query(readSql("db/apply/F6.sql"))).rejects.toThrow(/apply F5 \(0006\) first/);
     } finally {
       await early.client.query("rollback").catch(() => {});
       await early.drop();

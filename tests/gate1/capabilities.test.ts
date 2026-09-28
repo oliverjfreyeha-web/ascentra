@@ -50,9 +50,17 @@ const GLOBAL: Record<string, RoleKey[]> = {
   "guardian_links.inspect": ["owner", "support"],
   "support.recovery.send": ["owner", "support"],
   "support.device.free": ["owner", "support"],
-  "support.appeal.decide": ["owner", "support"],
+  // Appeals: the prototype's decideAppeal checks inspectAccounts (owner, superAdmin, support).
+  "support.appeal.decide": ["owner", "superAdmin", "support"],
+  // F6 safeguard steps: "Limit needs Support; Suspend needs a Super Admin or the Owner."
+  "security.limit": ["owner", "support"],
+  "security.suspend": ["owner", "superAdmin"],
   // Everyone / learners / guardians.
   "self.view": ALL,
+  "devices.manage": ALL,
+  "devices.replace": ALL,
+  "security.verify": ALL,
+  "security.appeal.submit": ALL,
   "learn": ["owner", "superAdmin", "courseAdmin", "reviewer", "support", "learner"],
   "guardian.controls": ["guardian"],
   // "Never sees payment details, private notes, or Mentor conversations": nobody.
@@ -80,6 +88,8 @@ const SENSITIVE = new Set([
   "courses.publish", "courses.archive", "courses.restore",
   "support.recovery.send", "support.device.free", "support.appeal.decide",
   "audit.export",
+  // F6: replacing a device and the Verify step re-check the second factor; so do Limit and Suspend.
+  "devices.replace", "security.verify", "security.limit", "security.suspend",
 ]);
 
 /** F5: actions that must carry a reason (role and invite changes, ownership, publishing, archiving and
@@ -89,6 +99,8 @@ const REASON = new Set([
   "courses.publish", "courses.archive", "courses.restore",
   "support.recovery.send", "support.device.free", "support.appeal.decide",
   "audit.export",
+  // F6: Limit and Suspend are applied with a reason.
+  "security.limit", "security.suspend",
 ]);
 
 function ctx(role: RoleKey, { verified = true, courses }: { verified?: boolean; courses?: string[] } = {}): AuthContext {
@@ -98,6 +110,7 @@ function ctx(role: RoleKey, { verified = true, courses }: { verified?: boolean; 
       id: `acc_${role}`, email: `${role}@example.com`, role: role === "owner" ? "owner" : role === "guardian" ? "guardian" : role === "learner" ? "learner" : "admin",
       displayName: role, roleKey: role, adminRole: null, assignedCourses: assigned,
     },
+    sessionId: `sess_${role}`,
     recentlyVerified: () => verified,
   };
 }
