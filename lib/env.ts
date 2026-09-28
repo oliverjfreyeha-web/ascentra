@@ -13,6 +13,8 @@ export const serverEnvSchema = z.object({
   CLERK_WEBHOOK_SIGNING_SECRET: z.string().startsWith("whsec_"),
   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string().startsWith("pk_"),
   OWNER_EMAIL: z.email(),
+  // Vercel Cron sends it as "Authorization: Bearer ..." to /api/cron/*. 32+ random characters.
+  CRON_SECRET: z.string().min(32),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;

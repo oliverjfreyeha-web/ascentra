@@ -4,8 +4,6 @@ import { clerkUser } from "../fixtures/clerk-user";
 
 const fake = vi.hoisted(() => ({ db: null as unknown }));
 vi.mock("@/lib/db", () => ({ getDb: () => (fake.db as { client: unknown }).client }));
-const recordAuditEvent = vi.hoisted(() => vi.fn(async () => {}));
-vi.mock("@/lib/audit", () => ({ recordAuditEvent }));
 
 import { disableClerkUser, identityFromClerkUser, planSync, syncClerkUser, type AccountRow } from "@/lib/accounts";
 
@@ -15,7 +13,6 @@ let db: ReturnType<typeof createFakeDb>;
 beforeEach(() => {
   db = createFakeDb();
   fake.db = db;
-  recordAuditEvent.mockClear();
 });
 
 describe("planSync (who gets an Account)", () => {
@@ -67,31 +64,39 @@ describe("syncClerkUser", () => {
     expect(db.data.accounts.filter((a) => a.role === "owner")).toHaveLength(1);
   });
 
-  it("records an audit event when an Owner or Admin password is set or reset (recovery)", async () => {
+  it("writes a real audit event when the Owner's password is set or reset (recovery), which the Owner can see", async () => {
     await syncClerkUser(clerkUser({ passwordEnabled: true, twoFactorEnabled: true, passwordLastUpdatedAt: 1_700_000_000_000 }), OWNER);
-    expect(recordAuditEvent).not.toHaveBeenCalled();
+    expect(db.data.audit_events).toEqual([]);
 
     await syncClerkUser(
       clerkUser({ passwordEnabled: true, twoFactorEnabled: true, passwordLastUpdatedAt: 1_700_000_500_000, updatedAt: 1_700_000_500_000 }),
       OWNER,
     );
-    expect(recordAuditEvent).toHaveBeenCalledTimes(1);
-    expect(recordAuditEvent).toHaveBeenCalledWith(
-      expect.objectContaining({ type: "account.password_changed", targetAccountId: db.data.accounts[0].id }),
-    );
+    expect(db.data.audit_events).toHaveLength(1);
+    expect(db.data.audit_events[0]).toMatchObject({
+      action: "account.password_changed", actor_label: "System (Clerk webhook)", target_type: "account",
+      target_id: db.data.accounts[0].id, target_label: OWNER, result: "completed", status: "Recorded", is_sensitive: true,
+    });
+  });
+
+  it("doesn't audit a learner's password change", async () => {
+    db.data.accounts.push({ id: "acc_l", clerk_user_id: "user_l", role: "learner", status: "active", email: "l@example.com",
+      password_last_updated_at: new Date(1_700_000_000_000).toISOString(), clerk_updated_at: new Date(1_700_000_000_000).toISOString() });
+    await syncClerkUser(clerkUser({ id: "user_l", email: "l@example.com", passwordEnabled: true, passwordLastUpdatedAt: 1_700_000_500_000, updatedAt: 1_700_000_500_000 }), OWNER);
+    expect(db.data.audit_events).toEqual([]);
   });
 
   it("disables (not deletes) an Account when the Clerk user is deleted", async () => {
     db.data.accounts.push({ id: "acc_learner", clerk_user_id: "user_9", role: "learner", status: "active" });
     await disableClerkUser("user_9");
     expect(db.data.accounts[0].status).toBe("disabled");
-    expect(recordAuditEvent).toHaveBeenCalledWith(expect.objectContaining({ type: "account.disabled" }));
+    expect(db.data.audit_events).toMatchObject([{ action: "account.disable", result: "completed", new_value: "disabled" }]);
   });
 
   it("never disables the Owner, even if Clerk reports the Owner deleted", async () => {
     await syncClerkUser(clerkUser(), OWNER);
     await disableClerkUser("user_1");
     expect(db.data.accounts[0].status).toBe("active");
-    expect(recordAuditEvent).toHaveBeenCalledWith(expect.objectContaining({ type: "owner.protected" }));
+    expect(db.data.audit_events).toMatchObject([{ action: "account.disable", result: "blocked", status: "No change made" }]);
   });
 });

@@ -14,6 +14,12 @@
       "migrations": [
         "0005_roles_and_invites"
       ]
+    },
+    "F5": {
+      "requires": "0005_roles_and_invites",
+      "migrations": [
+        "0006_audit_store"
+      ]
     }
   }
 }

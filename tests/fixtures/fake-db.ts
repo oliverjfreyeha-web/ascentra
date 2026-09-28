@@ -8,7 +8,7 @@ type Row = Record<string, unknown>;
 type Err = { code: string; message: string } | null;
 
 export function createFakeDb(tables: Record<string, Row[]> = {}) {
-  const data: Record<string, Row[]> = { accounts: [], profiles: [], role_assignments: [], ...tables };
+  const data: Record<string, Row[]> = { accounts: [], profiles: [], role_assignments: [], audit_events: [], ...tables };
 
   function violates(table: string, candidate: Row, self?: Row): Err {
     const others = (data[table] ?? []).filter((r) => r !== self);
@@ -37,11 +37,17 @@ export function createFakeDb(tables: Record<string, Row[]> = {}) {
     let head = false;
     let returning = false;
     let payload: Row = {};
+    let orderBy: { col: string; asc: boolean } | null = null;
+    let limitN: number | null = null;
+    const like = (v: unknown, pattern: string) =>
+      new RegExp(`^${pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/%/g, ".*")}$`, "i").test(String(v ?? ""));
 
     const run = (): { data: unknown; error: Err; count?: number } => {
       const match = (r: Row) => filters.every((f) => f(r));
       if (op === "insert") {
-        const row = { id: randomUUID(), status: table === "accounts" ? "active" : undefined, ...payload };
+        const row: Row = { id: randomUUID(), status: table === "accounts" ? "active" : undefined, ...payload };
+        // audit_events: the database numbers rows (0006's chain trigger); mirror the numbering here.
+        if (table === "audit_events") Object.assign(row, { seq: rows().length + 1, occurred_at: new Date().toISOString(), row_hash: `hash${rows().length + 1}` });
         const err = violates(table, row);
         if (err) return { data: null, error: err };
         rows().push(row);
@@ -61,7 +67,9 @@ export function createFakeDb(tables: Record<string, Row[]> = {}) {
         data[table] = keep;
         return { data: null, error: null };
       }
-      const hit = rows().filter(match);
+      let hit = rows().filter(match);
+      if (orderBy) hit = [...hit].sort((a, b) => ((a[orderBy!.col] as number) - (b[orderBy!.col] as number)) * (orderBy!.asc ? 1 : -1));
+      if (limitN != null) hit = hit.slice(0, limitN);
       return head ? { data: null, error: null, count: hit.length } : { data: hit, error: null };
     };
 
@@ -79,7 +87,34 @@ export function createFakeDb(tables: Record<string, Row[]> = {}) {
         filters.push((r) => vs.includes(r[k]));
         return q;
       },
-      order() {
+      order(col: string, opts?: { ascending?: boolean }) {
+        orderBy = { col, asc: opts?.ascending ?? true };
+        return q;
+      },
+      limit(n: number) {
+        limitN = n;
+        return q;
+      },
+      ilike(k: string, pattern: string) {
+        filters.push((r) => like(r[k], pattern));
+        return q;
+      },
+      /** Only the form lib/audit uses: "a.ilike.%x%,b.ilike.%x%". */
+      or(expr: string) {
+        const parts = expr.split(",").map((p) => p.split(".ilike."));
+        filters.push((r) => parts.some(([k, pat]) => like(r[k], pat)));
+        return q;
+      },
+      gte(k: string, v: unknown) {
+        filters.push((r) => String(r[k]) >= String(v));
+        return q;
+      },
+      lte(k: string, v: unknown) {
+        filters.push((r) => String(r[k]) <= String(v));
+        return q;
+      },
+      lt(k: string, v: number) {
+        filters.push((r) => (r[k] as number) < v);
         return q;
       },
       insert(row: Row) {
@@ -123,5 +158,10 @@ export function createFakeDb(tables: Record<string, Row[]> = {}) {
     return q;
   }
 
-  return { data, client: { from: query } };
+  const rpc = async (fn: string) =>
+    fn === "audit_verify_chain"
+      ? { data: [{ ok: true, checked: data.audit_events.length, broken_at_seq: null, problem: null, head_seq: data.audit_events.length || null, head_hash: data.audit_events.at(-1)?.row_hash ?? null }], error: null }
+      : { data: null, error: { code: "42883", message: `no function ${fn}` } };
+
+  return { data, client: { from: query, rpc } };
 }

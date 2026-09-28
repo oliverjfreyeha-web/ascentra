@@ -6,7 +6,7 @@ export default clerkMiddleware();
 
 export const config = {
   matcher: [
-    // Everything except Next.js internals, static files, the public health check and the webhook.
-    "/((?!_next|api/v1/health|api/webhooks|.*\\.(?:ico|png|svg|jpg|jpeg|webp|css|js|woff2?|txt)$).*)",
+    // Everything except Next.js internals, static files, the public health check, the webhook and cron jobs.
+    "/((?!_next|api/v1/health|api/webhooks|api/cron|.*\\.(?:ico|png|svg|jpg|jpeg|webp|css|js|woff2?|txt)$).*)",
   ],
 };

@@ -9,6 +9,7 @@ describe("server env", () => {
     expect([...REQUIRED_ENV_VARS].sort()).toEqual([
       "CLERK_SECRET_KEY",
       "CLERK_WEBHOOK_SIGNING_SECRET",
+      "CRON_SECRET",
       "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
       "OWNER_EMAIL",
       "SUPABASE_SERVICE_ROLE_KEY",

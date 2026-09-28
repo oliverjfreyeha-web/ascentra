@@ -1,14 +1,23 @@
 import "server-only";
 import { clerkClient } from "@clerk/nextjs/server";
-import { recordAuditEvent } from "@/lib/audit";
+import type { AuditInput } from "@/lib/audit";
 import { INVITE_TTL_DAYS, fromDbRole, toDbRole, type RoleGrant } from "@/lib/admin-rules";
-import type { AdminRole } from "@/lib/caps";
+import { ROLE_LABEL, type AdminRole } from "@/lib/caps";
 import { getDb } from "@/lib/db";
 import type { Account } from "@/lib/auth";
 import type { AccountRow, AssignmentRow } from "@/lib/accounts";
 
-export type Result<T> = { ok: true; value: T } | { ok: false; status: number; reason: string };
-const fail = (status: number, reason: string): { ok: false; status: number; reason: string } => ({ ok: false, status, reason });
+/** The audit event describing an operation's outcome; the route records it (exactly one per request). */
+export type Outcome = Omit<AuditInput, "actor" | "requestId" | "reason">;
+export type Result<T> =
+  | { ok: true; value: T; event: Outcome }
+  | { ok: false; status: number; reason: string; event: Outcome };
+
+const fail = (status: number, reason: string, action: string, target: Outcome["target"] = null): { ok: false; status: number; reason: string; event: Outcome } =>
+  ({ ok: false, status, reason, event: { action, context: `Refused: ${reason}`, target, result: "Blocked" } });
+
+const label = (role: AdminRole | null) => (role ? ROLE_LABEL[role] : "none");
+const grantText = (role: AdminRole, courses: string[]) => `${ROLE_LABEL[role]}${courses.length ? ` (${courses.join(", ")})` : ""}`;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -80,9 +89,11 @@ export async function listAdmins(now = new Date()): Promise<{ admins: AdminSumma
 /** Owner-only (checked by the route). Creates the invite row, then Clerk's invitation email. */
 export async function createInvite(owner: Account, grant: RoleGrant & { email: string }, now = new Date()): Promise<Result<InviteSummary>> {
   const db = getDb();
+  const A = "admins.invite";
+  const who = { type: "invite", id: grant.email, label: grant.email };
   const existing = await db.from("accounts").select("id").eq("email", grant.email).maybeSingle();
   if (existing.error) throw new Error(`account lookup failed: ${existing.error.message}`);
-  if (existing.data) return fail(409, "An account with this email already exists. Invites are for new admins.");
+  if (existing.data) return fail(409, "An account with this email already exists. Invites are for new admins.", A, who);
 
   const expiresAt = new Date(now.getTime() + INVITE_TTL_DAYS * 86_400_000).toISOString();
   const { data: row, error } = await db
@@ -93,7 +104,7 @@ export async function createInvite(owner: Account, grant: RoleGrant & { email: s
     })
     .select("id")
     .single();
-  if (error?.code === "23505") return fail(409, "There's already an open invite for this email. Revoke it first.");
+  if (error?.code === "23505") return fail(409, "There's already an open invite for this email. Revoke it first.", A, who);
   if (error) throw new Error(`invite insert failed: ${error.message}`);
 
   let clerkInvitationId: string;
@@ -108,28 +119,35 @@ export async function createInvite(owner: Account, grant: RoleGrant & { email: s
     clerkInvitationId = invitation.id;
   } catch (err) {
     await db.from("role_assignments").delete().eq("id", row.id);
-    return fail(502, `Clerk couldn't create the invitation: ${err instanceof Error ? err.message : "unknown error"}. Nothing was saved.`);
+    return fail(502, `Clerk couldn't create the invitation: ${err instanceof Error ? err.message : "unknown error"}. Nothing was saved.`, A, who);
   }
   const upd = await db.from("role_assignments").update({ clerk_invitation_id: clerkInvitationId }).eq("id", row.id);
   if (upd.error) throw new Error(`invite update failed: ${upd.error.message}`);
 
-  await recordAuditEvent({
-    type: "admin.invited", actorAccountId: owner.id,
-    detail: `Invited ${grant.email} as ${grant.role}${grant.courses.length ? ` for ${grant.courses.join(", ")}` : ""}; expires ${expiresAt}.`,
-  });
-  return { ok: true, value: { id: row.id, email: grant.email, role: grant.role, courses: grant.courses, expiresAt, expired: false } };
+  return {
+    ok: true,
+    value: { id: row.id, email: grant.email, role: grant.role, courses: grant.courses, expiresAt, expired: false },
+    event: {
+      action: A, context: `Invited ${grant.email} as ${grantText(grant.role, grant.courses)}; the invite expires ${expiresAt}.`,
+      target: { type: "invite", id: row.id, label: grant.email }, previous: null, next: grantText(grant.role, grant.courses),
+      result: "Completed",
+    },
+  };
 }
 
 /** Owner-only. An invite can be revoked until it becomes an active role. */
-export async function revokeInvite(owner: Account, inviteId: string, now = new Date()): Promise<Result<null>> {
-  if (!UUID.test(inviteId)) return fail(404, "No such invite.");
+export async function revokeInvite(_owner: Account, inviteId: string, now = new Date()): Promise<Result<null>> {
+  const A = "admins.revoke";
+  const who = { type: "invite", id: inviteId, label: inviteId };
+  if (!UUID.test(inviteId)) return fail(404, "No such invite.", A, who);
   const db = getDb();
   const { data, error } = await db.from("role_assignments").select("*").eq("id", inviteId).maybeSingle();
   if (error) throw new Error(`invite lookup failed: ${error.message}`);
   const invite = data as AssignmentRow | null;
-  if (!invite || !invite.invited_email) return fail(404, "No such invite.");
-  if (invite.status === "revoked") return fail(409, "This invite is already revoked.");
-  if (invite.status === "active") return fail(409, "This invite was accepted. Remove the admin instead.");
+  if (!invite || !invite.invited_email) return fail(404, "No such invite.", A, who);
+  const inv = { type: "invite", id: invite.id, label: invite.invited_email };
+  if (invite.status === "revoked") return fail(409, "This invite is already revoked.", A, inv);
+  if (invite.status === "active") return fail(409, "This invite was accepted. Remove the admin instead.", A, inv);
 
   if (invite.status === "invited" && invite.clerk_invitation_id) {
     try {
@@ -143,50 +161,62 @@ export async function revokeInvite(owner: Account, inviteId: string, now = new D
   const upd = await db.from("role_assignments")
     .update({ status: "revoked", revoked_at: now.toISOString() }).eq("id", inviteId).in("status", ["invited", "claimed"]);
   if (upd.error) throw new Error(`invite revoke failed: ${upd.error.message}`);
-  await recordAuditEvent({ type: "admin.invite_revoked", actorAccountId: owner.id, detail: `Revoked the invite for ${invite.invited_email}.` });
-  return { ok: true, value: null };
+  return {
+    ok: true, value: null,
+    event: {
+      action: A, context: `Revoked the invite for ${invite.invited_email}.`, target: inv,
+      previous: `${label(fromDbRole(invite.role))} invite (${invite.status})`, next: "revoked", result: "Completed",
+    },
+  };
 }
 
-async function adminTarget(owner: Account, accountId: string, verb: string): Promise<Result<AssignmentRow>> {
+async function adminTarget(accountId: string, action: string): Promise<Result<{ assignment: AssignmentRow; email: string }>> {
+  const who = { type: "account", id: accountId, label: accountId };
   const target = await accountById(accountId);
-  if (!target) return fail(404, "No such admin.");
+  if (!target) return fail(404, "No such admin.", action, who);
+  const t = { type: "account", id: target.id, label: target.email };
   if (target.role === "owner") {
-    await recordAuditEvent({
-      type: "owner.protected", actorAccountId: owner.id, targetAccountId: target.id,
-      detail: `Refused: tried to ${verb} the Owner.`,
-    });
-    return fail(403, `The Owner can't be ${verb === "change the role of" ? "demoted or given another role" : "removed, suspended or deleted"}.`);
+    return fail(403, `The Owner can't be ${action === "admins.role.change" ? "demoted or given another role" : "removed, suspended or deleted"}.`, action, t);
   }
-  if (target.role !== "admin") return fail(404, "No such admin.");
+  if (target.role !== "admin") return fail(404, "No such admin.", action, t);
   const assignment = await liveAssignment(target.id);
-  if (!assignment) return fail(404, "This account doesn't hold an admin role.");
-  return { ok: true, value: assignment };
+  if (!assignment) return fail(404, "This account doesn't hold an admin role.", action, t);
+  return { ok: true, value: { assignment, email: target.email }, event: { action, context: "", result: "Completed" } };
 }
 
 /** Owner-only. */
-export async function changeAdminRole(owner: Account, accountId: string, grant: RoleGrant): Promise<Result<null>> {
-  const target = await adminTarget(owner, accountId, "change the role of");
+export async function changeAdminRole(_owner: Account, accountId: string, grant: RoleGrant): Promise<Result<null>> {
+  const A = "admins.role.change";
+  const target = await adminTarget(accountId, A);
   if (!target.ok) return target;
+  const { assignment, email } = target.value;
+  const before = grantText(fromDbRole(assignment.role) ?? grant.role, assignment.scope);
   const { error } = await getDb().from("role_assignments")
-    .update({ role: toDbRole(grant.role), scope: grant.courses }).eq("id", target.value.id);
+    .update({ role: toDbRole(grant.role), scope: grant.courses }).eq("id", assignment.id);
   if (error) throw new Error(`role change failed: ${error.message}`);
-  await recordAuditEvent({
-    type: "admin.role_changed", actorAccountId: owner.id, targetAccountId: accountId,
-    detail: `Role ${fromDbRole(target.value.role)} → ${grant.role}${grant.courses.length ? ` (${grant.courses.join(", ")})` : ""}.`,
-  });
-  return { ok: true, value: null };
+  return {
+    ok: true, value: null,
+    event: {
+      action: A, context: `Changed ${email}'s administrator role.`, target: { type: "account", id: accountId, label: email },
+      previous: before, next: grantText(grant.role, grant.courses), result: "Completed",
+    },
+  };
 }
 
 /** Owner-only. The account stays (for the record) but holds no role and has no access. */
-export async function removeAdmin(owner: Account, accountId: string, now = new Date()): Promise<Result<null>> {
-  const target = await adminTarget(owner, accountId, "remove");
+export async function removeAdmin(_owner: Account, accountId: string, now = new Date()): Promise<Result<null>> {
+  const A = "admins.revoke";
+  const target = await adminTarget(accountId, A);
   if (!target.ok) return target;
+  const { assignment, email } = target.value;
   const { error } = await getDb().from("role_assignments")
-    .update({ status: "revoked", revoked_at: now.toISOString() }).eq("id", target.value.id);
+    .update({ status: "revoked", revoked_at: now.toISOString() }).eq("id", assignment.id);
   if (error) throw new Error(`admin removal failed: ${error.message}`);
-  await recordAuditEvent({
-    type: "admin.removed", actorAccountId: owner.id, targetAccountId: accountId,
-    detail: `Removed the ${fromDbRole(target.value.role)} role.`,
-  });
-  return { ok: true, value: null };
+  return {
+    ok: true, value: null,
+    event: {
+      action: A, context: `Removed ${email}'s administrator role.`, target: { type: "account", id: accountId, label: email },
+      previous: grantText(fromDbRole(assignment.role) ?? "support", assignment.scope), next: "no admin role", result: "Completed",
+    },
+  };
 }
