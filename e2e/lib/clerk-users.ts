@@ -110,30 +110,18 @@ export async function deleteTestUsers(prefix: (typeof TEST_PREFIXES)[number]): P
   return n;
 }
 
-/**
- * Clears these exact test emails from Clerk: deletes any user holding one (after the guard) and revokes
- * any pending invitation to one. A leftover of either makes Clerk refuse a new invitation to that email.
- */
-export async function clearTestEmails(emails: string[]): Promise<void> {
-  const c = clerkAdmin();
-  for (const email of emails) {
-    guardTestEmail(email);
-    const { data: users } = await c.users.getUserList({ emailAddress: [email], limit: 10 });
-    for (const u of users) {
-      await guardTestUser(u);
-      await c.users.deleteUser(u.id);
-    }
-    const { data: invites } = await c.invitations.getInvitationList({ status: "pending", query: email, limit: 10 });
-    for (const inv of invites) if (inv.emailAddress.toLowerCase() === email.toLowerCase()) await c.invitations.revokeInvitation(inv.id);
-  }
-}
-
 /** Revokes pending Clerk invitations sent to test emails with the prefix (the journeys' admin invites). */
 export async function revokeTestInvitations(prefix: (typeof TEST_PREFIXES)[number]): Promise<number> {
   const c = clerkAdmin();
-  const { data } = await c.invitations.getInvitationList({ status: "pending", limit: 100 });
+  // Every page: the instance is shared with the live site, so test invitations may not be in the first 100.
+  const pending: { id: string; emailAddress: string }[] = [];
+  for (let offset = 0; ; offset += 100) {
+    const { data } = await c.invitations.getInvitationList({ status: "pending", limit: 100, offset });
+    pending.push(...data);
+    if (data.length < 100) break;
+  }
   let n = 0;
-  for (const inv of data) {
+  for (const inv of pending) {
     if (!inv.emailAddress.startsWith(prefix)) continue;
     guardTestEmail(inv.emailAddress);
     await c.invitations.revokeInvitation(inv.id);
