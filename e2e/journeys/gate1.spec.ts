@@ -94,9 +94,11 @@ test.describe("admin invite", () => {
     await owner.locator("#invite-reason").fill(REASON);
     const api = watchApi(owner, "/api/v1/admins/invites");
     await owner.getByRole("button", { name: "Send invite" }).click();
-    await answerReverification(owner, state().owner, owner.getByText("Invite: done."));
-    await expectDone(owner, owner.getByText("Invite: done."), api);
-    await expect(owner.getByText(supportEmail)).toBeVisible();
+    // What the page shows once the invite is saved: it is listed under "Open invites".
+    const listed = owner.locator("section[aria-labelledby=invites-h] li", { hasText: supportEmail });
+    await answerReverification(owner, state().owner, listed);
+    await expectDone(owner, listed, api);
+    await expect(listed).toContainText("Support Admin");
     const ev = await audit("admins.invite");
     expect(ev.at(-1)).toMatchObject({ result: "completed", reason: REASON, is_sensitive: true });
     expect(ev.at(-1).device_id).toEqual(expect.any(String));
@@ -144,9 +146,9 @@ test.describe("role change", () => {
     await row.getByLabel("Reason (required)").fill("E2E journey: moving to reviewing");
     const api = watchApi(owner, "/api/v1/admins/");
     await row.getByRole("button", { name: "Confirm" }).click();
-    await answerReverification(owner, state().owner, owner.getByText("Change role: done."));
-    await expectDone(owner, owner.getByText("Change role: done."), api);
-    await expect(owner.locator("li", { hasText: supportEmail })).toContainText("Learning Reviewer · mkt");
+    const changed = owner.locator("section[aria-labelledby=admins-h] li", { hasText: supportEmail }).filter({ hasText: "Learning Reviewer · mkt" });
+    await answerReverification(owner, state().owner, changed);
+    await expectDone(owner, changed, api);
     expect((await audit("admins.role.change")).at(-1)).toMatchObject({
       result: "completed", previous_value: "Support Admin", new_value: "Learning Reviewer (mkt)", reason: "E2E journey: moving to reviewing",
     });
@@ -166,8 +168,10 @@ test.describe("role change", () => {
     await row.getByLabel("Reason (required)").fill("E2E journey: leaving the rotation");
     const api = watchApi(owner, "/api/v1/admins/");
     await row.getByRole("button", { name: "Confirm" }).click();
-    await answerReverification(owner, state().owner, owner.getByText("Remove: done."));
-    await expectDone(owner, owner.getByText("Remove: done."), api);
+    // The Support Admin was the only admin.
+    const empty = owner.locator("section[aria-labelledby=admins-h]").getByText("No admins yet.");
+    await answerReverification(owner, state().owner, empty);
+    await expectDone(owner, empty, api);
     expect((await audit("admins.revoke")).at(-1)).toMatchObject({ result: "completed", reason: "E2E journey: leaving the rotation" });
   });
 });

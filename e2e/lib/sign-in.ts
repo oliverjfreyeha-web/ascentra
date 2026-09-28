@@ -78,10 +78,14 @@ export function watchApi(page: Page, pathPart: string) {
   return { seen, describe: () => `server answered: ${JSON.stringify(seen)}` };
 }
 
-/** Waits for a step's confirmation; on failure, says what the API answered and what the page shows instead. */
-export async function expectDone(page: Page, done: Locator, api: { describe(): string }, timeout = 20_000) {
+/**
+ * Waits for what the page shows once a step is saved, and requires the server to have accepted the
+ * change (a 2xx answer to a non-GET call). On failure, says what the API answered and what the page shows.
+ */
+export async function expectDone(page: Page, done: Locator, api: { seen: { method: string; status: number }[]; describe(): string }, timeout = 20_000) {
   try {
-    await expect(done).toBeVisible({ timeout });
+    await expect(done.first()).toBeVisible({ timeout });
+    expect(api.seen.some((s) => s.method !== "GET" && s.status >= 200 && s.status < 300), "the server accepted the change").toBe(true);
   } catch (e) {
     const shown = (await page.locator("main").first().innerText().catch(() => "(no page)")).replace(/\s+/g, " ").slice(0, 600);
     throw new Error(`${(e as Error).message}\n${api.describe()}\nPage shows: ${shown}`);
