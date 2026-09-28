@@ -1,0 +1,64 @@
+name: Journeys (Clerk development instance)
+
+# The ported prototype journeys (sign-in, admin invite, role change, devices, audit) on a local build
+# with a throwaway local database and the Clerk DEVELOPMENT instance. Never production.
+# Run it from the Actions tab: "Journeys (Clerk development instance)" → Run workflow.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  journeys:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      CLERK_SECRET_KEY: ${{ secrets.CLERK_DEV_SECRET_KEY }}
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.CLERK_DEV_PUBLISHABLE_KEY }}
+      TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+      POSTGREST_BIN: /tmp/postgrest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Check the development-instance secrets are set
+        run: |
+          case "$CLERK_SECRET_KEY" in sk_test_*) ;; *) echo "::error::CLERK_DEV_SECRET_KEY must be the development instance's sk_test_ key"; exit 1;; esac
+          case "$NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY" in pk_test_*) ;; *) echo "::error::CLERK_DEV_PUBLISHABLE_KEY must be the development instance's pk_test_ key"; exit 1;; esac
+      - name: Install PostgREST
+        run: |
+          curl -sSL -o /tmp/postgrest.tar.xz https://github.com/PostgREST/postgrest/releases/download/v12.2.3/postgrest-v12.2.3-linux-static-x64.tar.xz
+          tar -xf /tmp/postgrest.tar.xz -C /tmp
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Build
+        run: |
+          # The server's own values are set at run time by e2e/journeys/global-setup.ts; these only satisfy the build.
+          SUPABASE_URL=http://127.0.0.1:1 SUPABASE_SERVICE_ROLE_KEY=build-only CLERK_WEBHOOK_SIGNING_SECRET=whsec_YnVpbGQtb25seQ== \
+          OWNER_EMAIL=build-only@example.com CRON_SECRET=build-only-0123456789abcdefghijklmnop npm run build
+      - name: Journeys
+        run: npx playwright test -c playwright.journeys.config.ts
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: journeys-report
+          path: |
+            playwright-report
+            test-results
+          retention-days: 14

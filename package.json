@@ -13,7 +13,8 @@
     "check:build-secrets": "node scripts/check-build-secrets.mjs",
     "test:db": "vitest run --config vitest.db.config.mts",
     "db:bundle": "node scripts/bundle-migrations.mjs",
-    "db:seed": "node scripts/seed-dev.mjs"
+    "db:seed": "node scripts/seed-dev.mjs",
+    "test:integration": "vitest run --config vitest.integration.config.mts"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.9.7",
@@ -25,6 +26,8 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@clerk/testing": "^2.2.39",
+    "@playwright/test": "^1.56.1",
     "@types/node": "^22.20.4",
     "@types/pg": "^8.23.1",
     "@types/react": "^19",
