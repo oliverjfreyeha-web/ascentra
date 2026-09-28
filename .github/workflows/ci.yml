@@ -42,6 +42,18 @@ jobs:
         run: npm run test:db
         env:
           TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+      # Gate 1 against a real database: the route handlers talk through PostgREST (Supabase's Data API
+      # engine) to Postgres with every migration. Also the direct-access and invite bypass attempts.
+      - name: Install PostgREST
+        run: |
+          curl -sSL -o /tmp/postgrest.tar.xz https://github.com/PostgREST/postgrest/releases/download/v12.2.3/postgrest-v12.2.3-linux-static-x64.tar.xz
+          tar -xf /tmp/postgrest.tar.xz -C /tmp
+          /tmp/postgrest --version
+      - name: Integration tests (Gate 1 on real Postgres + PostgREST)
+        run: npm run test:integration
+        env:
+          TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+          POSTGREST_BIN: /tmp/postgrest
       # Throwaway random values (not real credentials), new on every run, so the searches below
       # can look for the values themselves. The build is given them and must not keep them.
       - name: Generate test secrets

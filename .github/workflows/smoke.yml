@@ -1,0 +1,59 @@
+name: Live smoke
+
+# On demand only: Actions tab → "Live smoke" → Run workflow.
+# Runs against the live site with dedicated test learners (ascentra-smoke-…, named TEST …).
+# It never signs in as, changes, or flags the Owner, and cleans up what it creates; audit events stay
+# (append-only) and are marked by the TEST name and the smoke-<run> request id.
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: Live site URL
+        default: https://ascentra-omega.vercel.app
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live-smoke
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SMOKE_BASE_URL: ${{ inputs.base_url }}
+      CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.CLERK_PUBLISHABLE_KEY }}
+      OWNER_EMAIL: ${{ secrets.OWNER_EMAIL }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Check every secret is set
+        run: |
+          missing=0
+          for v in CLERK_SECRET_KEY NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY OWNER_EMAIL SUPABASE_URL SUPABASE_ANON_KEY SUPABASE_SERVICE_ROLE_KEY; do
+            if [ -z "${!v}" ]; then echo "::error::missing secret for $v (see e2e/README.md)"; missing=1; fi
+          done
+          exit $missing
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Live smoke
+        run: npx playwright test -c playwright.smoke.config.ts
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smoke-report
+          path: |
+            playwright-report
+            test-results
+          retention-days: 14
