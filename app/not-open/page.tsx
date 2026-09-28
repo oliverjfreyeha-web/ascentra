@@ -8,7 +8,8 @@ export default function NotOpenPage() {
       <p>This account doesn&apos;t have access. Access is by invitation only.</p>
       <p className="muted">
         If you were invited: your email must be verified, and if you sign in with a password you also need a second
-        factor. You can add one in <Link href="/account">account security</Link>.
+        factor. Administrators always need a second factor; the role starts working once it&apos;s on. You can add one
+        in <Link href="/account">account security</Link>.
       </p>
       <SignOutButton>
         <button type="button">Sign out</button>

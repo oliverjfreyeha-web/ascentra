@@ -3,7 +3,7 @@
 Production build of ASCENTRA. The prototype in `reference/` (`ascentra.html`, `j5.py`, `j6.py`, `j8.py`) is
 read-only and is the reference for names, rules and wording.
 
-**Stage:** Foundations F3 of 7 · data model and row-level security.
+**Stage:** Foundations F4 of 7 · roles, capabilities and Owner protections.
 
 ## Run
 
@@ -25,6 +25,13 @@ npm run dev
 - **Row-level security everywhere:** every table has RLS on and denies by default; `accounts` and
   `profiles` allow reading your own row only. `audit_events` and `consent_records` are insert-only,
   enforced by grants, policies and triggers, so not even the service role can change them.
+- **Capabilities:** `lib/caps.ts` is the only permission map (from the prototype's ROLE_CAPS, NEVER_CAPS
+  and ADMIN_ROLES). Every `/api/v1` route except `/health` is exported through `withCap()`, which checks
+  the capability and course scope, answers 403 with a plain reason, and records the refusal. Owner-only
+  capabilities can't be held by any other role. `tests/gate1/` checks every role against every capability.
+- **Owner protections:** the Owner can't be demoted, suspended or deleted, by the API or in the database
+  (triggers in `0005`). Admins are invited by the Owner only (single-use, 7-day, email-bound, revocable)
+  and need a second factor; sensitive actions ask for it again (Clerk reverification).
 - **One way in:** `getAccount()` in `lib/auth` turns a request into an Account, or nothing. Every
   `/api/v1` route except `/health` is wrapped in `withAccount()`; a test finds every route and checks for 401.
 - **Server-only data access:** `lib/db` holds the Supabase service-role client and imports `server-only`,
@@ -49,7 +56,10 @@ npm run dev
 | `lib/audit.ts` | Audit stub (log only) until the audit store in F5 |
 | `lib/rate-limit.ts` | In-memory rate limiter used by `/health` |
 | `proxy.ts` | Clerk session middleware (Next 16's renamed middleware) |
-| `lib/caps.ts`, `lib/devices.ts` | Empty until later Foundations stages |
+| `lib/caps.ts` | The capability map and `decide()` |
+| `lib/admin-rules.ts`, `lib/admins.ts` | Admin invites and roles: rules, then database + Clerk |
+| `app/admin/` | The Owner's admin page (API only) |
+| `lib/devices.ts` | Empty until a later Foundations stage |
 | `db/` | Migrations, the SQL Editor bundle, the verify query: see [db/README.md](db/README.md) |
 | `tests/unit/` | Vitest unit tests |
 | `tests/journeys/`, `tests/gate1/` | Empty until later stages |

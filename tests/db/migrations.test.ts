@@ -66,7 +66,7 @@ describe("applying every migration, in order, to an empty database", () => {
   });
 });
 
-describe("the F3 SQL Editor bundle on a database that has only 0001 (like production today)", () => {
+describe("the F3 then F4 SQL Editor bundles on a database that has only 0001", () => {
   let db: TestDb;
   beforeAll(async () => {
     db = await createTestDb({ migrate: false });
@@ -81,6 +81,7 @@ describe("the F3 SQL Editor bundle on a database that has only 0001 (like produc
 
   it("applies in one go and keeps the existing Owner and profile", async () => {
     await db.client.query(readSql("db/apply/F3.sql"));
+    await db.client.query(readSql("db/apply/F4.sql"));
     const { rows } = await db.client.query(
       "select a.role, a.is_minor, a.retention_class, p.id is not null as has_id from public.accounts a join public.profiles p on p.account_id = a.id",
     );
@@ -95,7 +96,20 @@ describe("the F3 SQL Editor bundle on a database that has only 0001 (like produc
     const before = await count();
     await expect(db.client.query(readSql("db/apply/F3.sql"))).rejects.toThrow(/already applied/);
     await db.client.query("rollback");
+    await expect(db.client.query(readSql("db/apply/F4.sql"))).rejects.toThrow(/already applied/);
+    await db.client.query("rollback");
     expect(await count()).toBe(before);
+  });
+
+  it("refuses F4 on a database without F3", async () => {
+    const onlyOne = await createTestDb({ migrate: false });
+    try {
+      await onlyOne.client.query(readSql(`${MIGRATIONS_DIR}/0001_accounts.sql`));
+      await expect(onlyOne.client.query(readSql("db/apply/F4.sql"))).rejects.toThrow(/apply F3 \(0002-0004\) first/);
+    } finally {
+      await onlyOne.client.query("rollback").catch(() => {});
+      await onlyOne.drop();
+    }
   });
 
   it("refuses to run on a database without 0001", async () => {

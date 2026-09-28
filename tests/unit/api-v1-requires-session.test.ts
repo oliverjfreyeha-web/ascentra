@@ -1,9 +1,15 @@
-import { readdirSync, statSync } from "node:fs";
+import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 
 // No session at all, and a database that must never be reached before auth.
-vi.mock("@clerk/nextjs/server", () => ({ auth: vi.fn(async () => ({ isAuthenticated: false, userId: null })) }));
+vi.mock("@clerk/nextjs/server", () => ({
+  auth: vi.fn(async () => ({ isAuthenticated: false, userId: null })),
+  clerkClient: vi.fn(() => {
+    throw new Error("Clerk reached without a session");
+  }),
+  reverificationErrorResponse: vi.fn(),
+}));
 vi.mock("@/lib/db", () => ({
   getDb: () => {
     throw new Error("database reached without a session");
@@ -45,6 +51,15 @@ describe("every /api/v1 route requires a session", () => {
   it("finds the routes by itself", () => {
     expect(routeFiles).toContain("app/api/v1/health/route.ts");
     expect(protectedRoutes.length).toBeGreaterThan(0);
+  });
+
+  it.each(protectedRoutes)("%s exports every method through withCap (a capability check)", (file) => {
+    const src = readFileSync(file, "utf8");
+    const exported = [...src.matchAll(/export\s+(?:async\s+)?(?:const|function)\s+(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\b/g)].map((m) => m[1]);
+    expect(exported.length).toBeGreaterThan(0);
+    for (const method of exported) {
+      expect(src, `${file} ${method}`).toMatch(new RegExp(`export const ${method} = withCap\\(`));
+    }
   });
 
   describe.each(protectedRoutes)("%s", (file) => {
