@@ -38,18 +38,13 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Check every secret is set
-        run: |
-          missing=0
-          for v in CLERK_SECRET_KEY NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY OWNER_EMAIL SUPABASE_URL SUPABASE_ANON_KEY SUPABASE_SERVICE_ROLE_KEY; do
-            if [ -z "${!v}" ]; then echo "::error::missing secret for $v (see e2e/README.md)"; missing=1; fi
-          done
-          exit $missing
+      - name: Check every secret is set and looks right (values are never printed)
+        run: node e2e/check-secrets.mjs CLERK_SECRET_KEY NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY OWNER_EMAIL SUPABASE_URL SUPABASE_ANON_KEY SUPABASE_SERVICE_ROLE_KEY
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Live smoke
         run: npx playwright test -c playwright.smoke.config.ts
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         if: always()
         with:
           name: smoke-report

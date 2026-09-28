@@ -10,7 +10,7 @@ export default defineConfig({
   timeout: 120_000,
   reporter: [["list"], ["html", { open: "never" }]],
   use: {
-    baseURL: "http://127.0.0.1:3100",
+    baseURL: "http://localhost:3100",
     trace: "retain-on-failure",
     ...devices["Desktop Chrome"],
     launchOptions: process.env.PW_CHROMIUM_PATH ? { executablePath: process.env.PW_CHROMIUM_PATH } : {},
