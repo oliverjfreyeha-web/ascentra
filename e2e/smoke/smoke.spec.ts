@@ -9,7 +9,7 @@ import { decide, type Action } from "../../lib/caps";
 import { apiHandlers } from "../../tests/support/routes";
 import { EXPECTED_TABLES } from "../../tests/db/expected-tables";
 import { pageReady, signInWithPassword } from "../lib/sign-in";
-import { ownerState, serviceDb } from "./fixtures";
+import { ownerState, serviceDb, supabaseOrigin } from "./fixtures";
 import { STATE_FILE } from "./global-setup";
 
 type U = { id: string; email: string; password: string; totpSecret: string; accountId: string };
@@ -48,7 +48,7 @@ test("the webhook refuses an unsigned event, and the cron job refuses a caller w
 });
 
 test("Supabase called directly with the anon key: every table, write and function refused", async () => {
-  const url = process.env.SUPABASE_URL!;
+  const url = supabaseOrigin();
   const anon = process.env.SUPABASE_ANON_KEY!;
   test.skip(!anon, "SUPABASE_ANON_KEY not set");
   const h = { apikey: anon, Authorization: `Bearer ${anon}`, "content-type": "application/json" };
@@ -102,7 +102,7 @@ test("a forged role in headers, cookies or the body changes nothing", async () =
 });
 
 test("Supabase called directly with the learner's own session token: refused", async () => {
-  const url = process.env.SUPABASE_URL!;
+  const url = supabaseOrigin();
   const anon = process.env.SUPABASE_ANON_KEY;
   test.skip(!anon, "SUPABASE_ANON_KEY not set");
   const token = await a.evaluate(() => window.Clerk.session?.getToken());

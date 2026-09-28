@@ -36,8 +36,10 @@ export default async function globalSetup() {
   const owner = await createTestUser(testOwnerEmail, { label: "E2E Owner" });
 
   const webhookSecret = `whsec_${randomBytes(24).toString("base64")}`;
-  const baseURL = `http://127.0.0.1:${PORT}`;
-  const server = spawn("npx", ["next", "start", "-p", String(PORT), "-H", "127.0.0.1"], {
+  // Listen on every interface and use "localhost": Next.js and Clerk call back to localhost:<port>,
+  // which can resolve to ::1. Bound to 127.0.0.1 only, those calls hang ("Failed to proxy … socket hang up").
+  const baseURL = `http://localhost:${PORT}`;
+  const server = spawn("npx", ["next", "start", "-p", String(PORT)], {
     env: {
       ...process.env,
       SUPABASE_URL: stack.url,

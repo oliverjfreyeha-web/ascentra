@@ -14,11 +14,27 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 export const SMOKE_PREFIX = "ascentra-smoke-";
 
+/**
+ * The Supabase project URL as supabase-js expects it: scheme and host only. A pasted "RESTful endpoint"
+ * (…/rest/v1/) would otherwise become …/rest/v1/rest/v1/… ("Invalid path specified in request URL").
+ */
+export function supabaseOrigin(): string {
+  const raw = (process.env.SUPABASE_URL ?? "").trim();
+  let u: URL;
+  try {
+    u = new URL(raw);
+  } catch {
+    throw new Error("SUPABASE_URL isn't a URL. It should look like https://<project>.supabase.co");
+  }
+  if (u.protocol !== "https:") throw new Error("SUPABASE_URL must start with https://");
+  if (u.pathname !== "/" || u.search) console.warn("[smoke] SUPABASE_URL has a path; using only https://<host>.");
+  return u.origin;
+}
+
 export function serviceDb(): SupabaseClient {
-  const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) throw new Error("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are needed for the smoke fixtures.");
-  return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+  if (!key) throw new Error("SUPABASE_SERVICE_ROLE_KEY is needed for the smoke fixtures.");
+  return createClient(supabaseOrigin(), key, { auth: { persistSession: false, autoRefreshToken: false } });
 }
 
 function guard(email: string) {
