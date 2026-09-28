@@ -5,8 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { SignOutButton, useAuth } from "@clerk/nextjs";
 
-type Me = { email: string; role: "owner" | "admin"; displayName: string };
-const ROLE_LABEL = { owner: "Owner", admin: "Admin" } as const;
+type Me = { email: string; role: "owner" | "admin" | "learner" | "guardian"; displayName: string };
+const ROLE_LABEL = { owner: "Owner", admin: "Admin", learner: "Learner", guardian: "Guardian" } as const;
 
 // Who is signed in, read only through /api/v1/me. A Clerk session without an Account goes to /not-open.
 export function AccountPanel() {

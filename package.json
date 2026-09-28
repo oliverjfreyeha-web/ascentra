@@ -10,7 +10,10 @@
     "lint": "eslint .",
     "test": "vitest run",
     "check:bundle": "node scripts/check-bundle.mjs",
-    "check:build-secrets": "node scripts/check-build-secrets.mjs"
+    "check:build-secrets": "node scripts/check-build-secrets.mjs",
+    "test:db": "vitest run --config vitest.db.config.mts",
+    "db:bundle": "node scripts/bundle-migrations.mjs",
+    "db:seed": "node scripts/seed-dev.mjs"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.9.7",
@@ -23,10 +26,12 @@
   },
   "devDependencies": {
     "@types/node": "^22.20.4",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.6",
+    "pg": "^8.23.0",
     "standardwebhooks": "^1.1.1",
     "typescript": "^5",
     "vitest": "^5.0.2"
