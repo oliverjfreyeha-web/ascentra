@@ -75,19 +75,20 @@ export function DeviceGate({ children }: { children: ReactNode }) {
   }, [ended, signOut]);
 
   // Until Clerk has loaded, the page renders as before (its API calls enforce the same rules).
-  if (!isLoaded) return <>{children}</>;
-  if (isSignedIn && beat === null) return <main><p className="muted">Checking this device…</p></main>;
-  if (beat === "none" || beat === "error" || beat === null) return <>{children}</>;
-
-  const e = beat.enforcement;
-  if (e.suspended) return <Suspended enforcement={e} />;
-  if (beat.device && !beat.device.trusted) return <NotTrusted beat={beat} onDone={send} />;
-  if (e.needsVerify) return <Verify enforcement={e} onDone={send} />;
-  if (beat.session?.state === "paused") return <Paused beat={beat} onDone={send} />;
+  if (isLoaded && isSignedIn && beat === null) return <main><p className="muted">Checking this device…</p></main>;
+  const live = beat === "none" || beat === "error" || beat === null ? null : beat;
+  const e = live?.enforcement;
+  if (live && e) {
+    if (e.suspended) return <Suspended enforcement={e} />;
+    if (live.device && !live.device.trusted) return <NotTrusted beat={live} onDone={send} />;
+    if (e.needsVerify) return <Verify enforcement={e} onDone={send} />;
+    if (live.session?.state === "paused") return <Paused beat={live} onDone={send} />;
+  }
+  // One tree shape whatever the heartbeat said, so a heartbeat never remounts the page (and loses its state).
   return (
     <>
-      {beat.session?.conflict && <OtherDeviceBanner beat={beat} onDone={send} />}
-      {e.noticeUnread && <NoticeBanner enforcement={e} onDone={send} />}
+      {live?.session?.conflict && <OtherDeviceBanner beat={live} onDone={send} />}
+      {e?.noticeUnread && <NoticeBanner enforcement={e} onDone={send} />}
       {children}
     </>
   );
