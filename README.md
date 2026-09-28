@@ -3,7 +3,7 @@
 Production build of ASCENTRA. The prototype in `reference/` (`ascentra.html`, `j5.py`, `j6.py`, `j8.py`) is
 read-only and is the reference for names, rules and wording.
 
-**Stage:** Foundations F2 of 7 · sign-in with Clerk.
+**Stage:** Foundations F3 of 7 · data model and row-level security.
 
 ## Run
 
@@ -22,6 +22,9 @@ npm run dev
   only at request time. `npm run check:build-secrets` searches all of `.next`, cache included, for them.
 - **Identity vs. permission:** Clerk proves who someone is. Postgres (`accounts`, `profiles`) holds what
   they may do, written only from signature-verified Clerk webhooks (`app/api/webhooks/clerk`).
+- **Row-level security everywhere:** every table has RLS on and denies by default; `accounts` and
+  `profiles` allow reading your own row only. `audit_events` and `consent_records` are insert-only,
+  enforced by grants, policies and triggers, so not even the service role can change them.
 - **One way in:** `getAccount()` in `lib/auth` turns a request into an Account, or nothing. Every
   `/api/v1` route except `/health` is wrapped in `withAccount()`; a test finds every route and checks for 401.
 - **Server-only data access:** `lib/db` holds the Supabase service-role client and imports `server-only`,
@@ -47,7 +50,7 @@ npm run dev
 | `lib/rate-limit.ts` | In-memory rate limiter used by `/health` |
 | `proxy.ts` | Clerk session middleware (Next 16's renamed middleware) |
 | `lib/caps.ts`, `lib/devices.ts` | Empty until later Foundations stages |
-| `db/migrations/` | SQL migrations, applied by hand in Supabase's SQL Editor |
+| `db/` | Migrations, the SQL Editor bundle, the verify query: see [db/README.md](db/README.md) |
 | `tests/unit/` | Vitest unit tests |
 | `tests/journeys/`, `tests/gate1/` | Empty until later stages |
 
@@ -55,3 +58,5 @@ npm run dev
 
 `npm run typecheck` · `npm run lint` · `npm test` · `npm run build` · after a build: `npm run check:bundle`,
 `npm run check:build-secrets` · once, to invite the Owner: `node --env-file=.env.local scripts/invite-owner.mjs`
+
+Database: `npm run test:db` (needs `TEST_DATABASE_URL`) · `npm run db:bundle` · `npm run db:seed` (local only)

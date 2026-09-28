@@ -3,7 +3,7 @@ import type { UserJSON } from "@clerk/nextjs/server";
 import { getDb } from "@/lib/db";
 import { recordAuditEvent } from "@/lib/audit";
 
-export type Role = "owner" | "admin";
+export type Role = "owner" | "admin" | "learner" | "guardian";
 
 export type AccountRow = {
   id: string;
@@ -11,6 +11,7 @@ export type AccountRow = {
   email: string;
   email_verified: boolean;
   role: Role;
+  is_minor: boolean;
   status: "active" | "disabled";
   password_enabled: boolean;
   two_factor_enabled: boolean;
