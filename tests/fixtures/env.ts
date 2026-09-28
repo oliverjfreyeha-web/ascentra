@@ -6,4 +6,5 @@ export const TEST_ENV = {
   CLERK_WEBHOOK_SIGNING_SECRET: "whsec_" + Buffer.from("ascentra-test-webhook-signing-secret").toString("base64"),
   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_" + Buffer.from("ascentra-test.clerk.accounts.dev$").toString("base64"),
   OWNER_EMAIL: "owner@example.com",
+  CRON_SECRET: "test-cron-secret-0123456789abcdefghij",
 } as const;

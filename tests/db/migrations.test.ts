@@ -82,6 +82,7 @@ describe("the F3 then F4 SQL Editor bundles on a database that has only 0001", (
   it("applies in one go and keeps the existing Owner and profile", async () => {
     await db.client.query(readSql("db/apply/F3.sql"));
     await db.client.query(readSql("db/apply/F4.sql"));
+    await db.client.query(readSql("db/apply/F5.sql"));
     const { rows } = await db.client.query(
       "select a.role, a.is_minor, a.retention_class, p.id is not null as has_id from public.accounts a join public.profiles p on p.account_id = a.id",
     );
@@ -97,6 +98,8 @@ describe("the F3 then F4 SQL Editor bundles on a database that has only 0001", (
     await expect(db.client.query(readSql("db/apply/F3.sql"))).rejects.toThrow(/already applied/);
     await db.client.query("rollback");
     await expect(db.client.query(readSql("db/apply/F4.sql"))).rejects.toThrow(/already applied/);
+    await db.client.query("rollback");
+    await expect(db.client.query(readSql("db/apply/F5.sql"))).rejects.toThrow(/already applied/);
     await db.client.query("rollback");
     expect(await count()).toBe(before);
   });
@@ -119,6 +122,40 @@ describe("the F3 then F4 SQL Editor bundles on a database that has only 0001", (
     } finally {
       await empty.client.query("rollback").catch(() => {});
       await empty.drop();
+    }
+  });
+});
+
+describe("the F5 bundle on a database at F4 that already has audit rows", () => {
+  let db: TestDb;
+  beforeAll(async () => {
+    db = await createTestDb({ migrate: false });
+    for (const f of migrationFiles().filter((f) => f < "0006")) await db.client.query(readSql(`${MIGRATIONS_DIR}/${f}`));
+    await db.client.query(`insert into public.audit_events (actor_label, action, occurred_at)
+                           values ('System', 'older', now() - interval '2 days'), ('System', 'newer', now() - interval '1 day')`);
+  });
+  afterAll(() => db.drop());
+
+  it("chains the existing rows in time order, keeps them unchanged otherwise, and verifies", async () => {
+    await db.client.query(readSql("db/apply/F5.sql"));
+    const { rows } = await db.client.query("select seq, action from public.audit_events order by seq");
+    expect(rows).toEqual([{ seq: "1", action: "older" }, { seq: "2", action: "newer" }]);
+    expect((await db.client.query("select ok, checked from public.audit_verify_chain()")).rows[0]).toEqual({ ok: true, checked: "2" });
+    expect((await db.client.query(readSql("db/verify.sql"))).rows[0].table_name).toMatch(/F5 audit chain is in place/);
+  });
+
+  it("leaves the insert-only trigger on", async () => {
+    await expect(db.client.query("update public.audit_events set action = 'x'")).rejects.toThrow(/insert-only/);
+  });
+
+  it("refuses F5 on a database without F4", async () => {
+    const early = await createTestDb({ migrate: false });
+    try {
+      for (const f of migrationFiles().filter((f) => f < "0005")) await early.client.query(readSql(`${MIGRATIONS_DIR}/${f}`));
+      await expect(early.client.query(readSql("db/apply/F5.sql"))).rejects.toThrow(/apply F4 \(0005\) first/);
+    } finally {
+      await early.client.query("rollback").catch(() => {});
+      await early.drop();
     }
   });
 });

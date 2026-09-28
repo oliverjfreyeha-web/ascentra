@@ -111,3 +111,29 @@ section + section,
 p + section {
   margin-top: 1.5rem;
 }
+
+main.wide {
+  max-width: 80rem;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+th,
+td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.4rem 0.5rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.filters label {
+  display: inline-block;
+  margin: 0 0.5rem 0.5rem 0;
+}

@@ -4,8 +4,6 @@ import { clerkUser } from "../fixtures/clerk-user";
 
 const fake = vi.hoisted(() => ({ db: null as unknown }));
 vi.mock("@/lib/db", () => ({ getDb: () => (fake.db as { client: unknown }).client }));
-const recordAuditEvent = vi.hoisted(() => vi.fn(async () => {}));
-vi.mock("@/lib/audit", () => ({ recordAuditEvent }));
 
 import { checkInviteActivation, checkInviteClaim, parseInviteRequest, parseRoleChange, type InviteRow } from "@/lib/admin-rules";
 import { syncClerkUser } from "@/lib/accounts";
@@ -97,7 +95,6 @@ describe("invite sign-up through the Clerk webhook", () => {
   beforeEach(() => {
     db = createFakeDb({ accounts: [{ id: "acc_owner", clerk_user_id: "user_owner", role: "owner", status: "active" }] });
     fake.db = db;
-    recordAuditEvent.mockClear();
   });
 
   it("claims the invite: an admin account, no active role until a second factor", async () => {
@@ -110,6 +107,7 @@ describe("invite sign-up through the Clerk webhook", () => {
     // They add an authenticator app: user.updated arrives with two_factor_enabled.
     expect(await syncClerkUser(signUp({ twoFactorEnabled: true, updatedAt: 1_700_000_100_000 }), OWNER_EMAIL, NOW)).toBe("admin_activated");
     expect(db.data.role_assignments[0].status).toBe("active");
+    expect(db.data.audit_events.map((e) => e.action)).toEqual(["admins.invite.claim", "admins.activate"]);
   });
 
   it("activates at once if the new user already has a second factor", async () => {
@@ -121,7 +119,7 @@ describe("invite sign-up through the Clerk webhook", () => {
     db.data.role_assignments.push(inviteRow({ expires_at: "2026-09-30T00:00:00Z" }));
     expect(await syncClerkUser(signUp(), OWNER_EMAIL, NOW)).toBe("invite_refused");
     expect(db.data.accounts.some((a) => a.clerk_user_id === "user_morgan")).toBe(false);
-    expect(recordAuditEvent).toHaveBeenCalledWith(expect.objectContaining({ type: "admin.invite_refused", detail: expect.stringMatching(/expired/) }));
+    expect(db.data.audit_events).toMatchObject([{ action: "admins.invite.claim", result: "blocked", context: expect.stringMatching(/expired/) }]);
   });
 
   it("refuses a reused invite: the second person gets nothing", async () => {

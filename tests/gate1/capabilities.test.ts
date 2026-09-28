@@ -7,8 +7,8 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const recordAuditEvent = vi.hoisted(() => vi.fn(async () => {}));
-vi.mock("@/lib/audit", () => ({ recordAuditEvent }));
+const recordAudit = vi.hoisted(() => vi.fn(async () => {}));
+vi.mock("@/lib/audit", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/audit")>()), recordAudit }));
 vi.mock("@clerk/nextjs/server", () => ({
   auth: vi.fn(),
   clerkClient: vi.fn(),
@@ -34,6 +34,10 @@ const GLOBAL: Record<string, RoleKey[]> = {
   "owner_academy.open": ["owner"],
   "owner_academy.edit": ["owner"],
   "pricing.change": ["owner"],
+  // F5: the audit log. Owner and Super Admin read and export it; only the Owner verifies the chain.
+  "audit.view": ["owner", "superAdmin"],
+  "audit.export": ["owner", "superAdmin"],
+  "audit.verify": ["owner"],
   // Super Admin: operate the platform (not admin management), inspect, Pro access.
   "platform.operate": ["owner", "superAdmin"],
   "support_states.inspect": ["owner", "superAdmin"],
@@ -75,6 +79,16 @@ const SENSITIVE = new Set([
   "admins.invite", "admins.role.change", "admins.revoke", "ownership.transfer", "owner_academy.edit", "pricing.change",
   "courses.publish", "courses.archive", "courses.restore",
   "support.recovery.send", "support.device.free", "support.appeal.decide",
+  "audit.export",
+]);
+
+/** F5: actions that must carry a reason (role and invite changes, ownership, publishing, archiving and
+ *  restoring, the Owner Academy, prices, support actions on security and appeals, audit export). */
+const REASON = new Set([
+  "admins.invite", "admins.role.change", "admins.revoke", "ownership.transfer", "owner_academy.edit", "pricing.change",
+  "courses.publish", "courses.archive", "courses.restore",
+  "support.recovery.send", "support.device.free", "support.appeal.decide",
+  "audit.export",
 ]);
 
 function ctx(role: RoleKey, { verified = true, courses }: { verified?: boolean; courses?: string[] } = {}): AuthContext {
@@ -95,7 +109,7 @@ async function outcome(role: RoleKey, action: Action, target?: Target, opts?: { 
   return { status: res.status, body };
 }
 
-beforeEach(() => recordAuditEvent.mockClear());
+beforeEach(() => recordAudit.mockClear());
 
 describe("the capability map covers exactly the capabilities this suite specifies", () => {
   it("has no capability the suite doesn't specify, and the suite has none the map lacks", () => {
@@ -116,7 +130,8 @@ describe.each(Object.entries(GLOBAL))("%s", (action, allowed) => {
     } else {
       expect(r.status).toBe(403);
       expect(r.body).toMatchObject({ error: "forbidden", reason: expect.any(String) });
-      expect(recordAuditEvent).toHaveBeenCalledWith(expect.objectContaining({ type: "capability.refused" }));
+      expect(recordAudit).toHaveBeenCalledTimes(1);
+      expect(recordAudit).toHaveBeenCalledWith(expect.objectContaining({ action, result: "Blocked" }));
     }
   });
 });
@@ -148,7 +163,9 @@ describe("scope can't be widened by what's stored", () => {
   });
 
   it("an admin assigned every course still can't use an Owner-only capability", async () => {
-    for (const action of Object.keys(GLOBAL).filter((a) => GLOBAL[a].length === 1 && GLOBAL[a][0] === "owner")) {
+    const NEVER_CAPS = ["admins.view", "admins.invite", "admins.role.change", "admins.revoke", "ownership.transfer",
+      "owner_academy.open", "owner_academy.edit", "pricing.change"];
+    for (const action of NEVER_CAPS) {
       const r = await outcome("superAdmin", action as Action, undefined, { courses: ["mkt", "sales", "gsa"] });
       expect(r.status, action).toBe(403);
       expect(r.body.reason).toMatch(/Only the Owner/);
@@ -175,6 +192,13 @@ describe("sensitive actions re-check the second factor", () => {
     const r = await outcome(role, action, target, { verified: false });
     expect(r.status).toBe(403);
     expect(r.body).toMatchObject({ clerk_error: { reason: "reverification-error" } });
+  });
+
+  it("marks exactly the expected actions as needing a reason", async () => {
+    const { requiresReason } = await import("@/lib/caps");
+    for (const action of [...Object.keys(GLOBAL), ...Object.keys(COURSE)]) {
+      expect(requiresReason(action as Action), action).toBe(REASON.has(action));
+    }
   });
 
   it("marks exactly the expected actions as sensitive", async () => {

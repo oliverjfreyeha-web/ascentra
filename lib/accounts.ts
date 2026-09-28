@@ -1,7 +1,9 @@
 import "server-only";
 import type { UserJSON } from "@clerk/nextjs/server";
 import { getDb } from "@/lib/db";
-import { recordAuditEvent } from "@/lib/audit";
+import { SYSTEM_ACTOR, recordAudit } from "@/lib/audit";
+
+const WEBHOOK = SYSTEM_ACTOR("Clerk webhook");
 import { checkInviteActivation, checkInviteClaim, type InviteRow } from "@/lib/admin-rules";
 
 export type Role = "owner" | "admin" | "learner" | "guardian";
@@ -167,10 +169,11 @@ async function claimInvite(identity: ClerkIdentity, now: Date): Promise<SyncOutc
   const invite = await findAssignment(identity.inviteId!);
   const check = checkInviteClaim(invite, identity, now);
   if (!check.ok) {
-    await recordAuditEvent({
-      type: "admin.invite_refused",
-      actorAccountId: null,
-      detail: `Sign-up by ${identity.email ?? "unknown email"} with invite ${identity.inviteId} refused: ${check.reason}`,
+    await recordAudit({
+      actor: WEBHOOK, action: "admins.invite.claim",
+      context: `Refused a sign-up with an admin invite: ${check.reason}`,
+      target: { type: "invite", id: identity.inviteId!, label: identity.email ?? "unknown email" },
+      result: "Blocked",
     });
     return "invite_refused";
   }
@@ -197,15 +200,18 @@ async function claimInvite(identity: ClerkIdentity, now: Date): Promise<SyncOutc
   if (!claimed.data?.length) {
     // Someone else claimed it between the read and the write: undo this account.
     await db.from("accounts").delete().eq("id", account.id);
-    await recordAuditEvent({ type: "admin.invite_refused", actorAccountId: null, detail: `Invite ${invite!.id} was already used.` });
+    await recordAudit({
+      actor: WEBHOOK, action: "admins.invite.claim", context: "Refused a sign-up with an admin invite: this invite has already been used.",
+      target: { type: "invite", id: invite!.id, label: identity.email }, result: "Blocked",
+    });
     return "invite_refused";
   }
   await upsertProfile(account.id as string, identity);
-  await recordAuditEvent({
-    type: "admin.invite_claimed",
-    actorAccountId: null,
-    targetAccountId: account.id as string,
-    detail: `Invite ${invite!.id} claimed by ${identity.email}. The role starts once a second factor is on.`,
+  await recordAudit({
+    actor: WEBHOOK, action: "admins.invite.claim",
+    context: `${identity.email} signed up with their admin invite. The role starts once a second factor is on.`,
+    target: { type: "account", id: account.id as string, label: identity.email },
+    previous: "invited", next: "claimed", result: "Completed",
   });
   return (await activateIfReady(account.id as string, identity, now)) ?? "admin_claimed";
 }
@@ -221,11 +227,11 @@ async function activateIfReady(accountId: string, identity: ClerkIdentity, now: 
     .eq("id", assignment.id)
     .eq("status", "claimed");
   if (error) throw new Error(`role activation failed: ${error.message}`);
-  await recordAuditEvent({
-    type: "admin.activated",
-    actorAccountId: null,
-    targetAccountId: accountId,
-    detail: `Admin role ${assignment.role} is active (second factor present).`,
+  await recordAudit({
+    actor: WEBHOOK, action: "admins.activate",
+    context: `The ${assignment.role} role is active: ${identity.email} has a second factor.`,
+    target: { type: "account", id: accountId, label: identity.email },
+    previous: "claimed", next: "active", result: "Completed",
   });
   return "admin_activated";
 }
@@ -257,13 +263,16 @@ export async function syncClerkUser(user: UserJSON, ownerEmail: string, now = ne
     if (error) throw new Error(`account update failed: ${error.message}`);
     await upsertProfile(existing.id, identity);
     if (plan.passwordChanged) {
-      await recordAuditEvent({
-        type: "account.password_changed",
-        actorAccountId: null,
-        targetAccountId: existing.id,
-        detail: `${existing.role}: password set or reset. Recovery through Clerk's verified-email flow also records this.`,
-        at: identity.passwordLastUpdatedAt!,
-      });
+      // Owner and admin passwords only: recovery through Clerk's verified-email flow lands here.
+      if (existing.role === "owner" || existing.role === "admin") {
+        await recordAudit({
+          actor: WEBHOOK, action: "account.password_changed",
+          context: `The ${existing.role === "owner" ? "Owner's" : "admin's"} password was set or reset (account recovery or a password change) at ${identity.passwordLastUpdatedAt}.`,
+          target: { type: "account", id: existing.id, label: existing.email },
+          previous: existing.password_last_updated_at ?? "no password", next: identity.passwordLastUpdatedAt,
+          result: "Completed", sensitive: true,
+        });
+      }
     }
     if (existing.role === "admin") return (await activateIfReady(existing.id, identity, now)) ?? plan.outcome;
   }
@@ -275,11 +284,10 @@ export async function disableClerkUser(clerkUserId: string): Promise<void> {
   const existing = await findAccountByClerkId(clerkUserId);
   if (!existing) return;
   if (existing.role === "owner") {
-    await recordAuditEvent({
-      type: "owner.protected",
-      actorAccountId: null,
-      targetAccountId: existing.id,
-      detail: "Clerk reported the Owner's user as deleted. The Owner account was not disabled.",
+    await recordAudit({
+      actor: WEBHOOK, action: "account.disable",
+      context: "Refused: Clerk reported the Owner's user as deleted. The Owner account can't be disabled.",
+      target: { type: "account", id: existing.id, label: existing.email }, result: "Blocked", sensitive: true,
     });
     return;
   }
@@ -292,10 +300,10 @@ export async function disableClerkUser(clerkUserId: string): Promise<void> {
     await getDb().from("role_assignments").update({ status: "revoked", revoked_at: new Date().toISOString() })
       .eq("account_id", existing.id).in("status", ["claimed", "active"]);
   }
-  await recordAuditEvent({
-    type: "account.disabled",
-    actorAccountId: null,
-    targetAccountId: existing.id,
-    detail: `${existing.role}: Clerk user deleted`,
+  await recordAudit({
+    actor: WEBHOOK, action: "account.disable",
+    context: `The Clerk user was deleted, so the ${existing.role} account is disabled.`,
+    target: { type: "account", id: existing.id, label: existing.email },
+    previous: "active", next: "disabled", result: "Completed",
   });
 }

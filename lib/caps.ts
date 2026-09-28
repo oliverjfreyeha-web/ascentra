@@ -34,25 +34,29 @@ export function isAdminRole(value: unknown): value is AdminRole {
 export const OWNER_ACADEMY_SLUG = "gsa";
 
 type Scope = "global" | "any" | "assigned";
-type CapDef = { scope: Scope; from: string; sensitive?: true };
+/**
+ * sensitive: re-check the second factor (Clerk reverification).
+ * reason: the request must carry a reason (5+ characters); it's recorded with the audit event.
+ */
+type CapDef = { scope: Scope; from: string; sensitive?: true; reason?: true };
 
 export const CAPABILITIES = {
   // ---- NEVER_CAPS: the Owner only, whatever the database says ----
   "admins.view": { scope: "global", from: "NEVER_CAPS: Grant, change, or revoke administrator roles (Owner only)" },
-  "admins.invite": { scope: "global", from: "NEVER_CAPS: Grant, change, or revoke administrator roles (Owner only)", sensitive: true },
-  "admins.role.change": { scope: "global", from: "NEVER_CAPS: Grant, change, or revoke administrator roles (Owner only)", sensitive: true },
-  "admins.revoke": { scope: "global", from: "NEVER_CAPS: Grant, change, or revoke administrator roles (Owner only)", sensitive: true },
-  "ownership.transfer": { scope: "global", from: "NEVER_CAPS: Change or transfer ownership (Owner only)", sensitive: true },
+  "admins.invite": { scope: "global", from: "NEVER_CAPS: Grant, change, or revoke administrator roles (Owner only)", sensitive: true, reason: true },
+  "admins.role.change": { scope: "global", from: "NEVER_CAPS: Grant, change, or revoke administrator roles (Owner only)", sensitive: true, reason: true },
+  "admins.revoke": { scope: "global", from: "NEVER_CAPS: Grant, change, or revoke administrator roles (Owner only)", sensitive: true, reason: true },
+  "ownership.transfer": { scope: "global", from: "NEVER_CAPS: Change or transfer ownership (Owner only)", sensitive: true, reason: true },
   "owner_academy.open": { scope: "global", from: "NEVER_CAPS: Open or change the protected Owner Academy (Owner only)" },
-  "owner_academy.edit": { scope: "global", from: "NEVER_CAPS: Open or change the protected Owner Academy (Owner only)", sensitive: true },
-  "pricing.change": { scope: "global", from: "NEVER_CAPS: Change plan prices (locked: Basic $20, Pro $50)", sensitive: true },
+  "owner_academy.edit": { scope: "global", from: "NEVER_CAPS: Open or change the protected Owner Academy (Owner only)", sensitive: true, reason: true },
+  "pricing.change": { scope: "global", from: "NEVER_CAPS: Change plan prices (locked: Basic $20, Pro $50)", sensitive: true, reason: true },
 
   // ---- Super Admin ----
   "platform.operate": { scope: "global", from: "superAdmin: Operate platform areas (not administrator management)" },
   "courses.edit.any": { scope: "any", from: "superAdmin: Build, edit, publish, archive, and restore any course except the protected Owner Academy" },
-  "courses.publish.any": { scope: "any", from: "superAdmin: Build, edit, publish, archive, and restore any course except the protected Owner Academy", sensitive: true },
-  "courses.archive.any": { scope: "any", from: "superAdmin: Build, edit, publish, archive, and restore any course except the protected Owner Academy", sensitive: true },
-  "courses.restore.any": { scope: "any", from: "superAdmin: Build, edit, publish, archive, and restore any course except the protected Owner Academy", sensitive: true },
+  "courses.publish.any": { scope: "any", from: "superAdmin: Build, edit, publish, archive, and restore any course except the protected Owner Academy", sensitive: true, reason: true },
+  "courses.archive.any": { scope: "any", from: "superAdmin: Build, edit, publish, archive, and restore any course except the protected Owner Academy", sensitive: true, reason: true },
+  "courses.restore.any": { scope: "any", from: "superAdmin: Build, edit, publish, archive, and restore any course except the protected Owner Academy", sensitive: true, reason: true },
   "sources.review.any": { scope: "any", from: "superAdmin: Review sources, conflicts, and learner work" },
   "sources.resolve.any": { scope: "any", from: "superAdmin: Review sources, conflicts, and learner work" },
   "work.evaluate.any": { scope: "any", from: "superAdmin: Review sources, conflicts, and learner work" },
@@ -61,9 +65,9 @@ export const CAPABILITIES = {
 
   // ---- Course Admin ----
   "courses.edit.assigned": { scope: "assigned", from: "courseAdmin: Build, edit, and version assigned courses only" },
-  "courses.publish.assigned": { scope: "assigned", from: "courseAdmin: Publish, archive, and restore assigned courses", sensitive: true },
-  "courses.archive.assigned": { scope: "assigned", from: "courseAdmin: Publish, archive, and restore assigned courses", sensitive: true },
-  "courses.restore.assigned": { scope: "assigned", from: "courseAdmin: Publish, archive, and restore assigned courses", sensitive: true },
+  "courses.publish.assigned": { scope: "assigned", from: "courseAdmin: Publish, archive, and restore assigned courses", sensitive: true, reason: true },
+  "courses.archive.assigned": { scope: "assigned", from: "courseAdmin: Publish, archive, and restore assigned courses", sensitive: true, reason: true },
+  "courses.restore.assigned": { scope: "assigned", from: "courseAdmin: Publish, archive, and restore assigned courses", sensitive: true, reason: true },
   "sources.flag.assigned": { scope: "assigned", from: "courseAdmin: Flag source conflicts for a reviewer" },
   "access.basic": { scope: "global", from: "courseAdmin, reviewer, support: Basic-level free access" },
 
@@ -77,9 +81,14 @@ export const CAPABILITIES = {
   "security.inspect": { scope: "global", from: "superAdmin + support: Inspect / See security states" },
   "lifecycle.inspect": { scope: "global", from: "support: See entitlement, lifecycle, security, and Guardian link state" },
   "guardian_links.inspect": { scope: "global", from: "support: See entitlement, lifecycle, security, and Guardian link state" },
-  "support.recovery.send": { scope: "global", from: "support: Send recovery links, free a device slot, decide appeals", sensitive: true },
-  "support.device.free": { scope: "global", from: "support: Send recovery links, free a device slot, decide appeals", sensitive: true },
-  "support.appeal.decide": { scope: "global", from: "support: Send recovery links, free a device slot, decide appeals", sensitive: true },
+  "support.recovery.send": { scope: "global", from: "support: Send recovery links, free a device slot, decide appeals", sensitive: true, reason: true },
+  "support.device.free": { scope: "global", from: "support: Send recovery links, free a device slot, decide appeals", sensitive: true, reason: true },
+  "support.appeal.decide": { scope: "global", from: "support: Send recovery links, free a device slot, decide appeals", sensitive: true, reason: true },
+
+  // ---- The audit log (F5): Owner and Super Admin read it; only the Owner verifies the chain ----
+  "audit.view": { scope: "global", from: "F5: Owner and Super Admin get a searchable audit view" },
+  "audit.export": { scope: "global", from: "F5: exporting the audit log is itself audited (privacy)", sensitive: true, reason: true },
+  "audit.verify": { scope: "global", from: "F5: the Owner can run the chain verification" },
 
   // ---- Everyone signed in, guardians, learners ----
   "self.view": { scope: "global", from: "Every signed-in Account can see itself" },
@@ -119,6 +128,7 @@ const SUPER_ADMIN: Cap[] = [
   "sources.review.any", "sources.resolve.any", "work.evaluate.any",
   "entitlements.inspect", "security.inspect", "support_states.inspect",
   "access.pro",
+  "audit.view", "audit.export",
 ];
 
 /** ROLE_CAPS as named capabilities. */
@@ -197,4 +207,9 @@ export function decide(principal: Principal, action: Action, target?: Target): D
 
 export function isSensitive(action: Action): boolean {
   return candidates(action).some((c) => "sensitive" in CAPABILITIES[c]);
+}
+
+/** Actions that must carry a reason, which is recorded with the audit event. */
+export function requiresReason(action: Action): boolean {
+  return candidates(action).some((c) => "reason" in CAPABILITIES[c]);
 }

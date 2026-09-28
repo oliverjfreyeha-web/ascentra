@@ -12,7 +12,7 @@ describe("proxy (Clerk session middleware) matcher", () => {
     (url) => expect(runs(url)).toBe(true),
   );
 
-  it.each(["/api/v1/health", "/api/webhooks/clerk", "/_next/static/chunks/app.js", "/favicon.ico"])(
+  it.each(["/api/v1/health", "/api/webhooks/clerk", "/api/cron/audit-verify", "/_next/static/chunks/app.js", "/favicon.ico"])(
     "skips %s",
     (url) => expect(runs(url)).toBe(false),
   );

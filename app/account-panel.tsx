@@ -47,6 +47,11 @@ export function AccountPanel() {
           <Link href="/admin">Administrators</Link> ·{" "}
         </>
       )}
+      {(me?.roleKey === "owner" || me?.roleKey === "superAdmin") && (
+        <>
+          <Link href="/admin/audit">Audit log</Link> ·{" "}
+        </>
+      )}
       <Link href="/account">Account security</Link> ·{" "}
       <SignOutButton>
         <button type="button" className="link">

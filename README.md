@@ -3,7 +3,7 @@
 Production build of ASCENTRA. The prototype in `reference/` (`ascentra.html`, `j5.py`, `j6.py`, `j8.py`) is
 read-only and is the reference for names, rules and wording.
 
-**Stage:** Foundations F4 of 7 · roles, capabilities and Owner protections.
+**Stage:** Foundations F5 of 7 · append-only audit store.
 
 ## Run
 
@@ -32,6 +32,12 @@ npm run dev
 - **Owner protections:** the Owner can't be demoted, suspended or deleted, by the API or in the database
   (triggers in `0005`). Admins are invited by the Owner only (single-use, 7-day, email-bound, revocable)
   and need a second factor; sensitive actions ask for it again (Clerk reverification).
+- **Audit store:** `recordAudit()` in `lib/audit.ts` is the only writer of `audit_events` (fields as in
+  the prototype's `audit()`, plus request and device ids). The table is insert-only, and a database
+  trigger chains each row to the previous one by hash; `public.audit_verify_chain()` reports the first
+  break (Owner button at `/admin/audit`, and a daily Vercel Cron). Actions that need a reason are refused
+  without one (400), and every such request writes exactly one event. Owner and Super Admin can read,
+  search and export the log; exports are recorded.
 - **One way in:** `getAccount()` in `lib/auth` turns a request into an Account, or nothing. Every
   `/api/v1` route except `/health` is wrapped in `withAccount()`; a test finds every route and checks for 401.
 - **Server-only data access:** `lib/db` holds the Supabase service-role client and imports `server-only`,
@@ -53,12 +59,13 @@ npm run dev
 | `lib/health.ts`, `lib/connection-status.ts` | Health probes and ConnectionStatus |
 | `lib/auth/` | `getAccount()` and `withAccount()` |
 | `lib/accounts.ts` | Clerk user → Account and Profile sync, Owner seeding |
-| `lib/audit.ts` | Audit stub (log only) until the audit store in F5 |
+| `lib/audit.ts` | The audit store: write, search, CSV export, chain verification |
 | `lib/rate-limit.ts` | In-memory rate limiter used by `/health` |
 | `proxy.ts` | Clerk session middleware (Next 16's renamed middleware) |
 | `lib/caps.ts` | The capability map and `decide()` |
 | `lib/admin-rules.ts`, `lib/admins.ts` | Admin invites and roles: rules, then database + Clerk |
-| `app/admin/` | The Owner's admin page (API only) |
+| `app/admin/` | The Owner's admin page and the audit log (`/admin/audit`), API only |
+| `app/api/cron/` | Vercel Cron jobs (`vercel.json`), authenticated with `CRON_SECRET` |
 | `lib/devices.ts` | Empty until a later Foundations stage |
 | `db/` | Migrations, the SQL Editor bundle, the verify query: see [db/README.md](db/README.md) |
 | `tests/unit/` | Vitest unit tests |
