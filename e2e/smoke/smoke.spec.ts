@@ -1,5 +1,5 @@
 /**
- * Live smoke suite against production. Test learners only (see global-setup.ts); never the Owner.
+ * Live smoke suite against the live site. Test learners only (see global-setup.ts); never the Owner.
  * Every API call made directly by the suite carries x-request-id "smoke-<run>-…", and every event the
  * test accounts cause is recorded under their "TEST ASCENTRA smoke …" name, so they're easy to find.
  */
@@ -176,10 +176,11 @@ test("the run added no safeguard step or flag to the Owner, and the Owner row is
   }
 });
 
-test("the audit chain verifies with no breaks after the full run", async ({ request }) => {
-  const r = await request.get("/api/cron/audit-verify", { headers: { authorization: `Bearer ${process.env.CRON_SECRET}` } });
-  expect(r.status()).toBe(200);
-  const { report } = await r.json();
-  expect(report).toMatchObject({ ok: true, brokenAtSeq: null });
-  console.log(`[smoke] audit chain intact: ${report.checked} events, head #${report.headSeq} ${report.headHash}`);
+test("the audit chain verifies with no breaks after the full run", async () => {
+  // The same verifier the daily job and the Owner's button run (public.audit_verify_chain).
+  const { data, error } = await serviceDb().rpc("audit_verify_chain");
+  expect(error).toBeNull();
+  const report = Array.isArray(data) ? data[0] : data;
+  expect(report).toMatchObject({ ok: true, broken_at_seq: null });
+  console.log(`[smoke] audit chain intact: ${report.checked} events, head #${report.head_seq} ${report.head_hash}`);
 });

@@ -1,7 +1,7 @@
 /**
  * Test accounts for the live smoke suite, and their cleanup.
  *
- * Production has no path that creates a learner (sign-up is closed and invites are for admin roles),
+ * The live site has no path that creates a learner (sign-up is closed and invites are for admin roles),
  * so this harness writes the test learners' rows itself, with the service role key, exactly as the
  * webhook would for a synced user. It is fenced in:
  *   - it only ever touches accounts whose email starts with SMOKE_PREFIX and whose role is learner;

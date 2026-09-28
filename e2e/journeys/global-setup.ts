@@ -1,8 +1,13 @@
 /**
  * Journeys environment (CI only; see .github/workflows/journeys.yml):
  *   - a fresh local database with every migration, behind PostgREST (tests/integration/stack.ts);
- *   - the Clerk DEVELOPMENT instance (never production), with test users created for this run;
- *   - the built app (`next start`) pointed at both, with a test Owner whose email is OWNER_EMAIL here.
+ *   - the one Clerk instance (the same one the live site uses), with test users created for this run;
+ *   - the built app (`next start`) pointed at both, with a TEST Owner (ascentra-e2e-owner+clerk_test@…)
+ *     as OWNER_EMAIL for this local server only.
+ * The real Owner is in that Clerk instance, so it is protected by e2e/lib/clerk-users.ts: every user
+ * this run creates, changes or deletes must have a test email, be marked ascentra_test, and must not be
+ * (by email or by Clerk id) the Owner named in OWNER_EMAIL. The local server never sees the real Owner:
+ * its database is fresh and only the test Owner is seeded.
  * Clerk can't reach a local server, so the harness delivers the webhook itself, signed with this run's
  * secret, carrying the real user JSON from Clerk.
  */
@@ -11,20 +16,24 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import { clerkSetup } from "@clerk/testing/playwright";
 import { startStack } from "../../tests/integration/stack";
-import { createTestUser, deleteTestUsers } from "../lib/clerk-users";
+import { createTestUser, deleteTestUsers, guardTestEmail, revokeTestInvitations } from "../lib/clerk-users";
 import { deliverUserEvent } from "../lib/webhook";
 import { E2E_PREFIX, STATE_FILE } from "./constants";
 
 const PORT = 3100;
 
 export default async function globalSetup() {
-  const sk = process.env.CLERK_SECRET_KEY ?? "";
-  if (!sk.startsWith("sk_test_")) throw new Error("Journeys run only against a Clerk DEVELOPMENT instance (sk_test_...).");
+  // OWNER_EMAIL here is the REAL Owner's email, used only to keep away from that user.
+  const realOwner = (process.env.OWNER_EMAIL ?? "").trim().toLowerCase();
+  if (!realOwner.includes("@")) throw new Error("OWNER_EMAIL (the real Owner's email) must be set: it's what keeps the journeys away from the Owner.");
   await clerkSetup();
 
   const stack = await startStack();
   await deleteTestUsers(E2E_PREFIX);
-  const owner = await createTestUser(`${E2E_PREFIX}owner+clerk_test@example.com`, { label: "E2E Owner" });
+  await revokeTestInvitations(E2E_PREFIX);
+  const testOwnerEmail = `${E2E_PREFIX}owner+clerk_test@example.com`;
+  guardTestEmail(testOwnerEmail);
+  const owner = await createTestUser(testOwnerEmail, { label: "E2E Owner" });
 
   const webhookSecret = `whsec_${randomBytes(24).toString("base64")}`;
   const baseURL = `http://127.0.0.1:${PORT}`;
@@ -58,6 +67,7 @@ export default async function globalSetup() {
 
   return async () => {
     server.kill();
+    await revokeTestInvitations(E2E_PREFIX).catch((e) => console.error("cleanup:", e));
     await deleteTestUsers(E2E_PREFIX).catch((e) => console.error("cleanup:", e));
     await stack.stop();
   };

@@ -1,14 +1,14 @@
-name: Live smoke (production)
+name: Live smoke
 
-# On demand only: Actions tab → "Live smoke (production)" → Run workflow.
-# Runs against the production site with dedicated test learners (ascentra-smoke-…, named TEST …).
+# On demand only: Actions tab → "Live smoke" → Run workflow.
+# Runs against the live site with dedicated test learners (ascentra-smoke-…, named TEST …).
 # It never signs in as, changes, or flags the Owner, and cleans up what it creates; audit events stay
 # (append-only) and are marked by the TEST name and the smoke-<run> request id.
 on:
   workflow_dispatch:
     inputs:
       base_url:
-        description: Production URL
+        description: Live site URL
         default: https://ascentra-omega.vercel.app
         required: true
 
@@ -25,13 +25,12 @@ jobs:
     timeout-minutes: 20
     env:
       SMOKE_BASE_URL: ${{ inputs.base_url }}
-      CLERK_SECRET_KEY: ${{ secrets.SMOKE_CLERK_SECRET_KEY }}
-      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.SMOKE_CLERK_PUBLISHABLE_KEY }}
-      SUPABASE_URL: ${{ secrets.SMOKE_SUPABASE_URL }}
-      SUPABASE_ANON_KEY: ${{ secrets.SMOKE_SUPABASE_ANON_KEY }}
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SMOKE_SUPABASE_SERVICE_ROLE_KEY }}
-      CRON_SECRET: ${{ secrets.SMOKE_CRON_SECRET }}
-      OWNER_EMAIL: ${{ secrets.SMOKE_OWNER_EMAIL }}
+      CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.CLERK_PUBLISHABLE_KEY }}
+      OWNER_EMAIL: ${{ secrets.OWNER_EMAIL }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -42,7 +41,7 @@ jobs:
       - name: Check every secret is set
         run: |
           missing=0
-          for v in CLERK_SECRET_KEY NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY SUPABASE_URL SUPABASE_ANON_KEY SUPABASE_SERVICE_ROLE_KEY CRON_SECRET OWNER_EMAIL; do
+          for v in CLERK_SECRET_KEY NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY OWNER_EMAIL SUPABASE_URL SUPABASE_ANON_KEY SUPABASE_SERVICE_ROLE_KEY; do
             if [ -z "${!v}" ]; then echo "::error::missing secret for $v (see e2e/README.md)"; missing=1; fi
           done
           exit $missing

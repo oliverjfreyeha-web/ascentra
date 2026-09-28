@@ -1,6 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 
-// Live smoke suite against production (see e2e/smoke/global-setup.ts). Test accounts only; never the Owner.
+// Live smoke suite against the live site (see e2e/smoke/global-setup.ts). Test accounts only; never the Owner.
 export default defineConfig({
   testDir: "e2e/smoke",
   globalSetup: "./e2e/smoke/global-setup.ts",
@@ -11,7 +11,7 @@ export default defineConfig({
   reporter: [["list"], ["html", { open: "never" }]],
   use: {
     baseURL: process.env.SMOKE_BASE_URL,
-    // No traces: they would record request headers, including the cron secret.
+    // No traces: they would record request headers and session tokens.
     trace: "off",
     screenshot: "only-on-failure",
     ...devices["Desktop Chrome"],
