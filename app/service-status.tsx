@@ -8,7 +8,7 @@ const SERVICES: { key: ServiceName; name: string }[] = [
   { key: "clerk", name: "Authentication (Clerk)" },
 ];
 
-type Health = { version: string; time: string; services: Record<ServiceName, ConnectionStatus> };
+type Health = { version: string; time: string; cached: boolean; services: Record<ServiceName, ConnectionStatus> };
 type State = { phase: "checking" } | { phase: "failed" } | { phase: "done"; health: Health };
 
 // Reads status only through the API. Until the API answers, every service shows Disconnected.
@@ -60,7 +60,8 @@ export function ServiceStatus() {
       </ul>
       {state.phase === "done" && (
         <p className="muted">
-          Version {state.health.version} · checked {state.health.time}
+          Version {state.health.version} · checked {state.health.services.supabase.checkedAt}
+          {state.health.cached ? " (cached)" : ""}
         </p>
       )}
     </section>

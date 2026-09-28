@@ -23,15 +23,21 @@ jobs:
         run: npm run lint
       - name: Unit tests
         run: npm test
-      - name: Build
+      # Throwaway random values (not real credentials), new on every run, so the searches below
+      # can look for the values themselves. The build is given them and must not keep them.
+      - name: Generate test secrets
+        run: |
+          rnd() { openssl rand -base64 48 | tr -dc 'A-Za-z0-9' | head -c 40; }
+          for pair in "SUPABASE_SERVICE_ROLE_KEY=$(rnd)" "CLERK_SECRET_KEY=sk_test_$(rnd)" "CLERK_WEBHOOK_SIGNING_SECRET=whsec_$(rnd)"; do
+            echo "::add-mask::${pair#*=}"
+            echo "$pair" >> "$GITHUB_ENV"
+          done
+          echo "SUPABASE_URL=https://ci-test.supabase.co" >> "$GITHUB_ENV"
+          echo "OWNER_EMAIL=owner@example.com" >> "$GITHUB_ENV"
+          echo "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_$(printf 'ci-test.clerk.accounts.dev$' | base64)" >> "$GITHUB_ENV"
+      - name: Build (secrets removed from the build environment)
         run: npm run build
-        # Sentinel values (not real secrets) so the bundle search below can look for the values themselves.
-        env:
-          SUPABASE_URL: https://ci-sentinel.supabase.co
-          SUPABASE_SERVICE_ROLE_KEY: ci-sentinel-service-role-key-2b9d
-          CLERK_SECRET_KEY: sk_test_ci_sentinel_7c41
+      - name: Search build output and .next/cache for secret values
+        run: npm run check:build-secrets
       - name: Search client bundle for secrets
         run: npm run check:bundle
-        env:
-          SUPABASE_SERVICE_ROLE_KEY: ci-sentinel-service-role-key-2b9d
-          CLERK_SECRET_KEY: sk_test_ci_sentinel_7c41
