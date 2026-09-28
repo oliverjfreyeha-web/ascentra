@@ -7,7 +7,7 @@ import { readFileSync } from "node:fs";
 import { expect, test, type Browser, type BrowserContext, type Page } from "@playwright/test";
 import pg from "pg";
 import { createTestUser, rawUser, type TestUser } from "../lib/clerk-users";
-import { answerReverification, pageReady, signInWithPassword, watchApi } from "../lib/sign-in";
+import { answerReverification, expectDone, pageReady, signInWithPassword, watchApi } from "../lib/sign-in";
 import { deliverUserEvent } from "../lib/webhook";
 import { E2E_PREFIX, STATE_FILE } from "./constants";
 
@@ -95,7 +95,7 @@ test.describe("admin invite", () => {
     const api = watchApi(owner, "/api/v1/admins/invites");
     await owner.getByRole("button", { name: "Send invite" }).click();
     await answerReverification(owner, state().owner, owner.getByText("Invite: done."));
-    await expect(owner.getByText("Invite: done."), api.describe()).toBeVisible({ timeout: 20_000 });
+    await expectDone(owner, owner.getByText("Invite: done."), api);
     await expect(owner.getByText(supportEmail)).toBeVisible();
     const ev = await audit("admins.invite");
     expect(ev.at(-1)).toMatchObject({ result: "completed", reason: REASON, is_sensitive: true });
@@ -145,7 +145,7 @@ test.describe("role change", () => {
     const api = watchApi(owner, "/api/v1/admins/");
     await row.getByRole("button", { name: "Confirm" }).click();
     await answerReverification(owner, state().owner, owner.getByText("Change role: done."));
-    await expect(owner.getByText("Change role: done."), api.describe()).toBeVisible({ timeout: 20_000 });
+    await expectDone(owner, owner.getByText("Change role: done."), api);
     await expect(owner.locator("li", { hasText: supportEmail })).toContainText("Learning Reviewer · mkt");
     expect((await audit("admins.role.change")).at(-1)).toMatchObject({
       result: "completed", previous_value: "Support Admin", new_value: "Learning Reviewer (mkt)", reason: "E2E journey: moving to reviewing",
@@ -167,7 +167,7 @@ test.describe("role change", () => {
     const api = watchApi(owner, "/api/v1/admins/");
     await row.getByRole("button", { name: "Confirm" }).click();
     await answerReverification(owner, state().owner, owner.getByText("Remove: done."));
-    await expect(owner.getByText("Remove: done."), api.describe()).toBeVisible({ timeout: 20_000 });
+    await expectDone(owner, owner.getByText("Remove: done."), api);
     expect((await audit("admins.revoke")).at(-1)).toMatchObject({ result: "completed", reason: "E2E journey: leaving the rotation" });
   });
 });
@@ -194,7 +194,7 @@ test.describe("devices and sessions", () => {
     const api = watchApi(devD, "/api/v1/devices/replace");
     await devD.getByRole("button", { name: "Replace this one" }).first().click();
     await answerReverification(devD, state().owner, devD.getByText(/Signed in as .*\(Owner\)/));
-    await expect(devD.getByText(/Signed in as .*\(Owner\)/), api.describe()).toBeVisible({ timeout: 20_000 });
+    await expectDone(devD, devD.getByText(/Signed in as .*\(Owner\)/), api);
     expect(await ownerDevices()).toBe(3);
     expect((await audit("devices.replace")).at(-1)).toMatchObject({ result: "completed" });
     // The replaced browser was signed out.

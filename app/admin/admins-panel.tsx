@@ -77,8 +77,10 @@ export function AdminsPanel() {
 
   const load = useCallback(async () => {
     const r = await call("GET", "/api/v1/admins");
-    if (r._status === 200) setData(r as unknown as { admins: Admin[]; invites: Invite[] });
-    else setBlocked(r._status === 401 ? "Sign in to continue." : (r.reason ?? "This page isn't available."));
+    if (r._status === 200) {
+      setData(r as unknown as { admins: Admin[]; invites: Invite[] });
+      setBlocked(null);
+    } else setBlocked(r._status === 401 ? "Sign in to continue." : (r.reason ?? "This page isn't available."));
   }, []);
 
   useEffect(() => {
@@ -135,8 +137,8 @@ export function AdminsPanel() {
     setPendingReason("");
   };
 
-  if (blocked) return <p role="alert">{blocked}</p>;
-  if (!data) return <p className="muted">Loading…</p>;
+  const status = message && <p role="status">{message}</p>;
+  if (!data) return blocked ? <>{status}<p role="alert">{blocked}</p></> : <p className="muted">Loading…</p>;
 
   const pendingForm = (key: string) =>
     pending && key === (pending.kind === "revoke" ? pending.inviteId : pending.accountId) ? (
@@ -157,7 +159,8 @@ export function AdminsPanel() {
 
   return (
     <>
-      {message && <p role="status">{message}</p>}
+      {status}
+      {blocked && <p role="alert">{blocked}</p>}
 
       <section aria-labelledby="admins-h">
         <h2 id="admins-h">Admins</h2>
