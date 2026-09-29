@@ -192,9 +192,12 @@ const ownerDevices = async () =>
 
 test.describe("devices and sessions", () => {
   test("three browsers are trusted; a fourth must replace one after the second factor", async ({ browser }) => {
-    await browserFor(browser, state().owner);
+    // "Signed in as" shows only once /api/v1/me accepts this browser, i.e. after its device check-in.
+    const devB = (await browserFor(browser, state().owner)).page;
+    await expectShown(devB, devB.getByText(/Signed in as .*\(Owner\)/));
     devC = (await browserFor(browser, state().owner)).page;
-    expect(await ownerDevices()).toBe(3);
+    await expectShown(devC, devC.getByText(/Signed in as .*\(Owner\)/));
+    await expect.poll(ownerDevices, { timeout: 10_000 }).toBe(3);
 
     const d = await browser.newContext({ baseURL: state().baseURL });
     devD = await d.newPage();
