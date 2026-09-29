@@ -26,6 +26,12 @@
       "migrations": [
         "0007_devices_and_sessions"
       ]
+    },
+    "B1": {
+      "requires": "0007_devices_and_sessions",
+      "migrations": [
+        "0008_billing"
+      ]
     }
   }
 }

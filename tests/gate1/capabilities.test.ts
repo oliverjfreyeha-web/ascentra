@@ -58,6 +58,9 @@ const GLOBAL: Record<string, RoleKey[]> = {
   // Everyone / learners / guardians.
   "self.view": ALL,
   "devices.manage": ALL,
+  "billing.view": ALL,
+  "billing.subscribe": ["learner"],
+  "billing.portal": ["learner"],
   "devices.replace": ALL,
   "security.verify": ALL,
   "security.appeal.submit": ALL,
@@ -89,7 +92,7 @@ const SENSITIVE = new Set([
   "support.recovery.send", "support.device.free", "support.appeal.decide",
   "audit.export",
   // F6: replacing a device and the Verify step re-check the second factor; so do Limit and Suspend.
-  "devices.replace", "security.verify", "security.limit", "security.suspend",
+  "devices.replace", "security.verify", "security.limit", "security.suspend", "billing.portal",
 ]);
 
 /** F5: actions that must carry a reason (role and invite changes, ownership, publishing, archiving and

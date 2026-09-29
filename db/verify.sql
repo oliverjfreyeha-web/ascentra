@@ -1,4 +1,4 @@
--- Run in the Supabase SQL Editor after applying the migrations (F3, F4, F5 and F6).
+-- Run in the Supabase SQL Editor after applying the migrations (F3, F4, F5, F6 and B1).
 -- The first row is the verdict. The rest lists every expected table with whether it exists and
 -- whether row-level security is on, then any other table in public (which should not exist).
 with expected(table_name) as (values
@@ -11,7 +11,9 @@ with expected(table_name) as (values
   ('world_preferences'), ('notification_preferences'), ('legal_document_versions'), ('consent_records'),
   ('safety_events'), ('audit_events'), ('connection_statuses'),
   -- F6: the sharing tracker and the graduated steps.
-  ('sharing_signals'), ('sharing_flags'), ('enforcement_steps'), ('appeals')
+  ('sharing_signals'), ('sharing_flags'), ('enforcement_steps'), ('appeals'),
+  -- B1: Stripe customers and processed Stripe events.
+  ('billing_customers'), ('billing_events')
 ),
 public_tables as (
   select c.relname as table_name, c.relrowsecurity as rls_on
@@ -53,16 +55,28 @@ f6 as (
               from to_regprocedure('public.claim_device_slot(uuid, text, text, text, text, integer, uuid)') p where p is not null), false) as slot_claim_private,
     exists (select 1 from information_schema.columns where table_schema = 'public'
        and table_name = 'session_events' and column_name = 'last_heartbeat_at') as session_columns
+),
+b1 as (
+  select
+    exists (select 1 from private.schema_migrations where version = '0008_billing') as recorded,
+    exists (select 1 from pg_constraint where conname = 'subscriptions_status_check'
+       and pg_get_constraintdef(oid) like '%past_due%') as statuses,
+    exists (select 1 from information_schema.columns where table_schema = 'public'
+       and table_name = 'subscriptions' and column_name = 'processor_updated_at') as sync_columns,
+    exists (select 1 from public.legal_document_versions
+       where document_key = 'automatic_renewal_terms' and version = 'v0.1' and status = 'published') as renewal_terms
 )
 select 0 as sort,
-       case when (select count(*) from report where expected and table_exists and rls_on) = 43
+       case when (select count(*) from report where expected and table_exists and rls_on) = 45
              and not exists (select 1 from report where not expected)
              and (select triggers from insert_only) = 4
              and (select owner_triggers from f4) = 2 and (select invite_columns from f4) and (select recorded from f4)
              and (select recorded from f5) and (select chain_trigger from f5) and (select verifier from f5)
              and (select recorded from f6) and (select slot_claim from f6) and (select owner_guard from f6)
              and (select slot_claim_private from f6) and (select session_columns from f6)
-            then 'OK: all 43 tables exist with row-level security on; audit_events and consent_records are insert-only; F4 admin invites and Owner protections are in place; F5 audit chain is in place; F6 devices, sessions and safeguards are in place'
+             and (select recorded from b1) and (select statuses from b1) and (select sync_columns from b1)
+             and (select renewal_terms from b1)
+            then 'OK: all 45 tables exist with row-level security on; audit_events and consent_records are insert-only; F4 admin invites and Owner protections are in place; F5 audit chain is in place; F6 devices, sessions and safeguards are in place; B1 billing is in place'
             else 'PROBLEM: ' || (select count(*) from report where expected and not table_exists) || ' missing, '
                  || (select count(*) from report where table_exists and not rls_on) || ' without RLS, '
                  || (select count(*) from report where not expected) || ' unexpected, '
@@ -73,6 +87,9 @@ select 0 as sort,
                                     then 'applied' else 'NOT applied' end
                  || ', F6 ' || case when (select recorded from f6) and (select slot_claim from f6) and (select owner_guard from f6)
                                          and (select slot_claim_private from f6) and (select session_columns from f6)
+                                    then 'applied' else 'NOT applied' end
+                 || ', B1 ' || case when (select recorded from b1) and (select statuses from b1) and (select sync_columns from b1)
+                                         and (select renewal_terms from b1)
                                     then 'applied' else 'NOT applied' end
        end as table_name,
        null::boolean as table_exists, null::boolean as rls_on
