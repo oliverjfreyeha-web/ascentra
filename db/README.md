@@ -13,8 +13,27 @@ security is on for every table and denies by default.
 | `apply/F5.sql` | The one file to paste for F5: 0006 (audit chain and its verifier). Requires F4. |
 | `apply/F6.sql` | **The one file to paste for F6**: 0007 (trusted devices, sessions, sharing tracker, steps, appeals). Requires F5. |
 | `apply/B1.sql` | **The one file to paste for B1**: 0008 (billing: Stripe lifecycle, customers, events, Automatic Renewal Terms v0.1). Requires F6. |
+| `ops/create-test-learner.sql` | Owner-only, by hand: one adult test learner for an existing Clerk user (see below). Not a migration. |
 | `verify.sql` | Run after applying. First row is the verdict. |
 | `test/supabase-shim.sql` | Tests only: recreates Supabase's API roles and `auth.jwt()` on plain Postgres. Never apply it to Supabase. |
+
+## A test learner (Owner only, until sign-up opens in B2)
+
+Sign-up is closed and admin invites only make admins, so the only way to a learner account is
+`db/ops/create-test-learner.sql`. It creates exactly one adult learner (`is_minor = false`) for a Clerk user
+that already exists, with a `TEST Learner` profile and one audit event (`accounts.create_test_learner`, by the
+Owner). It refuses the Owner (by Clerk id or email), any existing account (it never converts an admin), an email
+with an admin invite, and the untouched template. One transaction: a refusal changes nothing.
+
+1. Clerk dashboard → **Users** → **Create user**: an email you control, not the Owner's and not starting with
+   `ascentra-e2e-` or `ascentra-smoke-` (the test suites delete those), and a password.
+2. Sign in on the site as that user. If Clerk asks to set up two-step verification, do it; otherwise open
+   `/account` → Sign-in methods → **Security** → add an **Authenticator app**. (A password without a second
+   factor is refused.) The site says the account isn't open yet: that's expected.
+3. Clerk dashboard → that user → copy the **User ID** (`user_…`).
+4. Supabase SQL Editor → paste `db/ops/create-test-learner.sql`, set `clerk_user_id`, `email` and `reason` at the
+   top → **Run**. The last result row shows the new account (`role = learner`, `is_minor = false`) and its audit event.
+5. Reload the site: "Signed in as TEST Learner (Learner)". The first page registers this browser as a trusted device.
 
 ## Applying B1 to Supabase (F6 is already applied)
 
