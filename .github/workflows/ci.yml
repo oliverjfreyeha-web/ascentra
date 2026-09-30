@@ -59,7 +59,7 @@ jobs:
       - name: Generate test secrets
         run: |
           rnd() { openssl rand -base64 48 | tr -dc 'A-Za-z0-9' | head -c 40; }
-          for pair in "SUPABASE_SERVICE_ROLE_KEY=$(rnd)" "CLERK_SECRET_KEY=sk_test_$(rnd)" "CLERK_WEBHOOK_SIGNING_SECRET=whsec_$(rnd)" "CRON_SECRET=$(rnd)"; do
+          for pair in "SUPABASE_SERVICE_ROLE_KEY=$(rnd)" "CLERK_SECRET_KEY=sk_test_$(rnd)" "CLERK_WEBHOOK_SIGNING_SECRET=whsec_$(rnd)" "CRON_SECRET=$(rnd)" "STRIPE_SECRET_KEY=sk_test_$(rnd)" "STRIPE_WEBHOOK_SECRET=whsec_$(rnd)"; do
             echo "::add-mask::${pair#*=}"
             echo "$pair" >> "$GITHUB_ENV"
           done

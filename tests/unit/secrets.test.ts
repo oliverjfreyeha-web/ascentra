@@ -2,6 +2,7 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { REQUIRED_ENV_VARS, SECRET_ENV_VARS } from "@/lib/env";
+import { BILLING_ENV_VARS } from "@/lib/billing-env";
 import { buildEnv } from "../../scripts/build-env.mjs";
 
 function sourceFiles(dir: string): string[] {
@@ -13,9 +14,9 @@ function sourceFiles(dir: string): string[] {
 }
 
 describe("server secrets", () => {
-  it("are all required variables, and none is NEXT_PUBLIC_", () => {
+  it("are all required variables (or billing variables, which switch only billing off), and none is NEXT_PUBLIC_", () => {
     for (const name of SECRET_ENV_VARS) {
-      expect(REQUIRED_ENV_VARS).toContain(name);
+      expect([...REQUIRED_ENV_VARS, ...BILLING_ENV_VARS]).toContain(name);
       expect(name.startsWith("NEXT_PUBLIC_")).toBe(false);
     }
   });

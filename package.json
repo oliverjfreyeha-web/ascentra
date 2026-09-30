@@ -14,7 +14,8 @@
     "test:db": "vitest run --config vitest.db.config.mts",
     "db:bundle": "node scripts/bundle-migrations.mjs",
     "db:seed": "node scripts/seed-dev.mjs",
-    "test:integration": "vitest run --config vitest.integration.config.mts"
+    "test:integration": "vitest run --config vitest.integration.config.mts",
+    "stripe:setup": "tsx scripts/stripe-setup.ts"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.9.7",
@@ -23,6 +24,7 @@
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "server-only": "^0.0.1",
+    "stripe": "^22.6.2",
     "zod": "^4.6.5"
   },
   "devDependencies": {
@@ -36,6 +38,7 @@
     "eslint-config-next": "16.3.6",
     "pg": "^8.23.0",
     "standardwebhooks": "^1.1.1",
+    "tsx": "^4.23.15",
     "typescript": "^5",
     "vitest": "^5.0.2"
   },

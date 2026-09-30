@@ -170,3 +170,23 @@ table.plain td {
   border-bottom: 1px solid var(--line);
   vertical-align: top;
 }
+
+/* Account → Billing */
+dl.kv {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.25rem 1rem;
+  margin: 0.5rem 0 1rem;
+}
+
+dl.kv dt {
+  color: var(--muted, inherit);
+}
+
+dl.kv dd {
+  margin: 0;
+}
+
+.small {
+  font-size: 0.875rem;
+}

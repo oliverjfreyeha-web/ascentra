@@ -12,8 +12,19 @@ security is on for every table and denies by default.
 | `apply/F4.sql` | The one file to paste for F4: 0005 (admin invites, Owner protections). Requires F3. |
 | `apply/F5.sql` | The one file to paste for F5: 0006 (audit chain and its verifier). Requires F4. |
 | `apply/F6.sql` | **The one file to paste for F6**: 0007 (trusted devices, sessions, sharing tracker, steps, appeals). Requires F5. |
+| `apply/B1.sql` | **The one file to paste for B1**: 0008 (billing: Stripe lifecycle, customers, events, Automatic Renewal Terms v0.1). Requires F6. |
 | `verify.sql` | Run after applying. First row is the verdict. |
 | `test/supabase-shim.sql` | Tests only: recreates Supabase's API roles and `auth.jwt()` on plain Postgres. Never apply it to Supabase. |
+
+## Applying B1 to Supabase (F6 is already applied)
+
+Apply it **before** merging the B1 code: the B1 code reads the new tables and columns.
+
+1. SQL Editor → **New query** → paste the whole of `db/apply/B1.sql` → **Run**. Expect "Success. No rows returned".
+   If the editor warns about a destructive operation, that's `drop constraint subscriptions_status_check`, which
+   the same file replaces at once with Stripe's statuses. `subscriptions` is empty, so nothing is deleted.
+2. **New query** → paste `db/verify.sql` → **Run**. The first row must read
+   `OK: all 45 tables … B1 billing is in place`.
 
 ## Applying F6 to Supabase (F5 is already applied)
 

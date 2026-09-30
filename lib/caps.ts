@@ -103,6 +103,11 @@ export const CAPABILITIES = {
   "learn": { scope: "global", from: "ROLE_PERMS: learn (every role except guardian)" },
   "guardian.controls": { scope: "global", from: "ROLE_PERMS: guardianControls" },
 
+  // ---- Billing (B1): prices are locked in code (lib/billing-terms.ts); no role can change them ----
+  "billing.view": { scope: "global", from: "B1: Account → Plan and billing: your plan, trial end and next charge" },
+  "billing.subscribe": { scope: "global", from: "B1: a learner chooses Basic or Pro and checks out (Stripe Checkout)" },
+  "billing.portal": { scope: "global", from: "B1: cancel, change plan or payment method in Stripe's customer portal", sensitive: true },
+
   // ---- Nobody: support "Never sees payment details, private notes, or Mentor conversations" ----
   "billing.payment_details.view": { scope: "global", from: "support: Never sees payment details (no role holds this)" },
   "learners.private_notes.view": { scope: "global", from: "support: Never sees private notes (no role holds this)" },
@@ -142,11 +147,14 @@ const SUPER_ADMIN: Cap[] = [
 ];
 
 /** Every signed-in Account manages its own devices and can answer a safeguard step. */
-const SELF_SECURITY: Cap[] = ["devices.manage", "devices.replace", "security.verify", "security.appeal.submit"];
+const SELF_SECURITY: Cap[] = ["devices.manage", "devices.replace", "security.verify", "security.appeal.submit", "billing.view"];
+
+const OWNER_EXCLUDED: Cap[] = ["guardian.controls", "access.basic", "billing.subscribe", "billing.portal"];
 
 /** ROLE_CAPS as named capabilities. */
 export const ROLE_CAPS: Record<RoleKey, readonly Cap[]> = {
-  owner: ALL_CAPS.filter((c) => !(NOBODY_CAPS as readonly Cap[]).includes(c) && c !== "guardian.controls" && c !== "access.basic"),
+    // The Owner has full access, so there is nothing to subscribe to.
+  owner: ALL_CAPS.filter((c) => !(NOBODY_CAPS as readonly Cap[]).includes(c) && !OWNER_EXCLUDED.includes(c)),
   superAdmin: [...SUPER_ADMIN, ...SELF_SECURITY],
   courseAdmin: [
     "self.view", "learn",
@@ -163,7 +171,7 @@ export const ROLE_CAPS: Record<RoleKey, readonly Cap[]> = {
     "support.recovery.send", "support.device.free", "support.appeal.decide", "security.limit", "access.basic", ...SELF_SECURITY,
   ],
   guardian: ["self.view", "guardian.controls", ...SELF_SECURITY],
-  learner: ["self.view", "learn", ...SELF_SECURITY],
+  learner: ["self.view", "learn", "billing.subscribe", "billing.portal", ...SELF_SECURITY],
 };
 
 /** What a request is about. Course actions name the academy (course) they touch. */
