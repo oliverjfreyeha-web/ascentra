@@ -93,6 +93,8 @@ export async function startCheckout(args: {
     },
     payment_method_collection: "always",
     billing_address_collection: "required",
+    // Explicit, never the account default: Managed Payments refuses custom_text, which carries the renewal terms.
+    managed_payments: { enabled: false },
     customer_update: { address: "auto", name: "auto" },
     custom_text: { submit: { message: renewalSummary(plan, trial) } },
     metadata: { account_id: account.id, plan, consent_record_id: consentId, allowed_country: ALLOWED_COUNTRY },

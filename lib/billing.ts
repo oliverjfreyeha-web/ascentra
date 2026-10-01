@@ -124,7 +124,7 @@ const label = (r: { plan: string; status: string } | null) => (r ? `${r.plan} ($
 export async function applySubscription(
   sub: Stripe.Subscription,
   env: BillingEnv,
-  opts: { accountId?: string | null; eventId: string; eventAt: Date },
+  opts: { accountId?: string | null; eventId: string; eventAt: Date; retried?: boolean },
 ): Promise<{ outcome: string; accountId: string | null; row?: SubscriptionRow }> {
   const db = getDb();
   const mapped = mapSubscription(sub, env);
@@ -156,6 +156,9 @@ export async function applySubscription(
   } else {
     const { data, error } = await db.from("subscriptions")
       .insert({ ...fields, payer_account_id: accountId, beneficiary_account_id: accountId }).select("*").single();
+    // 23505: Stripe sends several events for a new subscription at once, and a parallel delivery inserted
+    // it first. Apply this event again as an update of that row (once).
+    if (error?.code === "23505" && !opts.retried) return applySubscription(sub, env, { ...opts, retried: true });
     if (error) throw new Error(`subscription insert failed: ${error.message}`);
     row = data as SubscriptionRow;
   }
@@ -167,9 +170,11 @@ export async function applySubscription(
     tier: ent.tier === "none" ? row.plan : ent.tier, valid_from: ent.valid_from, valid_until: ent.valid_until,
     computed_at: new Date().toISOString(),
   };
-  const { error: entErr } = current
+  let { error: entErr } = current
     ? await db.from("entitlements").update(entFields).eq("id", current.id)
     : await db.from("entitlements").insert(entFields);
+  // 23505: a parallel delivery created this subscription's entitlement first; update it instead.
+  if (entErr?.code === "23505") ({ error: entErr } = await db.from("entitlements").update(entFields).eq("subscription_id", row.id));
   if (entErr) throw new Error(`entitlement write failed: ${entErr.message}`);
 
   if (!existing || existing.plan !== row.plan || existing.status !== row.status || existing.cancel_at_period_end !== row.cancel_at_period_end) {

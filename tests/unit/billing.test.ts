@@ -184,6 +184,8 @@ describe("checkout", () => {
     expect(p.line_items).toEqual([{ price: ENV.STRIPE_PRICE_BASIC, quantity: 1 }]);
     expect(p.subscription_data).toMatchObject({ trial_period_days: 14, metadata: { account_id: LEARNER, plan: "basic" } });
     expect(p.billing_address_collection).toBe("required");
+    // Explicit, so checkout never depends on the Stripe account's default (Managed Payments refuses custom_text).
+    expect((p as unknown as { managed_payments: unknown }).managed_payments).toEqual({ enabled: false });
     expect(p.custom_text.submit.message).toMatch(/\$20\.00 every month until I cancel/);
     expect(audit("billing.subscribe")).toEqual([expect.objectContaining({ result: "completed", actor_account_id: LEARNER })]);
     expect(db.data.billing_customers).toEqual([expect.objectContaining({ account_id: LEARNER, processor_customer_id: "cus_learner" })]);
@@ -284,6 +286,16 @@ describe("the Stripe webhook", () => {
     expect((await deliverRaw(payload)).body.outcome).toBe("duplicate");
     expect(JSON.stringify([db.data.subscriptions, db.data.entitlements, db.data.audit_events.length])).toBe(before);
     expect(db.data.billing_events).toHaveLength(1);
+  });
+
+  it("two events for a new subscription arriving at once (Stripe sends them together): both succeed, one row, one entitlement", async () => {
+    subs.sub_1 = sub("sub_1", { status: "trialing", trial_end: now() + 14 * DAY });
+    const invoice = { id: "in_1", object: "invoice", amount_due: 0, parent: { type: "subscription_details", subscription_details: { subscription: "sub_1" } } };
+    const [a, b] = await Promise.all([deliver("customer.subscription.created", subs.sub_1), deliver("invoice.paid", invoice)]);
+    expect([a.status, b.status]).toEqual([200, 200]);
+    expect(db.data.subscriptions).toHaveLength(1);
+    expect(db.data.entitlements).toHaveLength(1);
+    expect(audit("billing.subscription.change")).toHaveLength(1);
   });
 
   it("US only: a checkout with a billing address elsewhere is canceled at once and recorded as Blocked", async () => {
