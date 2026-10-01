@@ -17,6 +17,14 @@ export function createFakeDb(tables: Record<string, Row[]> = {}) {
       if (candidate.role === "owner" && others.some((r) => r.role === "owner")) return dup("accounts_single_owner");
       if (others.some((r) => r.clerk_user_id === candidate.clerk_user_id)) return dup("accounts_clerk_user_id_key");
     }
+    // B1: one subscription row per Stripe subscription, one entitlement per subscription (0008).
+    if (table === "subscriptions" && candidate.processor_subscription_id != null
+      && others.some((r) => r.processor_subscription_id === candidate.processor_subscription_id)) {
+      return dup("subscriptions_processor_subscription_id_key");
+    }
+    if (table === "entitlements" && candidate.subscription_id != null && others.some((r) => r.subscription_id === candidate.subscription_id)) {
+      return dup("entitlements_one_per_subscription");
+    }
     if (table === "appeals" && candidate.status === "under_review" && others.some((r) => r.status === "under_review" && r.account_id === candidate.account_id)) {
       return dup("appeals_one_open");
     }
