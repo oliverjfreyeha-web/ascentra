@@ -21,6 +21,8 @@ export type Account = {
   roleKey: RoleKey;
   adminRole: AdminRole | null;
   assignedCourses: string[];
+  /** A teen learner (14 to 17). Billing for a teen goes through their Guardian. */
+  isMinor: boolean;
 };
 
 /**
@@ -35,8 +37,10 @@ export type AuthContext = { account: Account; sessionId: string | null; recently
  * - The Owner and every admin must have a second factor, whatever else they use.
  * - An admin needs an active role assignment (claimed invites don't count until then).
  * - The Owner row must also match OWNER_EMAIL, so an edited database row can't create an Owner.
+ * - A teen waiting for their Guardian (pending) can do nothing through the API until the Guardian authorizes.
  */
 export function accountRefusal(row: AccountRow, assignment: AssignmentRow | null, ownerEmail: string | undefined): string | null {
+  if (row.status === "pending") return "pending_guardian";
   if (row.status !== "active") return "disabled";
   if (!row.email_verified) return "email_unverified";
   if (row.password_enabled && !row.two_factor_enabled) return "second_factor_missing";
@@ -88,6 +92,7 @@ export async function getAuthContext(): Promise<AuthContext | null> {
       roleKey,
       adminRole,
       assignedCourses: adminRole ? [...(assignment?.scope ?? [])] : [],
+      isMinor: row.role === "learner" && row.is_minor,
     },
     sessionId: session.sessionId ?? null,
     // Second factor verified within the last 10 minutes (Clerk's strict_mfa level).

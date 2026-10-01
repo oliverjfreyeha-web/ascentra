@@ -84,6 +84,7 @@ export const CAPABILITIES = {
   "support.recovery.send": { scope: "global", from: "support: Send recovery links, free a device slot, decide appeals", sensitive: true, reason: true },
   "support.device.free": { scope: "global", from: "support: Send recovery links, free a device slot, decide appeals", sensitive: true, reason: true },
   "support.appeal.decide": { scope: "global", from: "support: decide appeals; decideAppeal needs inspectAccounts (owner, superAdmin, support)", sensitive: true, reason: true },
+  "support.dob.change": { scope: "global", from: "B2: the date of birth can't be changed by the user after it's set; a change needs Support, with a reason", sensitive: true, reason: true },
 
   // ---- The audit log (F5): Owner and Super Admin read it; only the Owner verifies the chain ----
   "audit.view": { scope: "global", from: "F5: Owner and Super Admin get a searchable audit view" },
@@ -168,7 +169,8 @@ export const ROLE_CAPS: Record<RoleKey, readonly Cap[]> = {
   support: [
     "self.view", "learn",
     "entitlements.inspect", "lifecycle.inspect", "security.inspect", "guardian_links.inspect",
-    "support.recovery.send", "support.device.free", "support.appeal.decide", "security.limit", "access.basic", ...SELF_SECURITY,
+    "support.recovery.send", "support.device.free", "support.appeal.decide", "security.limit", "support.dob.change",
+    "access.basic", ...SELF_SECURITY,
   ],
   guardian: ["self.view", "guardian.controls", ...SELF_SECURITY],
   learner: ["self.view", "learn", "billing.subscribe", "billing.portal", ...SELF_SECURITY],

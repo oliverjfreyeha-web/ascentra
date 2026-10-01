@@ -32,6 +32,8 @@ export async function startCheckout(args: {
   const { account, body, origin, stripe, env } = args;
   const A = "billing.subscribe";
   if (account.roleKey !== "learner") return blocked(403, "Only a learner account subscribes. Your role already includes access.", A, account.id);
+  // The Guardian is the customer of record for a teen (B3).
+  if (account.isMinor) return blocked(403, "A teen's plan is chosen and paid for by their Guardian.", A, account.id);
   const plan = body.plan;
   if (plan !== "basic" && plan !== "pro") return blocked(400, "Choose Basic or Pro.", A, account.id);
   if (body.agreed !== true || body.termsVersion !== RENEWAL_TERMS_VERSION) {

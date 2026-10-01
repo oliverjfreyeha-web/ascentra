@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { SignIn, useAuth, useSignIn } from "@clerk/nextjs";
 
@@ -57,7 +58,9 @@ export function SignInFlow() {
           Use password and a second factor
         </button>
       </p>
-      <p className="muted">ASCENTRA is invitation-only. There is no public sign-up.</p>
+      <p className="muted">
+        New to ASCENTRA? <Link href="/sign-up">Create an account</Link>
+      </p>
     </section>
   );
 }

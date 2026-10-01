@@ -9,7 +9,8 @@ import { SignOut } from "./sign-out";
 
 type Me = { email: string; roleKey: RoleKey; displayName: string };
 
-// Who is signed in, read only through /api/v1/me. A Clerk session without an Account goes to /not-open.
+// Who is signed in, read only through /api/v1/me. A Clerk session the API refuses goes to /welcome, which says why
+// (the sign-up step, a teen waiting for their Guardian, a missing second factor, or no access).
 export function AccountPanel() {
   const { isLoaded, isSignedIn } = useAuth();
   const router = useRouter();
@@ -26,7 +27,7 @@ export function AccountPanel() {
       fetch("/api/v1/me", { cache: "no-store" })
         .then(async (res) => {
           if (!live) return;
-          if (res.status === 401) router.replace("/not-open");
+          if (res.status === 401) router.replace("/welcome");
           else if (res.ok) setMe(((await res.json()) as { account: Me }).account);
           else throw new Error(String(res.status));
         })

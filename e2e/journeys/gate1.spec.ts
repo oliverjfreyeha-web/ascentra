@@ -48,12 +48,12 @@ test.afterAll(async () => {
 // ============ Sign-in ============
 
 test.describe("sign-in", () => {
-  test("a visitor sees the invitation-only sign-in, passkey first, password and second factor as the fallback", async ({ page }) => {
+  test("a visitor sees the sign-in, passkey first, password and second factor as the fallback, and the way to sign up", async ({ page }) => {
     await page.goto("/");
     await expect(page.getByRole("link", { name: "Sign in" })).toBeVisible();
     await page.goto("/sign-in");
     await expect(page.getByRole("button", { name: "Sign in with a passkey" })).toBeVisible();
-    await expect(page.getByText("ASCENTRA is invitation-only. There is no public sign-up.")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Create an account" })).toHaveAttribute("href", "/sign-up");
     // Every API route refuses a visitor.
     expect((await page.request.get("/api/v1/me")).status()).toBe(401);
   });
@@ -72,12 +72,12 @@ test.describe("sign-in", () => {
     expect((await page.request.get("/api/v1/me")).status()).toBe(401);
   });
 
-  test("someone with a Clerk account but no ASCENTRA account lands on \"isn't open yet\"", async ({ browser }) => {
+  test("someone with a Clerk account but no ASCENTRA account is asked for their date of birth, and has no access yet", async ({ browser }) => {
     const stranger = await createTestUser(`${E2E_PREFIX}stranger+clerk_test@example.com`, { label: "E2E stranger" });
     expect(await deliverUserEvent(state().baseURL, state().webhookSecret, "user.created", stranger.raw)).toBe("no_account");
     const { ctx, page } = await browserFor(browser, stranger);
     await page.goto("/");
-    await expect(page.getByRole("heading", { name: "ASCENTRA isn't open yet" })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole("heading", { name: "What's your date of birth?" })).toBeVisible({ timeout: 15_000 });
     expect((await page.request.get("/api/v1/me")).status()).toBe(401);
     await ctx.close();
   });

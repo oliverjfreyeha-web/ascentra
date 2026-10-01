@@ -54,6 +54,8 @@ const GLOBAL: Record<string, RoleKey[]> = {
   "support.appeal.decide": ["owner", "superAdmin", "support"],
   // F6 safeguard steps: "Limit needs Support; Suspend needs a Super Admin or the Owner."
   "security.limit": ["owner", "support"],
+  // B2: a date of birth is set once at sign-up; only Support (or the Owner) corrects it, with a reason.
+  "support.dob.change": ["owner", "support"],
   "security.suspend": ["owner", "superAdmin"],
   // Everyone / learners / guardians.
   "self.view": ALL,
@@ -93,6 +95,7 @@ const SENSITIVE = new Set([
   "audit.export",
   // F6: replacing a device and the Verify step re-check the second factor; so do Limit and Suspend.
   "devices.replace", "security.verify", "security.limit", "security.suspend", "billing.portal",
+  "support.dob.change",
 ]);
 
 /** F5: actions that must carry a reason (role and invite changes, ownership, publishing, archiving and
@@ -104,6 +107,8 @@ const REASON = new Set([
   "audit.export",
   // F6: Limit and Suspend are applied with a reason.
   "security.limit", "security.suspend",
+  // B2: correcting a date of birth.
+  "support.dob.change",
 ]);
 
 function ctx(role: RoleKey, { verified = true, courses }: { verified?: boolean; courses?: string[] } = {}): AuthContext {
@@ -111,7 +116,7 @@ function ctx(role: RoleKey, { verified = true, courses }: { verified?: boolean; 
   return {
     account: {
       id: `acc_${role}`, email: `${role}@example.com`, role: role === "owner" ? "owner" : role === "guardian" ? "guardian" : role === "learner" ? "learner" : "admin",
-      displayName: role, roleKey: role, adminRole: null, assignedCourses: assigned,
+      displayName: role, roleKey: role, adminRole: null, assignedCourses: assigned, isMinor: false,
     },
     sessionId: `sess_${role}`,
     recentlyVerified: () => verified,

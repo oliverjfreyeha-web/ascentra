@@ -44,9 +44,10 @@ try {
   const acc = {};
   for (const [key, name, role, minor] of people) {
     await q(
-      `insert into public.accounts (clerk_user_id, email, email_verified, role, is_minor, two_factor_enabled, clerk_updated_at)
-       values ($1, $2, true, $3, $4, true, now()) on conflict (clerk_user_id) do nothing`,
-      [`${SEED_USER_PREFIX}${key}`, `${key}@example.com`, role, minor],
+      // A teen starts pending and becomes active once the Guardian link below is verified (B2).
+      `insert into public.accounts (clerk_user_id, email, email_verified, role, is_minor, status, two_factor_enabled, clerk_updated_at)
+       values ($1, $2, true, $3, $4, $5, true, now()) on conflict (clerk_user_id) do nothing`,
+      [`${SEED_USER_PREFIX}${key}`, `${key}@example.com`, role, minor, minor ? "pending" : "active"],
     );
     acc[key] = await one("select id from public.accounts where clerk_user_id = $1", [`${SEED_USER_PREFIX}${key}`]);
     await q(
@@ -62,6 +63,7 @@ try {
      values ($1, $2, 'verified', $3) on conflict do nothing`,
     [acc.dana, acc.eli, ts("2026-09-10")],
   );
+  await q(`update public.accounts set status = 'active' where id = $1 and status = 'pending'`, [acc.eli]);
 
   // ---- Legal documents (prototype LEGAL_DOCS, all v0.1 drafts awaiting counsel) ----
   const docs = [

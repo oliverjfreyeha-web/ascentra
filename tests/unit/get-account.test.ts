@@ -34,7 +34,7 @@ describe("getAccount", () => {
   it("returns the Owner for a valid session, verified email, second factor and matching OWNER_EMAIL", async () => {
     expect(await getAccount()).toEqual({
       id: "acc_1", email: "owner@example.com", role: "owner", displayName: "Olive Owner",
-      roleKey: "owner", adminRole: null, assignedCourses: [],
+      roleKey: "owner", adminRole: null, assignedCourses: [], isMinor: false,
     });
   });
 
