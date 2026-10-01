@@ -5,9 +5,10 @@ import { recordAudit, SYSTEM_ACTOR } from "@/lib/audit";
 import type { BillingEnv } from "@/lib/billing-env";
 import { accountOfCustomer, applySubscription } from "@/lib/billing";
 import { ALLOWED_COUNTRY, PLANS, RENEWAL_TERMS_KEY, RENEWAL_TERMS_VERSION } from "@/lib/billing-terms";
+import { activateTeenIfPaid, applyIdentityEvent } from "@/lib/guardians";
 
 const ACTOR = SYSTEM_ACTOR("Stripe webhook");
-/** The Stripe events the endpoint must be subscribed to (see db/README.md, B1). */
+/** The Stripe events the endpoint must be subscribed to (see db/README.md, B1 and B3). */
 export const STRIPE_EVENTS = [
   "checkout.session.completed",
   "customer.subscription.created",
@@ -15,6 +16,11 @@ export const STRIPE_EVENTS = [
   "customer.subscription.deleted",
   "invoice.paid",
   "invoice.payment_failed",
+  // B3: a Guardian's identity and adult check (Stripe Identity).
+  "identity.verification_session.processing",
+  "identity.verification_session.verified",
+  "identity.verification_session.requires_input",
+  "identity.verification_session.canceled",
 ] as const;
 
 const customerId = (c: string | Stripe.Customer | Stripe.DeletedCustomer | null) => (c == null ? null : typeof c === "string" ? c : c.id);
@@ -71,8 +77,12 @@ async function recordTrialConsent(subRowId: string, accountId: string, sub: Stri
  */
 export async function handleStripeEvent(event: Stripe.Event, stripe: Stripe, env: BillingEnv): Promise<{ outcome: string; accountId: string | null }> {
   const at = new Date(event.created * 1000);
-  const sync = async (subId: string, accountId?: string | null) =>
-    applySubscription(await stripe.subscriptions.retrieve(subId), env, { accountId, eventId: event.id, eventAt: at });
+  const sync = async (subId: string, accountId?: string | null) => {
+    const r = await applySubscription(await stripe.subscriptions.retrieve(subId), env, { accountId, eventId: event.id, eventAt: at });
+    // B3: a Guardian's plan for a teen is live → the teen becomes active (safe to repeat).
+    const teen = r.row ? await activateTeenIfPaid(r.row, event.id) : null;
+    return teen ? { ...r, outcome: `${r.outcome}; ${teen}` } : r;
+  };
 
   let result: { outcome: string; accountId: string | null } = { outcome: "ignored", accountId: null };
   switch (event.type) {
@@ -126,6 +136,12 @@ export async function handleStripeEvent(event: Stripe.Event, stripe: Stripe, env
       result = { outcome: r.outcome, accountId: r.accountId };
       break;
     }
+    case "identity.verification_session.processing":
+    case "identity.verification_session.verified":
+    case "identity.verification_session.requires_input":
+    case "identity.verification_session.canceled":
+      result = await applyIdentityEvent(event, stripe);
+      break;
   }
   await remember(event, result.outcome, result.accountId);
   return result;

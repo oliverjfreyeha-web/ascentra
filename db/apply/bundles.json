@@ -38,6 +38,12 @@
       "migrations": [
         "0009_age_and_signup"
       ]
+    },
+    "B3": {
+      "requires": "0009_age_and_signup",
+      "migrations": [
+        "0010_guardians"
+      ]
     }
   }
 }

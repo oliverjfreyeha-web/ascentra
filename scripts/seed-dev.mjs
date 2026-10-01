@@ -58,6 +58,8 @@ try {
     await q(`insert into public.notification_preferences (account_id) values ($1) on conflict (account_id) do nothing`, [acc[key]]);
   }
 
+  // B3: a Guardian authorizes a teen only after passing the identity and adult check.
+  await q(`update public.accounts set identity_status = 'verified', identity_verified_at = now() where id = $1 and identity_status <> 'verified'`, [acc.dana]);
   await q(
     `insert into public.guardian_relationships (guardian_account_id, teen_account_id, verification_status, authorized_at)
      values ($1, $2, 'verified', $3) on conflict do nothing`,

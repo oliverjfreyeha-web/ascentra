@@ -16,10 +16,19 @@ const clerk = vi.hoisted(() => ({
   userId: null as string | null,
   users: {} as Record<string, unknown>,
   deleted: [] as string[],
+  invites: [] as Record<string, unknown>[],
+  revoked: [] as string[],
 }));
 vi.mock("@clerk/nextjs/server", () => ({
   auth: vi.fn(async () => ({ isAuthenticated: !!clerk.userId, userId: clerk.userId, sessionId: "sess_b2", has: () => true })),
   clerkClient: vi.fn(async () => ({
+    invitations: {
+      createInvitation: vi.fn(async (p: { emailAddress: string }) => {
+        clerk.invites.push(p);
+        return { id: `inv_${clerk.invites.length}` };
+      }),
+      revokeInvitation: vi.fn(async (id: string) => { clerk.revoked.push(id); return {}; }),
+    },
     users: {
       getUser: async (id: string) => ({ raw: clerk.users[id] }),
       deleteUser: async (id: string) => {
@@ -85,6 +94,8 @@ beforeEach(() => {
   clerk.userId = null;
   clerk.users = {};
   clerk.deleted = [];
+  clerk.invites = [];
+  clerk.revoked = [];
 });
 
 describe("the sign-up step", () => {
@@ -103,7 +114,7 @@ describe("the sign-up step", () => {
     newClerkUser("user_adult_1", "Adult@Example.com");
     const dob = yearsAgo(30);
     const r = await signUp(dob);
-    expect(r).toEqual({ status: 201, body: { state: "ready" } });
+    expect(r).toEqual({ status: 201, body: { state: "ready", home: "/account" } });
     expect(accountOf("user_adult_1")).toMatchObject({
       role: "learner", status: "active", is_minor: false, date_of_birth: dob, email: "adult@example.com",
     });
@@ -114,14 +125,14 @@ describe("the sign-up step", () => {
     const [event] = audit("registration.adult");
     expect(event).toMatchObject({ actor_role: "learner", result: "completed", new_value: "adult learner, active" });
     expect(JSON.stringify(db.data.audit_events)).not.toContain(dob);
-    expect(await state()).toEqual({ status: 200, body: { state: "ready" } });
+    expect(await state()).toEqual({ status: 200, body: { state: "ready", home: "/account" } });
   });
 
   it("exactly 18 today is an adult; one day short of 18 is a teen", async () => {
     newClerkUser("user_18", "eighteen@example.com");
-    expect((await signUp(yearsAgo(18))).body).toEqual({ state: "ready" });
+    expect((await signUp(yearsAgo(18))).body).toEqual({ state: "ready", home: "/account" });
     newClerkUser("user_17", "seventeen@example.com");
-    expect((await signUp(yearsAgo(18, 1))).body).toEqual({ state: "guardian", guardianEmail: null });
+    expect((await signUp(yearsAgo(18, 1))).body).toEqual({ state: "guardian", guardianEmail: null, progress: "none", emailSent: false });
   });
 
   it("an adult with a password but no second factor is told to add one before anything works", async () => {
@@ -132,12 +143,12 @@ describe("the sign-up step", () => {
 
   it("14 to 17: a pending teen (is_minor) who can't learn, pay or message, and lands on the Guardian step", async () => {
     newClerkUser("user_teen_1", "teen@example.com");
-    expect(await signUp(yearsAgo(15))).toEqual({ status: 201, body: { state: "guardian", guardianEmail: null } });
+    expect(await signUp(yearsAgo(15))).toEqual({ status: 201, body: { state: "guardian", guardianEmail: null, progress: "none", emailSent: false } });
     expect(accountOf("user_teen_1")).toMatchObject({ role: "learner", status: "pending", is_minor: true });
     // Every /api/v1 route starts from getAccount: a pending teen has no account there, so nothing works.
     expect(await getAccount()).toBeNull();
     expect(audit("registration.teen")).toHaveLength(1);
-    expect(await state()).toEqual({ status: 200, body: { state: "guardian", guardianEmail: null } });
+    expect(await state()).toEqual({ status: 200, body: { state: "guardian", guardianEmail: null, progress: "none", emailSent: false } });
   });
 
   it("exactly 14 today is a teen; one day short of 14 is refused", async () => {
@@ -188,7 +199,7 @@ describe("the sign-up step", () => {
 describe("the Owner and admins never go through the sign-up step", () => {
   it("the Owner's existing account is never asked, never pending, never a minor", async () => {
     newClerkUser(clerkIdOf("owner"), TEST_ENV.OWNER_EMAIL);
-    expect(await state()).toEqual({ status: 200, body: { state: "ready" } });
+    expect(await state()).toEqual({ status: 200, body: { state: "ready", home: "/account" } });
     expect((await signUp(yearsAgo(15))).status).toBe(409);
     expect(accountOf(clerkIdOf("owner"))).toMatchObject({ role: "owner", status: "active" });
     expect(accountOf(clerkIdOf("owner"))!.is_minor).toBeFalsy();
@@ -241,7 +252,7 @@ describe("the Owner and admins never go through the sign-up step", () => {
   });
 });
 
-describe("the Guardian invitation (a stub until B3)", () => {
+describe("the Guardian invitation (Clerk emails it, B3)", () => {
   beforeEach(async () => {
     newClerkUser("user_teen_3", "teen3@example.com");
     await signUp(yearsAgo(15));
@@ -249,11 +260,17 @@ describe("the Guardian invitation (a stub until B3)", () => {
   const invites = () => (db.data.guardian_relationships ?? []).filter((g) => g.teen_account_id === accountOf("user_teen_3")!.id);
 
   it("stores the Guardian's email as an invitation and shows the teen 'Waiting for your Guardian'", async () => {
-    expect(await inviteGuardian("Parent@Example.com")).toEqual({ status: 201, body: { state: "guardian", guardianEmail: "parent@example.com" } });
+    expect(await inviteGuardian("Parent@Example.com")).toEqual({
+      status: 201, body: { state: "guardian", guardianEmail: "parent@example.com", progress: "invited", emailSent: true },
+    });
+    expect(clerk.invites).toEqual([expect.objectContaining({
+      emailAddress: "parent@example.com", notify: true, redirectUrl: "https://ascentra.test/sign-up",
+      publicMetadata: { ascentra_guardian_invite_id: invites()[0].id },
+    })]);
     expect(invites()).toEqual([expect.objectContaining({ invited_email: "parent@example.com", verification_status: "invited" })]);
-    expect(invites()[0].guardian_account_id).toBeUndefined();
+    expect(invites()[0].guardian_account_id).toBeNull();
     expect(audit("guardian.invite")).toEqual([expect.objectContaining({ previous_value: "none", new_value: "parent@example.com", result: "completed" })]);
-    expect(await state()).toEqual({ status: 200, body: { state: "guardian", guardianEmail: "parent@example.com" } });
+    expect(await state()).toEqual({ status: 200, body: { state: "guardian", guardianEmail: "parent@example.com", progress: "invited", emailSent: true } });
     // Still pending: the teen can't do anything else.
     expect(accountOf("user_teen_3")!.status).toBe("pending");
     expect(await getAccount()).toBeNull();
@@ -265,6 +282,9 @@ describe("the Guardian invitation (a stub until B3)", () => {
     expect(invites()).toHaveLength(1);
     expect(invites()[0].invited_email).toBe("mom@example.com");
     expect(audit("guardian.invite").map((e) => e.new_value)).toEqual(["parent@example.com", "mom@example.com"]);
+    // The first invitation is revoked in Clerk, and the new email gets its own.
+    expect(clerk.revoked).toEqual(["inv_1"]);
+    expect(clerk.invites.map((i) => i.emailAddress)).toEqual(["parent@example.com", "mom@example.com"]);
   });
 
   it("refuses the teen's own email, an invalid email, and anyone who isn't a waiting teen", async () => {

@@ -15,6 +15,7 @@ const clerk = vi.hoisted(() => ({ userId: null as string | null, users: {} as Re
 vi.mock("@clerk/nextjs/server", () => ({
   auth: vi.fn(async () => ({ isAuthenticated: !!clerk.userId, userId: clerk.userId, sessionId: `sess_${clerk.userId}`, has: () => true })),
   clerkClient: vi.fn(async () => ({
+    invitations: { createInvitation: vi.fn(async () => ({ id: "inv_int_1" })), revokeInvitation: vi.fn(async () => ({})) },
     users: {
       getUser: async (id: string) => ({ raw: clerk.users[id] }),
       deleteUser: async (id: string) => { clerk.deleted.push(id); return {}; },
@@ -62,15 +63,15 @@ const rest = (path: string, key: string, init: RequestInit = {}) =>
 describe("the sign-up step on the real database", () => {
   it("creates an active adult and a pending teen; the database accepts both", async () => {
     as("user_int_adult", "int.adult@example.com");
-    expect((await post(registrationRoute, { dateOfBirth: yearsAgo(30), usResident: true })).body).toEqual({ state: "ready" });
+    expect((await post(registrationRoute, { dateOfBirth: yearsAgo(30), usResident: true })).body).toEqual({ state: "ready", home: "/account" });
     expect(await row("user_int_adult")).toMatchObject({ role: "learner", status: "active", is_minor: false, dob: yearsAgo(30) });
 
     as("user_int_teen", "int.teen@example.com");
-    expect((await post(registrationRoute, { dateOfBirth: yearsAgo(15), usResident: true })).body).toEqual({ state: "guardian", guardianEmail: null });
+    expect((await post(registrationRoute, { dateOfBirth: yearsAgo(15), usResident: true })).body).toEqual({ state: "guardian", guardianEmail: null, progress: "none", emailSent: false });
     expect(await row("user_int_teen")).toMatchObject({ role: "learner", status: "pending", is_minor: true });
     expect((await post(guardianRoute, { guardianEmail: "int.parent@example.com" })).status).toBe(201);
-    const { rows } = await q("select invited_email, verification_status, guardian_account_id from public.guardian_relationships");
-    expect(rows).toEqual([{ invited_email: "int.parent@example.com", verification_status: "invited", guardian_account_id: null }]);
+    const { rows } = await q("select invited_email, verification_status, guardian_account_id, clerk_invitation_id from public.guardian_relationships");
+    expect(rows).toEqual([{ invited_email: "int.parent@example.com", verification_status: "invited", guardian_account_id: null, clerk_invitation_id: "inv_int_1" }]);
     expect((await q("select ok from public.audit_verify_chain()")).rows[0].ok).toBe(true);
   });
 

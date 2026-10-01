@@ -10,6 +10,7 @@ import {
 import { accountRefusal } from "@/lib/auth";
 import { ageGroup, ageOn, isoDate, parseDob, usToday } from "@/lib/age";
 import { createRateLimiter } from "@/lib/rate-limit";
+import { claimInvitation, consentsOf, invitationFor, lastLinkOfTeen, openLinkOfTeen, sendGuardianInvitation, teenFirstName, type LinkRow } from "@/lib/guardians";
 
 /**
  * B2: the sign-up step. After Clerk sign-up, a Clerk user has no ASCENTRA account until they give their date
@@ -18,6 +19,8 @@ import { createRateLimiter } from "@/lib/rate-limit";
  *   14 to 17 → a pending teen learner (is_minor), who can only invite a Guardian until the Guardian authorizes;
  *   18 or older → an active adult learner, who can go to checkout.
  * The Owner and invited admins never come through here: their accounts are made by the Clerk webhook.
+ * B3: a Guardian comes through here from the invitation email a teen asked for; their account is a Guardian
+ * account for that teen only (lib/guardians.ts takes it from there).
  */
 
 /** What the person sees after a refusal for age. No hint to try again. */
@@ -26,11 +29,16 @@ export const US_ONLY = "ASCENTRA is available in the United States only. Confirm
 export const DOB_INVALID = "Enter a real date, like March 4 2001.";
 export const DOB_ALREADY_SET = "Your date of birth is already set. Only Support can change it.";
 
+/** Where a teen waiting for their Guardian stands (shown on "Waiting for your Guardian"). */
+export type GuardianProgress = "none" | "invited" | "joined" | "verified" | "agreed" | "failed";
+
 export type RegistrationState =
   | { state: "dob" }
-  | { state: "guardian"; guardianEmail: string | null }
+  | { state: "guardian"; guardianEmail: string | null; progress: GuardianProgress; emailSent: boolean }
+  | { state: "guardian_signup"; teenName: string }
+  | { state: "paused"; since: string | null }
   | { state: "second_factor" }
-  | { state: "ready" }
+  | { state: "ready"; home: string }
   | { state: "not_open"; reason: string };
 
 export type Result =
@@ -54,6 +62,7 @@ async function signupBlock(identity: ClerkIdentity, ownerEmail: string): Promise
   if (!identity.email || !identity.emailVerified) return "Verify your email address first, then sign in again.";
   if (identity.email === ownerEmail.trim().toLowerCase()) return "This is the Owner's sign-in. It doesn't use the sign-up step.";
   if (identity.inviteId) return "This sign-in comes from an administrator invitation. Your role starts once a second factor is on.";
+  if (identity.guardianInviteId) return "This sign-in comes from a Guardian invitation that is no longer open. Ask the teen to send it again.";
   const { data, error } = await getDb().from("role_assignments").select("id").eq("invited_email", identity.email)
     .in("status", ["invited", "claimed", "active"]).limit(1);
   if (error) throw new Error(`invite lookup failed: ${error.message}`);
@@ -61,19 +70,29 @@ async function signupBlock(identity: ClerkIdentity, ownerEmail: string): Promise
   return null;
 }
 
-async function openGuardianInvite(teenId: string): Promise<{ id: string; invited_email: string } | null> {
-  const { data, error } = await getDb().from("guardian_relationships").select("id, invited_email")
-    .eq("teen_account_id", teenId).eq("verification_status", "invited").maybeSingle();
-  if (error) throw new Error(`guardian invitation lookup failed: ${error.message}`);
-  return data as { id: string; invited_email: string } | null;
-}
-
 const isWaitingTeen = (row: AccountRow) => row.role === "learner" && row.is_minor && row.status === "pending";
 
+async function teenProgress(teenId: string): Promise<Extract<RegistrationState, { state: "guardian" }>> {
+  const link = await openLinkOfTeen(teenId);
+  if (!link) {
+    const last = await lastLinkOfTeen(teenId);
+    return { state: "guardian", guardianEmail: null, progress: last?.verification_status === "failed" ? "failed" : "none", emailSent: false };
+  }
+  let progress: GuardianProgress = link.verification_status === "invited" ? "invited" : "joined";
+  if (link.guardian_account_id) {
+    const g = (await getDb().from("accounts").select("identity_status").eq("id", link.guardian_account_id).maybeSingle()).data as { identity_status?: string } | null;
+    if (g?.identity_status === "verified") progress = "verified";
+    const c = progress === "verified" ? await consentsOf(link.guardian_account_id, teenId) : null;
+    if (c?.teen_terms && c.minor_privacy_notice) progress = "agreed";
+  }
+  return { state: "guardian", guardianEmail: link.invited_email, progress, emailSent: !!link.clerk_invitation_id || !!link.guardian_account_id };
+}
+
 async function stateOfAccount(row: AccountRow, ownerEmail: string): Promise<RegistrationState> {
-  if (isWaitingTeen(row)) return { state: "guardian", guardianEmail: (await openGuardianInvite(row.id))?.invited_email ?? null };
+  if (isWaitingTeen(row)) return teenProgress(row.id);
+  if (row.role === "learner" && row.status === "paused") return { state: "paused", since: (await lastLinkOfTeen(row.id))?.withdrawn_at ?? null };
   const refusal = accountRefusal(row, row.role === "admin" ? await findLiveAssignment(row.id) : null, ownerEmail);
-  if (!refusal) return { state: "ready" };
+  if (!refusal) return { state: "ready", home: row.role === "guardian" ? "/guardian" : "/account" };
   // A learner with a password, or the Owner or an admin (an invited admin's role starts once it's on).
   if (refusal === "second_factor_missing") return { state: "second_factor" };
   return { state: "not_open", reason: "This account doesn't have access." };
@@ -83,7 +102,10 @@ async function stateOfAccount(row: AccountRow, ownerEmail: string): Promise<Regi
 export async function registrationState(clerkUserId: string, ownerEmail: string): Promise<RegistrationState> {
   const row = await findAccountByClerkId(clerkUserId);
   if (row) return stateOfAccount(row, ownerEmail);
-  const block = await signupBlock(await clerkIdentity(clerkUserId), ownerEmail);
+  const identity = await clerkIdentity(clerkUserId);
+  const invite = identity.guardianInviteId ? await guardianInvitation(identity, ownerEmail) : null;
+  if (invite) return { state: "guardian_signup", teenName: await teenFirstName(invite.teen_account_id) };
+  const block = await signupBlock(identity, ownerEmail);
   return block ? { state: "not_open", reason: block } : { state: "dob" };
 }
 
@@ -138,39 +160,116 @@ export async function register(clerkUserId: string, body: Record<string, unknown
     target: { type: "account", id, label: identity.email }, previous: "none",
     next: teen ? "teen learner, waiting for Guardian" : "adult learner, active", result: "Completed",
   });
-  return { ok: true, status: 201, body: teen ? { state: "guardian", guardianEmail: null } : await stateOfAccount((await findAccountByClerkId(clerkUserId))!, ownerEmail) };
+  return { ok: true, status: 201, body: await stateOfAccount((await findAccountByClerkId(clerkUserId))!, ownerEmail) };
 }
 
 const guardianLimiter = createRateLimiter({ limit: 5, windowMs: 60 * 60_000 });
 const emailSchema = z.email();
+const CANT_BE_GUARDIAN = "That email can't be used for a Guardian. Ask your parent or guardian for a different email.";
 
 /**
- * A waiting teen names their Guardian. Stored as an invitation (guardian_relationships, 'invited'); B3 sends it.
- * Until then the teen can change the email; each change is audited.
+ * A waiting teen names their Guardian, and Clerk emails the Guardian an invitation to sign up (B3). Until the
+ * Guardian signs up, the teen can change the email or send it again; each change is audited. A Guardian who
+ * already has an ASCENTRA account is linked at once (no new sign-up needed).
+ * Body: { guardianEmail, resend?: true }.
  */
-export async function inviteGuardian(clerkUserId: string, body: Record<string, unknown>, now = new Date()): Promise<Result> {
+export async function inviteGuardian(clerkUserId: string, body: Record<string, unknown>, origin: string, now = new Date()): Promise<Result> {
   const row = await findAccountByClerkId(clerkUserId);
   if (!row || !isWaitingTeen(row)) return fail(403, "Only a teen account waiting for its Guardian can do this.");
   const email = typeof body.guardianEmail === "string" ? body.guardianEmail.trim().toLowerCase() : "";
   if (!emailSchema.safeParse(email).success) return fail(400, "Enter your parent or guardian's email, like name@example.com.");
   if (email === row.email.toLowerCase()) return fail(400, "Enter your parent or guardian's email, not your own.");
+  const open = await openLinkOfTeen(row.id);
+  if (open && open.verification_status !== "invited") return fail(409, "Your Guardian has already joined. Ask them to finish setting up your account.");
+  const resend = body.resend === true && open?.invited_email === email;
+  if (open?.invited_email === email && open.clerk_invitation_id && !resend) return { ok: true, status: 200, body: await teenProgress(row.id) };
   if (!guardianLimiter.check(row.id, now.getTime()).ok) return fail(429, "Too many changes. Try again in an hour.", "rate_limited");
 
   const db = getDb();
-  const open = await openGuardianInvite(row.id);
-  if (open?.invited_email === email) return { ok: true, status: 200, body: { state: "guardian", guardianEmail: email } };
-  const { error } = open
-    ? await db.from("guardian_relationships").update({ invited_email: email, invited_at: now.toISOString() }).eq("id", open.id)
-    : await db.from("guardian_relationships").insert({
+  const existing = (await db.from("accounts").select("id, role, status").eq("email", email).limit(1)).data as { id: string; role: string; status: string }[] | null;
+  const guardian = existing?.[0];
+  if (guardian && (guardian.role !== "guardian" || guardian.status !== "active")) return fail(400, CANT_BE_GUARDIAN);
+
+  let link: LinkRow;
+  if (open) {
+    const { data, error } = await db.from("guardian_relationships").update({ invited_email: email, invited_at: now.toISOString() })
+      .eq("id", open.id).eq("verification_status", "invited").select("*");
+    if (error) throw new Error(`guardian invitation failed: ${error.message}`);
+    if (!data?.length) return fail(409, "Your Guardian invitation changed at the same time. Reload the page.");
+    link = data[0] as LinkRow;
+  } else {
+    const { data, error } = await db.from("guardian_relationships").insert({
       teen_account_id: row.id, invited_email: email, invited_at: now.toISOString(), verification_status: "invited",
-    });
-  if (error?.code === "23505") return fail(409, "Your Guardian invitation changed at the same time. Reload the page.");
-  if (error) throw new Error(`guardian invitation failed: ${error.message}`);
+    }).select("*").single();
+    if (error?.code === "23505") return fail(409, "Your Guardian invitation changed at the same time. Reload the page.");
+    if (error) throw new Error(`guardian invitation failed: ${error.message}`);
+    link = data as LinkRow;
+  }
+
+  let sent: { sent: boolean; why?: string } = { sent: false };
+  if (guardian) {
+    // An existing Guardian (another teen of theirs): linked now; they see this teen in their Guardian Center.
+    if (!(await claimInvitation(link.id, guardian.id, "parent"))) return fail(409, "Your Guardian invitation changed at the same time. Reload the page.");
+    sent = { sent: true };
+  } else {
+    sent = await sendGuardianInvitation(link, origin);
+  }
   const profile = await findProfile(row.id);
   await recordAudit({
     actor: learnerActor(row.id, profile?.display_name ?? row.email, true), action: "guardian.invite",
-    context: "A teen named their Guardian. The invitation is stored and is sent once Guardian sign-up opens (B3); nothing was sent yet.",
-    target: { type: "account", id: row.id, label: row.email }, previous: open?.invited_email ?? "none", next: email, result: "Completed",
+    context: guardian
+      ? "A teen named a Guardian who already has an ASCENTRA Guardian account. They are linked; the Guardian finishes setup in their Guardian Center."
+      : sent.sent
+        ? `A teen ${resend ? "sent their Guardian invitation again" : "named their Guardian"}. Clerk emailed the invitation to sign up.`
+        : `A teen named their Guardian. The invitation is saved, but the email couldn't be sent: ${sent.why}`,
+    target: { type: "account", id: row.id, label: row.email }, previous: open?.invited_email ?? "none", next: email,
+    result: "Completed",
   });
-  return { ok: true, status: open ? 200 : 201, body: { state: "guardian", guardianEmail: email } };
+  const state = await teenProgress(row.id);
+  if (!sent.sent) return fail(502, "Your invitation is saved, but the email couldn't be sent. Try \"Send again\" in a few minutes.", "email_failed");
+  return { ok: true, status: open ? 200 : 201, body: state };
+}
+
+/** The open Guardian invitation this new Clerk user carries, for their verified email, or null. */
+async function guardianInvitation(identity: ClerkIdentity, ownerEmail: string): Promise<LinkRow | null> {
+  if (!identity.guardianInviteId || !identity.email || !identity.emailVerified) return null;
+  if (identity.email === ownerEmail.trim().toLowerCase() || identity.inviteId) return null;
+  return invitationFor(identity.guardianInviteId, identity.email);
+}
+
+/**
+ * The Guardian's sign-up step (from the invitation email): an adult Guardian account, in the US, linked to the
+ * teen who invited them. Body: { adult: true, usResident: true, relationship: "parent" | "legal_guardian" }.
+ * Their identity and adult status are then checked by Stripe Identity in the Guardian Center.
+ */
+export async function registerGuardian(clerkUserId: string, body: Record<string, unknown>, ownerEmail: string, now = new Date()): Promise<Result> {
+  if (await findAccountByClerkId(clerkUserId)) return fail(409, "This sign-in already has an ASCENTRA account.");
+  const identity = await clerkIdentity(clerkUserId);
+  const invite = await guardianInvitation(identity, ownerEmail);
+  if (!invite) return fail(403, "This Guardian invitation is no longer open. Ask the teen to send it again.");
+  if (body.adult !== true) return fail(400, "A Guardian must be 18 or older. Confirm that you are.");
+  if (body.usResident !== true) return fail(400, US_ONLY);
+  const relationship = body.relationship === "parent" || body.relationship === "legal_guardian" ? body.relationship : null;
+  if (!relationship) return fail(400, "Choose whether you're the teen's parent or legal guardian.");
+
+  const db = getDb();
+  const { data, error } = await db.from("accounts").insert({
+    clerk_user_id: clerkUserId, role: "guardian", status: "active", is_minor: false,
+    us_resident_confirmed_at: now.toISOString(), ...accountFields(identity),
+  }).select("id").single();
+  if (error?.code === "23505") return fail(409, "This sign-in already has an ASCENTRA account.");
+  if (error) throw new Error(`guardian insert failed: ${error.message}`);
+  const id = data.id as string;
+  if (!(await claimInvitation(invite.id, id, relationship))) {
+    await db.from("accounts").delete().eq("id", id);
+    return fail(409, "This Guardian invitation was used at the same time. Ask the teen to send it again.");
+  }
+  await upsertProfile(id, identity);
+  const teen = await teenFirstName(invite.teen_account_id);
+  await recordAudit({
+    actor: { accountId: id, label: `${identity.displayName} (Guardian)`, role: "guardian" }, action: "guardian.signup",
+    context: `Signed up as ${teen}'s Guardian (${relationship === "parent" ? "parent" : "legal guardian"}, 18 or older, US) from the invitation email. Identity and adult status are checked next (Stripe Identity).`,
+    target: { type: "account", id: invite.teen_account_id, label: teen }, previous: "invited", next: "Guardian joined", result: "Completed",
+  });
+  return { ok: true, status: 201, body: await stateOfAccount((await findAccountByClerkId(clerkUserId))!, ownerEmail) };
 }
