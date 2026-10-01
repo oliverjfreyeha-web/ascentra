@@ -27,8 +27,8 @@ describe("accounts", () => {
   });
 
   it("allows a minor only as a learner", async () => {
-    expect(await fails(`insert into public.accounts (clerk_user_id, email, role, is_minor, clerk_updated_at)
-                        values ('user_t', 't@example.com', 'learner', true, now())`)).toBeNull();
+    expect(await fails(`insert into public.accounts (clerk_user_id, email, role, is_minor, status, clerk_updated_at)
+                        values ('user_t', 't@example.com', 'learner', true, 'pending', now())`)).toBeNull();
     expect(await fails(`insert into public.accounts (clerk_user_id, email, role, is_minor, clerk_updated_at)
                         values ('user_t2', 't2@example.com', 'admin', true, now())`)).toMatch(/accounts_minor_role_check/);
   });

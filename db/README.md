@@ -12,12 +12,13 @@ security is on for every table and denies by default.
 | `apply/F4.sql` | The one file to paste for F4: 0005 (admin invites, Owner protections). Requires F3. |
 | `apply/F5.sql` | The one file to paste for F5: 0006 (audit chain and its verifier). Requires F4. |
 | `apply/F6.sql` | **The one file to paste for F6**: 0007 (trusted devices, sessions, sharing tracker, steps, appeals). Requires F5. |
-| `apply/B1.sql` | **The one file to paste for B1**: 0008 (billing: Stripe lifecycle, customers, events, Automatic Renewal Terms v0.1). Requires F6. |
+| `apply/B1.sql` | The one file to paste for B1: 0008 (billing: Stripe lifecycle, customers, events, Automatic Renewal Terms v0.1). Requires F6. |
+| `apply/B2.sql` | **The one file to paste for B2**: 0009 (date of birth, age rules, pending teens, Guardian invitations, Support's date-of-birth correction). Requires B1. |
 | `ops/create-test-learner.sql` | Owner-only, by hand: one adult test learner for an existing Clerk user (see below). Not a migration. |
 | `verify.sql` | Run after applying. First row is the verdict. |
 | `test/supabase-shim.sql` | Tests only: recreates Supabase's API roles and `auth.jwt()` on plain Postgres. Never apply it to Supabase. |
 
-## A test learner (Owner only, until sign-up opens in B2)
+## A test learner by hand (Owner only; from B2 on, sign-up makes learners)
 
 Sign-up is closed and admin invites only make admins, so the only way to a learner account is
 `db/ops/create-test-learner.sql`. It creates exactly one adult learner (`is_minor = false`) for a Clerk user
@@ -34,6 +35,17 @@ with an admin invite, and the untouched template. One transaction: a refusal cha
 4. Supabase SQL Editor → paste `db/ops/create-test-learner.sql`, set `clerk_user_id`, `email` and `reason` at the
    top → **Run**. The last result row shows the new account (`role = learner`, `is_minor = false`) and its audit event.
 5. Reload the site: "Signed in as TEST Learner (Learner)". The first page registers this browser as a trusted device.
+
+## Applying B2 to Supabase (B1 is already applied)
+
+Apply it **before** merging the B2 code: the B2 code writes the new columns. The B1 code that is live keeps working.
+
+1. SQL Editor → **New query** → paste the whole of `db/apply/B2.sql` → **Run**. Expect "Success. No rows returned".
+   If the editor warns about a destructive operation, that's `drop constraint accounts_status_check` and
+   `drop constraint guardian_relationships_verification_status_check` (each replaced at once by a wider one) and
+   `drop not null` on `guardian_relationships.guardian_account_id`. Nothing is deleted.
+2. **New query** → paste `db/verify.sql` → **Run**. The first row must read
+   `OK: all 45 tables … B2 age rules and sign-up are in place`.
 
 ## Applying B1 to Supabase (F6 is already applied)
 

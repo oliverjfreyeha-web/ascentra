@@ -98,6 +98,7 @@ const EXPECTED: Record<string, string> = {
   "POST /api/v1/devices/[id]/sign-out": "devices.manage",
   "POST /api/v1/devices/replace": "devices.replace",
   "GET /api/v1/me": "self.view",
+  "PATCH /api/v1/support/accounts/[accountId]/date-of-birth": "support.dob.change",
   "GET /api/v1/owner-academy": "owner_academy.open",
   "GET /api/v1/pro": "learn",
   "GET /api/v1/security/accounts": "security.inspect",

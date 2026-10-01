@@ -15,11 +15,14 @@ export type AccountRow = {
   email_verified: boolean;
   role: Role;
   is_minor: boolean;
-  status: "active" | "disabled";
+  /** pending: a teen waiting for their Guardian (B2). Only a learner is ever pending. */
+  status: "active" | "pending" | "disabled";
   password_enabled: boolean;
   two_factor_enabled: boolean;
   password_last_updated_at: string | null;
   clerk_updated_at: string;
+  /** Learners who signed up from B2 on. Never sent to the browser. */
+  date_of_birth?: string | null;
 };
 
 export type ProfileRow = { account_id: string; display_name: string; image_url: string | null };
@@ -76,7 +79,7 @@ export type SyncOutcome =
   | "admin_claimed" // Signed up through a valid admin invite; the role waits for a second factor.
   | "admin_activated" // A claimed invite now has a second factor: the admin role is active.
   | "invite_refused" // Carried an invite that was expired, used, revoked or sent to another email.
-  | "no_account"; // Not the Owner and not invited: Clerk knows them, ASCENTRA gives them nothing.
+  | "no_account"; // Not the Owner and not invited: no account until the sign-up step (date of birth, B2) creates one.
 
 /**
  * What a Clerk user event should do, decided without touching the database.
@@ -105,7 +108,8 @@ export function planSync(
     : { action: "ignore", outcome: "no_account", passwordChanged: false };
 }
 
-function accountFields(identity: ClerkIdentity) {
+/** What every Clerk event may update. Never role, status, is_minor or the date of birth. */
+export function accountFields(identity: ClerkIdentity) {
   return {
     email: identity.email ?? "",
     email_verified: identity.emailVerified,
@@ -135,7 +139,7 @@ async function ownerExists(): Promise<boolean> {
   return (count ?? 0) > 0;
 }
 
-async function upsertProfile(accountId: string, identity: ClerkIdentity) {
+export async function upsertProfile(accountId: string, identity: ClerkIdentity) {
   const { error } = await getDb()
     .from("profiles")
     .upsert({ account_id: accountId, display_name: identity.displayName, image_url: identity.imageUrl, updated_at: new Date().toISOString() });
@@ -180,7 +184,7 @@ async function claimInvite(identity: ClerkIdentity, now: Date): Promise<SyncOutc
   const db = getDb();
   const { data: account, error } = await db
     .from("accounts")
-    .insert({ clerk_user_id: identity.clerkUserId, role: "admin", ...accountFields(identity) })
+    .insert({ clerk_user_id: identity.clerkUserId, role: "admin", status: "active", is_minor: false, ...accountFields(identity) })
     .select("id")
     .single();
   if (error) throw new Error(`admin account insert failed: ${error.message}`);
@@ -246,7 +250,7 @@ export async function syncClerkUser(user: UserJSON, ownerEmail: string, now = ne
   if (plan.action === "insert_owner") {
     const { data, error } = await db
       .from("accounts")
-      .insert({ clerk_user_id: identity.clerkUserId, role: "owner", ...accountFields(identity) })
+      .insert({ clerk_user_id: identity.clerkUserId, role: "owner", status: "active", is_minor: false, ...accountFields(identity) })
       .select("id")
       .single();
     // 23505: another delivery seeded the Owner first. There is still exactly one.
@@ -304,6 +308,6 @@ export async function disableClerkUser(clerkUserId: string): Promise<void> {
     actor: WEBHOOK, action: "account.disable",
     context: `The Clerk user was deleted, so the ${existing.role} account is disabled.`,
     target: { type: "account", id: existing.id, label: existing.email },
-    previous: "active", next: "disabled", result: "Completed",
+    previous: existing.status, next: "disabled", result: "Completed",
   });
 }

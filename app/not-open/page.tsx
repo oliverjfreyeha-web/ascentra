@@ -5,7 +5,7 @@ export default function NotOpenPage() {
   return (
     <main>
       <h1>ASCENTRA isn&apos;t open yet</h1>
-      <p>This account doesn&apos;t have access. Access is by invitation only.</p>
+      <p>This account doesn&apos;t have access.</p>
       <p className="muted">
         If you were invited: your email must be verified, and if you sign in with a password you also need a second
         factor. Administrators always need a second factor; the role starts working once it&apos;s on. You can add one

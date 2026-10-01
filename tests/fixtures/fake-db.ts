@@ -3,6 +3,7 @@
 // and .select() after a write. It mimics the unique rules the real schema enforces for
 // accounts (one Owner) and role_assignments (one open invite per email, one live role per account).
 import { randomUUID } from "node:crypto";
+import { ageGroup, ageOn, parseDob, usToday } from "@/lib/age";
 
 type Row = Record<string, unknown>;
 type Err = { code: string; message: string } | null;
@@ -225,7 +226,22 @@ export function createFakeDb(tables: Record<string, Row[]> = {}) {
     return { outcome: "registered", device_id: row.id, replaced_id: null };
   }
 
+  /** Mirrors public.support_change_date_of_birth (0009). */
+  function supportChangeDob(a: Record<string, unknown>) {
+    const row = data.accounts.find((r) => r.id === a.p_account);
+    if (!row) return "not_found";
+    if (row.role !== "learner" || !row.date_of_birth) return "no_date_of_birth";
+    if (a.p_dob === row.date_of_birth) return "unchanged";
+    const dob = parseDob(a.p_dob, usToday());
+    if (!dob) return "invalid";
+    const group = ageGroup(ageOn(dob, usToday()));
+    if (group === "under_minimum" || (group === "teen") !== row.is_minor) return "changes_age_group";
+    row.date_of_birth = a.p_dob;
+    return "changed";
+  }
+
   const rpc = async (fn: string, args: Record<string, unknown> = {}) =>
+    fn === "support_change_date_of_birth" ? { data: supportChangeDob(args), error: null } :
     fn === "audit_verify_chain"
       ? { data: [{ ok: true, checked: data.audit_events.length, broken_at_seq: null, problem: null, head_seq: data.audit_events.length || null, head_hash: data.audit_events.at(-1)?.row_hash ?? null }], error: null }
       : fn === "claim_device_slot"

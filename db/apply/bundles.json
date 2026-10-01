@@ -32,6 +32,12 @@
       "migrations": [
         "0008_billing"
       ]
+    },
+    "B2": {
+      "requires": "0008_billing",
+      "migrations": [
+        "0009_age_and_signup"
+      ]
     }
   }
 }
