@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useReverification } from "@clerk/nextjs";
+import { meFrom } from "../../me";
 
 type Event = {
   seq: number; at: string; actor: string; action: string; context: string | null; target: string | null;
@@ -52,7 +53,7 @@ export function AuditLog() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial load from the API
     void search(EMPTY);
-    void fetch("/api/v1/me", { cache: "no-store" }).then(async (r) => r.ok && setIsOwner((await r.json()).account?.roleKey === "owner"));
+    void fetch("/api/v1/me", { cache: "no-store" }).then(async (r) => r.ok && setIsOwner(meFrom(await r.json())?.roleKey === "owner"));
   }, [search]);
 
   const set = (k: keyof Filters) => (e: { target: { value: string } }) => setFilters({ ...filters, [k]: e.target.value });

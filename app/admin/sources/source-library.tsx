@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { call, when, type ApiResult } from "../../call";
+import { meFrom } from "../../me";
 
 type Source = {
   id: string; title: string; url: string | null; kind: string; licenseClass: string; licenseName: string | null; status: string;
@@ -54,7 +55,7 @@ export function SourceLibrary() {
   }, []);
 
   useEffect(() => {
-    fetch("/api/v1/me", { cache: "no-store" }).then((r) => r.json()).then((m) => setRole(m.roleKey ?? null)).catch(() => setRole(null));
+    fetch("/api/v1/me", { cache: "no-store" }).then((r) => r.json()).then((m) => setRole(meFrom(m)?.roleKey ?? null)).catch(() => setRole(null));
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial load from the API
     void loadAi();
   }, [loadAi]);
