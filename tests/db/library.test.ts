@@ -32,9 +32,9 @@ describe("the L1 bundle on the live B4 database", () => {
   });
   afterAll(() => db.drop());
 
-  it("applies in one go; pgvector is on; verify.sql is OK", async () => {
+  it("applies in one go; pgvector is on; verify.sql says L1 is applied (L2 not yet)", async () => {
     expect((await q("select extname from pg_extension where extname = 'vector'")).rows).toHaveLength(1);
-    expect((await q(readSql("db/verify.sql"))).rows[0].table_name).toMatch(/^OK: all 50 tables.*L1 source library is in place$/);
+    expect((await q(readSql("db/verify.sql"))).rows[0].table_name).toMatch(/^PROBLEM: 2 missing.*L1 applied, L2 NOT applied$/);
   });
 
   it("only the Owner approves an owner-supplied source; a Reviewer approves the others; a learner never", async () => {
