@@ -50,6 +50,10 @@ export const CAPABILITIES = {
   "owner_academy.open": { scope: "global", from: "NEVER_CAPS: Open or change the protected Owner Academy (Owner only)" },
   "owner_academy.edit": { scope: "global", from: "NEVER_CAPS: Open or change the protected Owner Academy (Owner only)", sensitive: true, reason: true },
   "pricing.change": { scope: "global", from: "NEVER_CAPS: Change plan prices (locked: Basic $20, Pro $50)", sensitive: true, reason: true },
+  // B4: refunds and credits are the Owner's alone, with a reason.
+  "billing.adjustments.view": { scope: "global", from: "B4: Refunds and credits are Owner-only (look up an account's charges)" },
+  "billing.refund": { scope: "global", from: "B4: Refunds and credits are Owner-only, with a reason, and audited", sensitive: true, reason: true },
+  "billing.credit": { scope: "global", from: "B4: Refunds and credits are Owner-only, with a reason, and audited", sensitive: true, reason: true },
 
   // ---- Super Admin ----
   "platform.operate": { scope: "global", from: "superAdmin: Operate platform areas (not administrator management)" },
@@ -112,6 +116,14 @@ export const CAPABILITIES = {
   "billing.view": { scope: "global", from: "B1: Account → Plan and billing: your plan, trial end and next charge" },
   "billing.subscribe": { scope: "global", from: "B1: a learner chooses Basic or Pro and checks out (Stripe Checkout); B3: a Guardian, for a teen" },
   "billing.portal": { scope: "global", from: "B1: cancel, change plan or payment method in Stripe's customer portal", sensitive: true },
+  // Not sensitive on purpose: cancelling takes no more steps than signing up (B4).
+  "billing.cancel": { scope: "global", from: "B4: Cancellation stays online, in as few steps as sign-up" },
+
+  // ---- Privacy Center (B4) ----
+  "privacy.view": { scope: "global", from: "B4: Privacy Center: the documents and versions I agreed to, and my requests" },
+  "privacy.export": { scope: "global", from: "B4: download my data (JSON)", sensitive: true },
+  "privacy.delete.request": { scope: "global", from: "B4: request deletion (tracked with a due date)", sensitive: true },
+  "privacy.consent.withdraw": { scope: "global", from: "B4: withdraw optional consent (recurring billing)" },
 
   // ---- Nobody: support "Never sees payment details, private notes, or Mentor conversations" ----
   "billing.payment_details.view": { scope: "global", from: "support: Never sees payment details (no role holds this)" },
@@ -131,6 +143,9 @@ export const OWNER_ONLY_CAPS = [
   "owner_academy.open",
   "owner_academy.edit",
   "pricing.change",
+  "billing.adjustments.view",
+  "billing.refund",
+  "billing.credit",
 ] as const satisfies readonly Cap[];
 
 /** Held by no role. Listed so tests can prove it. */
@@ -152,11 +167,16 @@ const SUPER_ADMIN: Cap[] = [
 ];
 
 /** Every signed-in Account manages its own devices and can answer a safeguard step. */
-const SELF_SECURITY: Cap[] = ["devices.manage", "devices.replace", "security.verify", "security.appeal.submit", "billing.view"];
+const SELF_SECURITY: Cap[] = [
+  "devices.manage", "devices.replace", "security.verify", "security.appeal.submit", "billing.view",
+  "privacy.view", "privacy.export", "privacy.delete.request",
+];
 
 const OWNER_EXCLUDED: Cap[] = [
   "guardian.controls", "guardian.identity.verify", "guardian.consent.give", "guardian.consent.withdraw",
-  "access.basic", "billing.subscribe", "billing.portal",
+  "access.basic", "billing.subscribe", "billing.portal", "billing.cancel", "privacy.consent.withdraw",
+  // The Owner account can't be deleted.
+  "privacy.delete.request",
 ];
 
 /** ROLE_CAPS as named capabilities. */
@@ -182,9 +202,9 @@ export const ROLE_CAPS: Record<RoleKey, readonly Cap[]> = {
   // A Guardian is the customer of record for their teens (B3): they subscribe and manage billing.
   guardian: [
     "self.view", "guardian.controls", "guardian.identity.verify", "guardian.consent.give", "guardian.consent.withdraw",
-    "billing.subscribe", "billing.portal", ...SELF_SECURITY,
+    "billing.subscribe", "billing.portal", "billing.cancel", "privacy.consent.withdraw", ...SELF_SECURITY,
   ],
-  learner: ["self.view", "learn", "billing.subscribe", "billing.portal", ...SELF_SECURITY],
+  learner: ["self.view", "learn", "billing.subscribe", "billing.portal", "billing.cancel", "privacy.consent.withdraw", ...SELF_SECURITY],
 };
 
 /** What a request is about. Course actions name the academy (course) they touch. */

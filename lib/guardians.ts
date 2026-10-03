@@ -9,6 +9,7 @@ import { ADULT_AGE, ageOn, usToday } from "@/lib/age";
 import { LIVE_STATUSES, latestSubscription, type SubscriptionRow } from "@/lib/billing";
 import { RENEWAL_TERMS_KEY, RENEWAL_TERMS_VERSION } from "@/lib/billing-terms";
 import { GUARDIAN_CONSENT_METHOD, TEEN_DOCUMENTS, TEEN_DOC_KEYS, type TeenDocKey } from "@/lib/teen-documents";
+import { noticeConsentWithdrawn } from "@/lib/notices";
 
 /**
  * B3: Guardian verification and teen activation.
@@ -396,12 +397,14 @@ export async function withdrawConsent(account: Account, teenId: string, reason: 
   const paused = await db.from("accounts").update({ status: "paused", updated_at: now }).eq("id", teenId).in("status", ["active", "pending"]);
   if (paused.error) throw new Error(`teen pause failed: ${paused.error.message}`);
 
+  // B4: both are emailed (they also see it in the app).
+  await noticeConsentWithdrawn(account.id, teenId, now);
   const name = await teenFirstName(teenId);
   return {
     ok: true, body: { withdrawn: true, planEnds: live ? live.paid_through_at ?? live.renews_at : null },
     event: {
       action: A, result: "Completed", sensitive: true, target: { type: "account", id: teenId, label: teen.email },
-      context: `Withdrew consent for ${name}. The teen account is paused, not deleted; progress is kept. ${live ? "The plan ends at the end of the period, with no further charges." : "There was no plan to cancel."} Both accounts see it the next time they open ASCENTRA.`,
+      context: `Withdrew consent for ${name}. The teen account is paused, not deleted; progress is kept. ${live ? "The plan ends at the end of the period, with no further charges." : "There was no plan to cancel."} Both are emailed and see it in the app.`,
       previous: teen.status, next: "paused",
     },
   };

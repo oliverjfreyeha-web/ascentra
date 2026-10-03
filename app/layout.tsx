@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
+import { BillingBanner } from "./billing-banner";
 import { DeviceGate } from "./device-gate";
 import "./globals.css";
 
@@ -13,6 +14,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <ClerkProvider signInUrl="/sign-in" signUpUrl="/sign-up" afterSignOutUrl="/">
       <html lang="en">
         <body>
+          <BillingBanner />
           <DeviceGate>{children}</DeviceGate>
         </body>
       </html>

@@ -141,6 +141,15 @@ function TeenCard({ teen: t, data, billing, idOk, busy, act, verified }: {
         <p>
           Active since {when(t.authorizedAt)}. Plan: {t.subscription ? `${t.subscription.plan} (${t.subscription.status})` : "none"}.
           Voice recordings: {t.defaults.voiceRecordings}. Uploads: {t.defaults.uploads}.
+          {t.subscription && t.subscription.status !== "canceled" && (
+            <>
+              {" "}
+              <button type="button" className="link" disabled={busy}
+                onClick={() => void act(() => call("POST", "/api/v1/billing/cancel", { teenAccountId: t.id }), (r) => window.location.assign(r.url as string))}>
+                Cancel {t.name}&apos;s plan
+              </button>
+            </>
+          )}
         </p>
       )}
       {t.link === "pending" && !idOk && <p>Confirm you&apos;re an adult first (above).</p>}

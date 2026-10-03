@@ -143,3 +143,43 @@ export async function openPortal(args: { account: Account; origin: string; strip
 }
 
 export type { PaidPlan };
+
+/**
+ * B4: cancel online, in two steps: "Cancel plan" here, then Stripe's confirmation page (the portal's cancel flow,
+ * opened directly on this subscription). It ends at the period end, so access lasts until then. A Guardian cancels a
+ * teen's plan (body.teenAccountId); a teen can't.
+ */
+export async function startCancel(args: {
+  account: Account; body: Record<string, unknown>; origin: string; stripe: Stripe; env: BillingEnv;
+}): Promise<ActionResult> {
+  const { account, body, origin, stripe, env } = args;
+  const A = "billing.cancel";
+  if (account.isMinor) return blocked(403, "Your Guardian manages your plan. Ask them to cancel it.", A, account.id);
+  const teen = typeof body.teenAccountId === "string" && body.teenAccountId !== account.id ? body.teenAccountId : null;
+  const beneficiary = teen ?? account.id;
+  const sub = await latestSubscription(beneficiary);
+  if (!sub || sub.payer_account_id !== account.id || !sub.processor_subscription_id || !["trialing", "active", "past_due"].includes(sub.status)) {
+    if (sub?.payer_account_id === account.id && sub.status === "canceled") {
+      return blocked(409, `This plan is already canceled. Access continues until ${(sub.paid_through_at ?? "").slice(0, 10)}.`, A, account.id);
+    }
+    return blocked(404, "There's no plan to cancel.", A, account.id);
+  }
+  const customer = await customerOf(account.id);
+  if (!customer) return blocked(404, "There's no plan to cancel.", A, account.id);
+  const back = `${origin}${teen ? "/guardian" : "/account"}`;
+  const session = await stripe.billingPortal.sessions.create({
+    customer, configuration: env.STRIPE_PORTAL_CONFIG, return_url: back,
+    flow_data: {
+      type: "subscription_cancel",
+      subscription_cancel: { subscription: sub.processor_subscription_id },
+      after_completion: { type: "redirect", redirect: { return_url: `${back}?billing=canceled_plan` } },
+    },
+  });
+  return {
+    ok: true, body: { url: session.url },
+    event: {
+      action: A, result: "Completed", target: { type: "account", id: beneficiary },
+      context: `Opened Stripe's cancellation page for the ${sub.plan} plan${teen ? " of their teen" : ""}. Cancelling ends it at the period end; access continues until then.`,
+    },
+  };
+}

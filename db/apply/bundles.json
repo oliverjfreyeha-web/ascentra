@@ -44,6 +44,12 @@
       "migrations": [
         "0010_guardians"
       ]
+    },
+    "B4": {
+      "requires": "0010_guardians",
+      "migrations": [
+        "0011_notices_and_privacy"
+      ]
     }
   }
 }

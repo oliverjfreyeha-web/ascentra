@@ -33,6 +33,12 @@ export function createFakeDb(tables: Record<string, Row[]> = {}) {
       && others.some((r) => r.event_type === "session" && r.ended_at == null && r.clerk_session_id === candidate.clerk_session_id)) {
       return dup("session_events_one_open");
     }
+    // B4: each notice once (notices_dedupe_key_key); one open deletion request per account.
+    if (table === "notices" && others.some((r) => r.dedupe_key === candidate.dedupe_key)) return dup("notices_dedupe_key_key");
+    if (table === "privacy_requests" && candidate.kind === "deletion" && candidate.status === "open"
+      && others.some((r) => r.kind === "deletion" && r.status === "open" && r.account_id === candidate.account_id)) {
+      return dup("privacy_requests_one_open_deletion");
+    }
     // B3: a teen has exactly one Guardian of record (0010: guardian_relationships_one_of_record).
     if (table === "guardian_relationships") {
       const open = (r: Row) => (r.withdrawn_at ?? null) === null && r.verification_status !== "failed";
@@ -208,6 +214,7 @@ export function createFakeDb(tables: Record<string, Row[]> = {}) {
         clerk_invitation_id: null, relationship: null, voice_recordings: "off", uploads: "private" };
     }
     if (table === "consent_records") return { consented_at: now };
+    if (table === "privacy_requests") return { status: "open", completed_at: null };
     return {};
   }
 

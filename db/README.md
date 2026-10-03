@@ -14,7 +14,8 @@ security is on for every table and denies by default.
 | `apply/F6.sql` | **The one file to paste for F6**: 0007 (trusted devices, sessions, sharing tracker, steps, appeals). Requires F5. |
 | `apply/B1.sql` | The one file to paste for B1: 0008 (billing: Stripe lifecycle, customers, events, Automatic Renewal Terms v0.1). Requires F6. |
 | `apply/B2.sql` | The one file to paste for B2: 0009 (date of birth, age rules, pending teens, Guardian invitations, Support's date-of-birth correction). Requires B1. |
-| `apply/B3.sql` | **The one file to paste for B3**: 0010 (Guardians: identity result, one Guardian of record per teen, paused teens, teen defaults, Teen Terms and Minor Privacy Notice v0.2). Requires B2. |
+| `apply/B3.sql` | The one file to paste for B3: 0010 (Guardians: identity result, one Guardian of record per teen, paused teens, teen defaults, Teen Terms and Minor Privacy Notice v0.2). Requires B2. |
+| `apply/B4.sql` | **The one file to paste for B4**: 0011 (notices sent, Privacy Center requests with due dates). Requires B3. |
 | `ops/create-test-learner.sql` | Owner-only, by hand: one adult test learner for an existing Clerk user (see below). Not a migration. |
 | `verify.sql` | Run after applying. First row is the verdict. |
 | `test/supabase-shim.sql` | Tests only: recreates Supabase's API roles and `auth.jwt()` on plain Postgres. Never apply it to Supabase. |
@@ -36,6 +37,15 @@ with an admin invite, and the untouched template. One transaction: a refusal cha
 4. Supabase SQL Editor → paste `db/ops/create-test-learner.sql`, set `clerk_user_id`, `email` and `reason` at the
    top → **Run**. The last result row shows the new account (`role = learner`, `is_minor = false`) and its audit event.
 5. Reload the site: "Signed in as TEST Learner (Learner)". The first page registers this browser as a trusted device.
+
+## Applying B4 to Supabase (B3 is already applied)
+
+Apply it **before** merging the B4 code: the B4 code writes the two new tables. The B3 code that is live keeps working.
+
+1. SQL Editor → **New query** → paste the whole of `db/apply/B4.sql` → **Run**. Expect "Success. No rows returned".
+   Nothing in it drops or changes existing data.
+2. **New query** → paste `db/verify.sql` → **Run**. The first row must read
+   `OK: all 47 tables … B4 notices and privacy requests are in place`.
 
 ## Applying B3 to Supabase (B2 is already applied)
 

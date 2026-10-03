@@ -6,6 +6,7 @@ import type { BillingEnv } from "@/lib/billing-env";
 import { accountOfCustomer, applySubscription } from "@/lib/billing";
 import { ALLOWED_COUNTRY, PLANS, RENEWAL_TERMS_KEY, RENEWAL_TERMS_VERSION } from "@/lib/billing-terms";
 import { activateTeenIfPaid, applyIdentityEvent } from "@/lib/guardians";
+import { noticeCanceled, noticeEnded, noticePaymentFailed } from "@/lib/notices";
 
 const ACTOR = SYSTEM_ACTOR("Stripe webhook");
 /** The Stripe events the endpoint must be subscribed to (see db/README.md, B1 and B3). */
@@ -81,6 +82,11 @@ export async function handleStripeEvent(event: Stripe.Event, stripe: Stripe, env
     const r = await applySubscription(await stripe.subscriptions.retrieve(subId), env, { accountId, eventId: event.id, eventAt: at });
     // B3: a Guardian's plan for a teen is live → the teen becomes active (safe to repeat).
     const teen = r.row ? await activateTeenIfPaid(r.row, event.id) : null;
+    // B4: the payer is emailed when a plan is canceled (access continues to the period end) or has ended.
+    if (r.row && r.previous && r.row.status !== r.previous.status) {
+      if (r.row.status === "canceled") await noticeCanceled(r.row);
+      if (r.row.status === "ended") await noticeEnded(r.row);
+    }
     return teen ? { ...r, outcome: `${r.outcome}; ${teen}` } : r;
   };
 
@@ -126,6 +132,8 @@ export async function handleStripeEvent(event: Stripe.Event, stripe: Stripe, env
       const subId = subscriptionOfInvoice(inv);
       if (!subId) break;
       const r = await sync(subId);
+      // B4: Stripe retries the payment; the payer (a teen's Guardian) is emailed and sees a banner on the site.
+      if (event.type === "invoice.payment_failed" && r.row) await noticePaymentFailed(r.row, inv.id ?? `${subId}:${event.id}`, inv.amount_due ?? 0);
       if (event.type === "invoice.payment_failed" && r.accountId) {
         await recordAudit({
           actor: ACTOR, action: "billing.payment_failed", result: "Completed", requestId: event.id,

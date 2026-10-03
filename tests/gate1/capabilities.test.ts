@@ -63,6 +63,15 @@ const GLOBAL: Record<string, RoleKey[]> = {
   "billing.view": ALL,
   "billing.subscribe": ["guardian", "learner"],
   "billing.portal": ["guardian", "learner"],
+  // B4: cancel, privacy, and the Owner's refunds and credits.
+  "billing.cancel": ["guardian", "learner"],
+  "privacy.view": ALL,
+  "privacy.export": ALL,
+  "privacy.delete.request": ALL.filter((r) => r !== "owner"),
+  "privacy.consent.withdraw": ["guardian", "learner"],
+  "billing.adjustments.view": ["owner"],
+  "billing.refund": ["owner"],
+  "billing.credit": ["owner"],
   "devices.replace": ALL,
   "security.verify": ALL,
   "security.appeal.submit": ALL,
@@ -100,6 +109,7 @@ const SENSITIVE = new Set([
   // F6: replacing a device and the Verify step re-check the second factor; so do Limit and Suspend.
   "devices.replace", "security.verify", "security.limit", "security.suspend", "billing.portal",
   "support.dob.change", "guardian.consent.give", "guardian.consent.withdraw",
+  "privacy.export", "privacy.delete.request", "billing.refund", "billing.credit",
 ]);
 
 /** F5: actions that must carry a reason (role and invite changes, ownership, publishing, archiving and
@@ -113,6 +123,8 @@ const REASON = new Set([
   "security.limit", "security.suspend",
   // B2: correcting a date of birth. B3: withdrawing consent for a teen.
   "support.dob.change", "guardian.consent.withdraw",
+  // B4: refunds and credits.
+  "billing.refund", "billing.credit",
 ]);
 
 function ctx(role: RoleKey, { verified = true, courses }: { verified?: boolean; courses?: string[] } = {}): AuthContext {
