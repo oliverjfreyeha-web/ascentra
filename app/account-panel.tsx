@@ -4,10 +4,9 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
-import { ROLE_LABEL, type RoleKey } from "@/lib/caps";
+import { ROLE_LABEL } from "@/lib/caps";
 import { SignOut } from "./sign-out";
-
-type Me = { email: string; roleKey: RoleKey; displayName: string };
+import { meFrom, type Me } from "./me";
 
 // Who is signed in, read only through /api/v1/me. A Clerk session the API refuses goes to /welcome, which says why
 // (the sign-up step, a teen waiting for their Guardian, a missing second factor, or no access).
@@ -28,7 +27,11 @@ export function AccountPanel() {
         .then(async (res) => {
           if (!live) return;
           if (res.status === 401) router.replace("/welcome");
-          else if (res.ok) setMe(((await res.json()) as { account: Me }).account);
+          else if (res.ok) {
+            const account = meFrom(await res.json());
+            if (!account) throw new Error("unexpected /api/v1/me answer");
+            setMe(account);
+          }
           else throw new Error(String(res.status));
         })
         .catch(() => {
