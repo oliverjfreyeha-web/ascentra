@@ -64,6 +64,11 @@ export function AccountPanel() {
           <Link href="/admin/audit">Audit log</Link> ·{" "}
         </>
       )}
+      {me && ["owner", "superAdmin", "courseAdmin", "reviewer"].includes(me.roleKey) && (
+        <>
+          <Link href="/admin/sources">Source library</Link> ·{" "}
+        </>
+      )}
       {(me?.roleKey === "owner" || me?.roleKey === "superAdmin" || me?.roleKey === "support") && (
         <>
           <Link href="/admin/security">Account safeguards</Link> ·{" "}

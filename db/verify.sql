@@ -1,4 +1,4 @@
--- Run in the Supabase SQL Editor after applying the migrations (F3, F4, F5, F6, B1, B2, B3 and B4).
+-- Run in the Supabase SQL Editor after applying the migrations (F3, F4, F5, F6, B1, B2, B3, B4 and L1).
 -- The first row is the verdict. The rest lists every expected table with whether it exists and
 -- whether row-level security is on, then any other table in public (which should not exist).
 with expected(table_name) as (values
@@ -15,7 +15,9 @@ with expected(table_name) as (values
   -- B1: Stripe customers and processed Stripe events.
   ('billing_customers'), ('billing_events'),
   -- B4: notices sent and Privacy Center requests.
-  ('notices'), ('privacy_requests')
+  ('notices'), ('privacy_requests'),
+  -- L1: source chunks for search, the Owner's open-license list, the AI call log.
+  ('source_chunks'), ('open_license_sources'), ('ai_calls')
 ),
 public_tables as (
   select c.relname as table_name, c.relrowsecurity as rls_on
@@ -102,9 +104,19 @@ b4 as (
   select
     exists (select 1 from private.schema_migrations where version = '0011_notices_and_privacy') as recorded,
     exists (select 1 from pg_trigger where tgrelid = to_regclass('public.privacy_requests') and tgname = 'privacy_request_not_owner') as owner_guard
+),
+l1 as (
+  select
+    exists (select 1 from private.schema_migrations where version = '0012_source_library') as recorded,
+    exists (select 1 from pg_extension where extname = 'vector') as pgvector,
+    exists (select 1 from information_schema.columns where table_schema = 'public'
+       and table_name = 'source_chunks' and column_name = 'embedding') as embeddings,
+    coalesce((select not has_function_privilege('anon', p, 'execute') and not has_function_privilege('authenticated', p, 'execute')
+              from to_regprocedure('public.match_source_chunks(text, text, integer)') p where p is not null), false) as retrieval_private,
+    exists (select 1 from pg_trigger where tgrelid = to_regclass('public.authority_decisions') and tgname = 'reject_update_delete') as decisions_insert_only
 )
 select 0 as sort,
-       case when (select count(*) from report where expected and table_exists and rls_on) = 47
+       case when (select count(*) from report where expected and table_exists and rls_on) = 50
              and not exists (select 1 from report where not expected)
              and (select triggers from insert_only) = 4
              and (select owner_triggers from f4) = 2 and (select invite_columns from f4) and (select recorded from f4)
@@ -119,7 +131,9 @@ select 0 as sort,
              and (select recorded from b3) and (select identity_columns from b3) and (select one_guardian from b3)
              and (select paused from b3) and (select teen_documents from b3)
              and (select recorded from b4) and (select owner_guard from b4)
-            then 'OK: all 47 tables exist with row-level security on; audit_events and consent_records are insert-only; F4 admin invites and Owner protections are in place; F5 audit chain is in place; F6 devices, sessions and safeguards are in place; B1 billing is in place; B2 age rules and sign-up are in place; B3 Guardians are in place; B4 notices and privacy requests are in place'
+             and (select recorded from l1) and (select pgvector from l1) and (select embeddings from l1)
+             and (select retrieval_private from l1) and (select decisions_insert_only from l1)
+            then 'OK: all 50 tables exist with row-level security on; audit_events and consent_records are insert-only; F4 admin invites and Owner protections are in place; F5 audit chain is in place; F6 devices, sessions and safeguards are in place; B1 billing is in place; B2 age rules and sign-up are in place; B3 Guardians are in place; B4 notices and privacy requests are in place; L1 source library is in place'
             else 'PROBLEM: ' || (select count(*) from report where expected and not table_exists) || ' missing, '
                  || (select count(*) from report where table_exists and not rls_on) || ' without RLS, '
                  || (select count(*) from report where not expected) || ' unexpected, '
@@ -142,6 +156,9 @@ select 0 as sort,
                                          and (select paused from b3) and (select teen_documents from b3)
                                     then 'applied' else 'NOT applied' end
                  || ', B4 ' || case when (select recorded from b4) and (select owner_guard from b4) then 'applied' else 'NOT applied' end
+                 || ', L1 ' || case when (select recorded from l1) and (select pgvector from l1) and (select embeddings from l1)
+                                         and (select retrieval_private from l1) and (select decisions_insert_only from l1)
+                                    then 'applied' else 'NOT applied' end
                  || case when (select staff_never_minor from b2) then '' else ', an Owner or admin is marked minor or pending' end
        end as table_name,
        null::boolean as table_exists, null::boolean as rls_on

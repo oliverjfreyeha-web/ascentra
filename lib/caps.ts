@@ -54,6 +54,8 @@ export const CAPABILITIES = {
   "billing.adjustments.view": { scope: "global", from: "B4: Refunds and credits are Owner-only (look up an account's charges)" },
   "billing.refund": { scope: "global", from: "B4: Refunds and credits are Owner-only, with a reason, and audited", sensitive: true, reason: true },
   "billing.credit": { scope: "global", from: "B4: Refunds and credits are Owner-only, with a reason, and audited", sensitive: true, reason: true },
+  // L1: the open-license list is the Owner's.
+  "sources.open_list.edit": { scope: "global", from: "L1: an open-license list the Owner can edit", reason: true },
 
   // ---- Super Admin ----
   "platform.operate": { scope: "global", from: "superAdmin: Operate platform areas (not administrator management)" },
@@ -125,6 +127,15 @@ export const CAPABILITIES = {
   "privacy.delete.request": { scope: "global", from: "B4: request deletion (tracked with a due date)", sensitive: true },
   "privacy.consent.withdraw": { scope: "global", from: "B4: withdraw optional consent (recurring billing)" },
 
+  // ---- Source library (L1): Owner and Reviewer add and approve; Reviewers record authority decisions ----
+  "sources.library.view": { scope: "global", from: "L1: the Source library admin page (list, filter, conflicts)" },
+  "sources.search": { scope: "global", from: "L1: retrieval of approved, cited passages for a topic" },
+  "sources.library.add": { scope: "global", from: "L1: Owner and Reviewer can add sources" },
+  "sources.library.decide": { scope: "global", from: "L1: Owner and Reviewer approve or reject sources", reason: true },
+  "sources.claims.manage": { scope: "global", from: "L1: extract claims, add a claim, open a conflict" },
+  "sources.conflicts.decide": { scope: "global", from: "reviewer: Resolve source conflicts (AuthorityDecision: which source is followed, and why)", reason: true },
+  "ai.status": { scope: "global", from: "L1: AI orchestration status, spend and the provider health check" },
+
   // ---- Nobody: support "Never sees payment details, private notes, or Mentor conversations" ----
   "billing.payment_details.view": { scope: "global", from: "support: Never sees payment details (no role holds this)" },
   "learners.private_notes.view": { scope: "global", from: "support: Never sees private notes (no role holds this)" },
@@ -146,6 +157,7 @@ export const OWNER_ONLY_CAPS = [
   "billing.adjustments.view",
   "billing.refund",
   "billing.credit",
+  "sources.open_list.edit",
 ] as const satisfies readonly Cap[];
 
 /** Held by no role. Listed so tests can prove it. */
@@ -164,6 +176,7 @@ const SUPER_ADMIN: Cap[] = [
   "audit.view", "audit.export",
   // decideAppeal checks inspectAccounts, which the prototype gives the Super Admin too.
   "support.appeal.decide", "security.suspend",
+  "sources.library.view", "sources.search", "ai.status",
 ];
 
 /** Every signed-in Account manages its own devices and can answer a safeguard step. */
@@ -187,11 +200,13 @@ export const ROLE_CAPS: Record<RoleKey, readonly Cap[]> = {
   courseAdmin: [
     "self.view", "learn",
     "courses.edit.assigned", "courses.publish.assigned", "courses.archive.assigned", "courses.restore.assigned",
-    "sources.flag.assigned", "access.basic", ...SELF_SECURITY,
+    "sources.flag.assigned", "access.basic", "sources.library.view", "sources.search", ...SELF_SECURITY,
   ],
   reviewer: [
     "self.view", "learn",
-    "courses.review.assigned", "sources.resolve.assigned", "work.evaluate.assigned", "access.basic", ...SELF_SECURITY,
+    "courses.review.assigned", "sources.resolve.assigned", "work.evaluate.assigned", "access.basic",
+    "sources.library.view", "sources.search", "sources.library.add", "sources.library.decide", "sources.claims.manage", "sources.conflicts.decide",
+    ...SELF_SECURITY,
   ],
   support: [
     "self.view", "learn",

@@ -50,6 +50,12 @@
       "migrations": [
         "0011_notices_and_privacy"
       ]
+    },
+    "L1": {
+      "requires": "0011_notices_and_privacy",
+      "migrations": [
+        "0012_source_library"
+      ]
     }
   }
 }

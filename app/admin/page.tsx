@@ -6,7 +6,7 @@ export default function AdminPage() {
   return (
     <main>
       <p className="muted">
-        <Link href="/">Home</Link> · <Link href="/admin/audit">Audit log</Link> · <Link href="/account">Account security</Link>
+        <Link href="/">Home</Link> · <Link href="/admin/audit">Audit log</Link> · <Link href="/admin/sources">Source library</Link> · <Link href="/account">Account security</Link>
       </p>
       <h1>Administrators</h1>
       <p className="muted">Only the Owner can grant, change or revoke administrator roles.</p>

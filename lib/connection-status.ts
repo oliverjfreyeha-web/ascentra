@@ -15,7 +15,7 @@ export const STATUS_LABELS = {
   },
 } as const;
 
-export type ServiceName = "supabase" | "clerk";
+export type ServiceName = "supabase" | "clerk" | "anthropic";
 
 export type ConnectionStatus =
   | {

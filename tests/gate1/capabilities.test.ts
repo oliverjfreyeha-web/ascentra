@@ -72,6 +72,15 @@ const GLOBAL: Record<string, RoleKey[]> = {
   "billing.adjustments.view": ["owner"],
   "billing.refund": ["owner"],
   "billing.credit": ["owner"],
+  // L1: the source library. Owner and Reviewer add, approve and decide; the open-license list is the Owner's.
+  "sources.library.view": ["owner", "superAdmin", "courseAdmin", "reviewer"],
+  "sources.search": ["owner", "superAdmin", "courseAdmin", "reviewer"],
+  "sources.library.add": ["owner", "reviewer"],
+  "sources.library.decide": ["owner", "reviewer"],
+  "sources.claims.manage": ["owner", "reviewer"],
+  "sources.conflicts.decide": ["owner", "reviewer"],
+  "sources.open_list.edit": ["owner"],
+  "ai.status": ["owner", "superAdmin"],
   "devices.replace": ALL,
   "security.verify": ALL,
   "security.appeal.submit": ALL,
@@ -123,8 +132,8 @@ const REASON = new Set([
   "security.limit", "security.suspend",
   // B2: correcting a date of birth. B3: withdrawing consent for a teen.
   "support.dob.change", "guardian.consent.withdraw",
-  // B4: refunds and credits.
-  "billing.refund", "billing.credit",
+  // B4: refunds and credits. L1: approving or rejecting a source, an authority decision, the open-license list.
+  "billing.refund", "billing.credit", "sources.library.decide", "sources.conflicts.decide", "sources.open_list.edit",
 ]);
 
 function ctx(role: RoleKey, { verified = true, courses }: { verified?: boolean; courses?: string[] } = {}): AuthContext {
