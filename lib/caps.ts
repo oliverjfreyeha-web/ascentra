@@ -103,10 +103,14 @@ export const CAPABILITIES = {
   "security.appeal.submit": { scope: "global", from: "ENF: every step explains what happened and how to appeal" },
   "learn": { scope: "global", from: "ROLE_PERMS: learn (every role except guardian)" },
   "guardian.controls": { scope: "global", from: "ROLE_PERMS: guardianControls" },
+  // ---- Guardians (B3): verify, agree for a teen, pay as customer of record, withdraw ----
+  "guardian.identity.verify": { scope: "global", from: "gAuthorize 1: Confirm you're an adult (an identity check in production)" },
+  "guardian.consent.give": { scope: "global", from: "gAuthorize 6: Teen Terms and Minor Privacy Notice, agreed by the Guardian", sensitive: true },
+  "guardian.consent.withdraw": { scope: "global", from: "GCONSENT: the Guardian can withdraw consent; the teen's account pauses", sensitive: true, reason: true },
 
   // ---- Billing (B1): prices are locked in code (lib/billing-terms.ts); no role can change them ----
   "billing.view": { scope: "global", from: "B1: Account → Plan and billing: your plan, trial end and next charge" },
-  "billing.subscribe": { scope: "global", from: "B1: a learner chooses Basic or Pro and checks out (Stripe Checkout)" },
+  "billing.subscribe": { scope: "global", from: "B1: a learner chooses Basic or Pro and checks out (Stripe Checkout); B3: a Guardian, for a teen" },
   "billing.portal": { scope: "global", from: "B1: cancel, change plan or payment method in Stripe's customer portal", sensitive: true },
 
   // ---- Nobody: support "Never sees payment details, private notes, or Mentor conversations" ----
@@ -150,7 +154,10 @@ const SUPER_ADMIN: Cap[] = [
 /** Every signed-in Account manages its own devices and can answer a safeguard step. */
 const SELF_SECURITY: Cap[] = ["devices.manage", "devices.replace", "security.verify", "security.appeal.submit", "billing.view"];
 
-const OWNER_EXCLUDED: Cap[] = ["guardian.controls", "access.basic", "billing.subscribe", "billing.portal"];
+const OWNER_EXCLUDED: Cap[] = [
+  "guardian.controls", "guardian.identity.verify", "guardian.consent.give", "guardian.consent.withdraw",
+  "access.basic", "billing.subscribe", "billing.portal",
+];
 
 /** ROLE_CAPS as named capabilities. */
 export const ROLE_CAPS: Record<RoleKey, readonly Cap[]> = {
@@ -172,7 +179,11 @@ export const ROLE_CAPS: Record<RoleKey, readonly Cap[]> = {
     "support.recovery.send", "support.device.free", "support.appeal.decide", "security.limit", "support.dob.change",
     "access.basic", ...SELF_SECURITY,
   ],
-  guardian: ["self.view", "guardian.controls", ...SELF_SECURITY],
+  // A Guardian is the customer of record for their teens (B3): they subscribe and manage billing.
+  guardian: [
+    "self.view", "guardian.controls", "guardian.identity.verify", "guardian.consent.give", "guardian.consent.withdraw",
+    "billing.subscribe", "billing.portal", ...SELF_SECURITY,
+  ],
   learner: ["self.view", "learn", "billing.subscribe", "billing.portal", ...SELF_SECURITY],
 };
 

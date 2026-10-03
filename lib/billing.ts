@@ -5,6 +5,7 @@ import { recordAudit, SYSTEM_ACTOR, type AuditActor } from "@/lib/audit";
 import { decide, type RoleKey } from "@/lib/caps";
 import type { BillingEnv } from "@/lib/billing-env";
 import { PLANS, type PaidPlan } from "@/lib/billing-terms";
+import { mayPayFor } from "@/lib/guardians";
 
 /**
  * Subscriptions and entitlements, kept in step with Stripe. Stripe is the source of truth for the
@@ -154,8 +155,12 @@ export async function applySubscription(
     if (error) throw new Error(`subscription update failed: ${error.message}`);
     row = data as SubscriptionRow;
   } else {
+    // B3: a Guardian pays for a teen. The teen named in the metadata (written by our checkout) is used only if
+    // the payer is that teen's Guardian of record; otherwise the payer is the beneficiary.
+    const named = sub.metadata?.beneficiary_account_id;
+    const beneficiary = named && named !== accountId && (await mayPayFor(accountId, named)) ? named : accountId;
     const { data, error } = await db.from("subscriptions")
-      .insert({ ...fields, payer_account_id: accountId, beneficiary_account_id: accountId }).select("*").single();
+      .insert({ ...fields, payer_account_id: accountId, beneficiary_account_id: beneficiary }).select("*").single();
     // 23505: Stripe sends several events for a new subscription at once, and a parallel delivery inserted
     // it first. Apply this event again as an update of that row (once).
     if (error?.code === "23505" && !opts.retried) return applySubscription(sub, env, { ...opts, retried: true });

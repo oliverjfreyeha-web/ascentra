@@ -15,8 +15,8 @@ export type AccountRow = {
   email_verified: boolean;
   role: Role;
   is_minor: boolean;
-  /** pending: a teen waiting for their Guardian (B2). Only a learner is ever pending. */
-  status: "active" | "pending" | "disabled";
+  /** pending: a teen waiting for their Guardian (B2). paused: the Guardian withdrew consent (B3). Learners only. */
+  status: "active" | "pending" | "paused" | "disabled";
   password_enabled: boolean;
   two_factor_enabled: boolean;
   password_last_updated_at: string | null;
@@ -50,6 +50,8 @@ export type ClerkIdentity = {
   imageUrl: string | null;
   /** Set on the Clerk invitation by the Owner's admin invite; copied to the user at sign-up. */
   inviteId: string | null;
+  /** Set on the Clerk invitation a teen's Guardian receives (B3); copied to the user at sign-up. */
+  guardianInviteId: string | null;
 };
 
 const iso = (ms: number | null) => (ms == null ? null : new Date(ms).toISOString());
@@ -69,6 +71,7 @@ export function identityFromClerkUser(user: UserJSON): ClerkIdentity {
     displayName: name || email?.split("@")[0] || "Account",
     imageUrl: user.has_image ? user.image_url : null,
     inviteId: typeof user.public_metadata?.ascentra_invite_id === "string" ? user.public_metadata.ascentra_invite_id : null,
+    guardianInviteId: typeof user.public_metadata?.ascentra_guardian_invite_id === "string" ? user.public_metadata.ascentra_guardian_invite_id : null,
   };
 }
 

@@ -14,7 +14,8 @@ export const GET = withCap("billing.view", async (_req, _ctx, account) => {
   const nextPlan = live?.plan === "trial" ? "basic" : live?.plan;
   return ok({
     configured: readBillingEnv().ok,
-    canSubscribe: account.roleKey === "learner",
+    // A teen's plan is chosen by their Guardian, in the Guardian Center.
+    canSubscribe: account.roleKey === "learner" && !account.isMinor,
     tier,
     source,
     subscription: live && {

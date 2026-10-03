@@ -69,6 +69,11 @@ export function AccountPanel() {
           <Link href="/admin/security">Account safeguards</Link> ·{" "}
         </>
       )}
+      {me?.roleKey === "guardian" && (
+        <>
+          <Link href="/guardian">Guardian Center</Link> ·{" "}
+        </>
+      )}
       <Link href="/account">Account and devices</Link> · <SignOut />
     </p>
   );

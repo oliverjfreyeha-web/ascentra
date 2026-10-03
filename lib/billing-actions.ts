@@ -5,6 +5,7 @@ import type { Account } from "@/lib/auth";
 import type { AuditInput } from "@/lib/audit";
 import type { BillingEnv } from "@/lib/billing-env";
 import { LIVE_STATUSES, customerOf, latestSubscription, priceMatches, trialEligible } from "@/lib/billing";
+import { teenCheckoutRefusal, teenFirstName } from "@/lib/guardians";
 import {
   ALLOWED_COUNTRY, CONSENT_METHOD, PLANS, RENEWAL_TERMS_BODY, RENEWAL_TERMS_KEY, RENEWAL_TERMS_VERSION, TRIAL_DAYS,
   renewalSummary, usd, type PaidPlan,
@@ -25,15 +26,26 @@ const blocked = (status: number, reason: string, action: string, accountId: stri
  * version shown; that agreement is stored (consent_records) before Stripe is contacted. The free trial
  * is the first Basic subscription only, and converts to Basic. The price Stripe charges must be the
  * locked price, or nothing starts.
+ * B3: a Guardian checks out for one of their teens (body.teenAccountId): the Guardian is the customer of record and
+ * pays; the teen is the beneficiary, and becomes active once Stripe confirms the subscription.
  */
 export async function startCheckout(args: {
   account: Account; body: Record<string, unknown>; origin: string; stripe: Stripe; env: BillingEnv;
 }): Promise<ActionResult> {
   const { account, body, origin, stripe, env } = args;
   const A = "billing.subscribe";
-  if (account.roleKey !== "learner") return blocked(403, "Only a learner account subscribes. Your role already includes access.", A, account.id);
-  // The Guardian is the customer of record for a teen (B3).
+  if (account.roleKey !== "learner" && account.roleKey !== "guardian") {
+    return blocked(403, "Only a learner account subscribes. Your role already includes access.", A, account.id);
+  }
+  // The Guardian is the customer of record for a teen.
   if (account.isMinor) return blocked(403, "A teen's plan is chosen and paid for by their Guardian.", A, account.id);
+  let beneficiary = account.id;
+  if (account.roleKey === "guardian") {
+    const why = await teenCheckoutRefusal(account.id, body.teenAccountId);
+    if (why) return blocked(why.startsWith("Choose") ? 400 : why.startsWith("This teen isn't") ? 404 : 409, why, A, account.id);
+    beneficiary = body.teenAccountId as string;
+  }
+  const forTeen = beneficiary !== account.id;
   const plan = body.plan;
   if (plan !== "basic" && plan !== "pro") return blocked(400, "Choose Basic or Pro.", A, account.id);
   if (body.agreed !== true || body.termsVersion !== RENEWAL_TERMS_VERSION) {
@@ -41,9 +53,9 @@ export async function startCheckout(args: {
   }
   if (body.usResident !== true) return blocked(400, "ASCENTRA is available in the United States only. Confirm that you're in the US.", A, account.id);
 
-  const current = await latestSubscription(account.id);
+  const current = await latestSubscription(beneficiary);
   if (current && LIVE_STATUSES.includes(current.status)) {
-    return blocked(409, "You already have a plan. Change or cancel it from Manage billing.", A, account.id);
+    return blocked(409, `${forTeen ? "This teen already has" : "You already have"} a plan. Change or cancel it from Manage billing.`, A, account.id);
   }
 
   const db = getDb();
@@ -78,7 +90,7 @@ export async function startCheckout(args: {
     && (await stripe.subscriptions.list({ customer, status: "all", limit: 1 })).data.length === 0;
 
   const { data: consent, error: consentErr } = await db.from("consent_records").insert({
-    account_id: account.id, actor_account_id: account.id, relation: "self",
+    account_id: beneficiary, actor_account_id: account.id, relation: forTeen ? "guardian_for_teen" : "self",
     legal_document_version_id: terms.id, status: "given", method: CONSENT_METHOD,
   }).select("id").single();
   if (consentErr || !consent) throw new Error(`consent insert failed: ${consentErr?.message}`);
@@ -90,7 +102,7 @@ export async function startCheckout(args: {
     client_reference_id: account.id,
     line_items: [{ price: priceId, quantity: 1 }],
     subscription_data: {
-      metadata: { account_id: account.id, plan, consent_record_id: consentId },
+      metadata: { account_id: account.id, beneficiary_account_id: beneficiary, plan, consent_record_id: consentId },
       ...(trial ? { trial_period_days: TRIAL_DAYS, trial_settings: { end_behavior: { missing_payment_method: "cancel" } } } : {}),
     },
     payment_method_collection: "always",
@@ -99,9 +111,9 @@ export async function startCheckout(args: {
     managed_payments: { enabled: false },
     customer_update: { address: "auto", name: "auto" },
     custom_text: { submit: { message: renewalSummary(plan, trial) } },
-    metadata: { account_id: account.id, plan, consent_record_id: consentId, allowed_country: ALLOWED_COUNTRY },
-    success_url: `${origin}/account?billing=success`,
-    cancel_url: `${origin}/account?billing=canceled`,
+    metadata: { account_id: account.id, beneficiary_account_id: beneficiary, plan, consent_record_id: consentId, allowed_country: ALLOWED_COUNTRY },
+    success_url: `${origin}${forTeen ? "/guardian" : "/account"}?billing=success`,
+    cancel_url: `${origin}${forTeen ? "/guardian" : "/account"}?billing=canceled`,
   });
 
   return {
@@ -109,8 +121,8 @@ export async function startCheckout(args: {
     body: { url: session.url, trial },
     event: {
       action: A, result: "Completed", sensitive: true,
-      context: `Agreed to the Automatic Renewal Terms ${RENEWAL_TERMS_VERSION} (${CONSENT_METHOD}) and opened checkout for ${PLANS[plan].name}${trial ? ` with a ${TRIAL_DAYS}-day trial` : ""}.`,
-      target: { type: "account", id: account.id }, next: `${plan}${trial ? " (trial)" : ""}`,
+      context: `Agreed to the Automatic Renewal Terms ${RENEWAL_TERMS_VERSION} (${CONSENT_METHOD}) and opened checkout for ${PLANS[plan].name}${trial ? ` with a ${TRIAL_DAYS}-day trial` : ""}${forTeen ? ` for ${await teenFirstName(beneficiary)}, as the Guardian and customer of record` : ""}.`,
+      target: { type: "account", id: beneficiary }, next: `${plan}${trial ? " (trial)" : ""}`,
     },
   };
 }
@@ -121,7 +133,9 @@ export async function openPortal(args: { account: Account; origin: string; strip
   const A = "billing.portal";
   const customer = await customerOf(account.id);
   if (!customer) return blocked(404, "There's no billing account yet. Choose a plan first.", A, account.id);
-  const session = await stripe.billingPortal.sessions.create({ customer, configuration: env.STRIPE_PORTAL_CONFIG, return_url: `${origin}/account` });
+  const session = await stripe.billingPortal.sessions.create({
+    customer, configuration: env.STRIPE_PORTAL_CONFIG, return_url: `${origin}${account.roleKey === "guardian" ? "/guardian" : "/account"}`,
+  });
   return {
     ok: true, body: { url: session.url },
     event: { action: A, result: "Completed", context: "Opened Stripe's customer portal (cancel, change plan, payment method).", target: { type: "account", id: account.id } },

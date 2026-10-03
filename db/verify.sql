@@ -1,4 +1,4 @@
--- Run in the Supabase SQL Editor after applying the migrations (F3, F4, F5, F6, B1 and B2).
+-- Run in the Supabase SQL Editor after applying the migrations (F3, F4, F5, F6, B1, B2 and B3).
 -- The first row is the verdict. The rest lists every expected table with whether it exists and
 -- whether row-level security is on, then any other table in public (which should not exist).
 with expected(table_name) as (values
@@ -79,10 +79,22 @@ b2 as (
     coalesce((select not has_column_privilege('authenticated', 'public.accounts', 'date_of_birth', 'select')
               where exists (select 1 from information_schema.columns where table_schema = 'public'
                  and table_name = 'accounts' and column_name = 'date_of_birth')), false) as dob_hidden,
-    exists (select 1 from pg_indexes where schemaname = 'public' and indexname = 'guardian_relationships_one_open_invite') as guardian_invites,
+    -- B3 replaces this index with guardian_relationships_one_of_record.
+    exists (select 1 from pg_indexes where schemaname = 'public'
+       and indexname in ('guardian_relationships_one_open_invite', 'guardian_relationships_one_of_record')) as guardian_invites,
     not exists (select 1 from public.accounts where status = 'pending' and role <> 'learner')
       and not exists (select 1 from public.accounts a where a.role in ('owner', 'admin')
                       and (a.is_minor or to_jsonb(a) ->> 'date_of_birth' is not null)) as staff_never_minor
+),
+b3 as (
+  select
+    exists (select 1 from private.schema_migrations where version = '0010_guardians') as recorded,
+    exists (select 1 from information_schema.columns where table_schema = 'public'
+       and table_name = 'accounts' and column_name = 'identity_status') as identity_columns,
+    exists (select 1 from pg_indexes where schemaname = 'public' and indexname = 'guardian_relationships_one_of_record') as one_guardian,
+    exists (select 1 from pg_constraint where conname = 'accounts_status_check' and pg_get_constraintdef(oid) like '%paused%') as paused,
+    (select count(*) from public.legal_document_versions where status = 'published'
+       and (document_key, version) in (('teen_terms', 'v0.2'), ('minor_privacy_notice', 'v0.2'))) = 2 as teen_documents
 )
 select 0 as sort,
        case when (select count(*) from report where expected and table_exists and rls_on) = 45
@@ -97,7 +109,9 @@ select 0 as sort,
              and (select recorded from b2) and (select dob_column from b2) and (select pending_rule from b2)
              and (select age_trigger from b2) and (select dob_change_private from b2) and (select dob_hidden from b2)
              and (select guardian_invites from b2) and (select staff_never_minor from b2)
-            then 'OK: all 45 tables exist with row-level security on; audit_events and consent_records are insert-only; F4 admin invites and Owner protections are in place; F5 audit chain is in place; F6 devices, sessions and safeguards are in place; B1 billing is in place; B2 age rules and sign-up are in place'
+             and (select recorded from b3) and (select identity_columns from b3) and (select one_guardian from b3)
+             and (select paused from b3) and (select teen_documents from b3)
+            then 'OK: all 45 tables exist with row-level security on; audit_events and consent_records are insert-only; F4 admin invites and Owner protections are in place; F5 audit chain is in place; F6 devices, sessions and safeguards are in place; B1 billing is in place; B2 age rules and sign-up are in place; B3 Guardians are in place'
             else 'PROBLEM: ' || (select count(*) from report where expected and not table_exists) || ' missing, '
                  || (select count(*) from report where table_exists and not rls_on) || ' without RLS, '
                  || (select count(*) from report where not expected) || ' unexpected, '
@@ -115,6 +129,9 @@ select 0 as sort,
                  || ', B2 ' || case when (select recorded from b2) and (select dob_column from b2) and (select pending_rule from b2)
                                          and (select age_trigger from b2) and (select dob_change_private from b2)
                                          and (select dob_hidden from b2) and (select guardian_invites from b2)
+                                    then 'applied' else 'NOT applied' end
+                 || ', B3 ' || case when (select recorded from b3) and (select identity_columns from b3) and (select one_guardian from b3)
+                                         and (select paused from b3) and (select teen_documents from b3)
                                     then 'applied' else 'NOT applied' end
                  || case when (select staff_never_minor from b2) then '' else ', an Owner or admin is marked minor or pending' end
        end as table_name,

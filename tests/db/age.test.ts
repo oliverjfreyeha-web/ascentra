@@ -33,7 +33,7 @@ describe("the B2 bundle on the live B1 database (Owner, an admin, the adult test
       { role: "learner", status: "active", is_minor: false, date_of_birth: null },
     ]);
     expect((await q("select ok from public.audit_verify_chain()")).rows[0].ok).toBe(true);
-    expect((await q(readSql("db/verify.sql"))).rows[0].table_name).toMatch(/^OK: all 45 tables.*B2 age rules and sign-up are in place$/);
+    expect((await q(readSql("db/verify.sql"))).rows[0].table_name).toMatch(/^PROBLEM: 0 missing.*B2 applied, B3 NOT applied$/);
   });
 
   it("never stores anyone under 14, and counts a birthday only once it has come everywhere in the US", async () => {

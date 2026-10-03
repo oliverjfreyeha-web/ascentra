@@ -232,10 +232,12 @@ describe("checkout", () => {
     expect(calls.checkout).toHaveLength(0);
   });
 
-  it("staff and guardians can't subscribe; the Owner has full access and isn't offered a plan", async () => {
-    for (const role of ["owner", "superAdmin", "support", "guardian"] as RoleKey[]) {
+  it("staff can't subscribe; the Owner has full access and isn't offered a plan; a Guardian subscribes only for a teen", async () => {
+    for (const role of ["owner", "superAdmin", "support"] as RoleKey[]) {
       expect((await call(checkoutRoute, "POST", "/api/v1/billing/checkout", { ...AGREE, plan: "basic" }, role)).status, role).toBe(403);
     }
+    // B3: a Guardian checks out only for a linked teen (tests/unit/guardians.test.ts).
+    expect((await call(checkoutRoute, "POST", "/api/v1/billing/checkout", { ...AGREE, plan: "basic" }, "guardian")).status).toBe(400);
   });
 });
 

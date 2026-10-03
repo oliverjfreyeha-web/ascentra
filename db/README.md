@@ -13,7 +13,8 @@ security is on for every table and denies by default.
 | `apply/F5.sql` | The one file to paste for F5: 0006 (audit chain and its verifier). Requires F4. |
 | `apply/F6.sql` | **The one file to paste for F6**: 0007 (trusted devices, sessions, sharing tracker, steps, appeals). Requires F5. |
 | `apply/B1.sql` | The one file to paste for B1: 0008 (billing: Stripe lifecycle, customers, events, Automatic Renewal Terms v0.1). Requires F6. |
-| `apply/B2.sql` | **The one file to paste for B2**: 0009 (date of birth, age rules, pending teens, Guardian invitations, Support's date-of-birth correction). Requires B1. |
+| `apply/B2.sql` | The one file to paste for B2: 0009 (date of birth, age rules, pending teens, Guardian invitations, Support's date-of-birth correction). Requires B1. |
+| `apply/B3.sql` | **The one file to paste for B3**: 0010 (Guardians: identity result, one Guardian of record per teen, paused teens, teen defaults, Teen Terms and Minor Privacy Notice v0.2). Requires B2. |
 | `ops/create-test-learner.sql` | Owner-only, by hand: one adult test learner for an existing Clerk user (see below). Not a migration. |
 | `verify.sql` | Run after applying. First row is the verdict. |
 | `test/supabase-shim.sql` | Tests only: recreates Supabase's API roles and `auth.jwt()` on plain Postgres. Never apply it to Supabase. |
@@ -35,6 +36,17 @@ with an admin invite, and the untouched template. One transaction: a refusal cha
 4. Supabase SQL Editor → paste `db/ops/create-test-learner.sql`, set `clerk_user_id`, `email` and `reason` at the
    top → **Run**. The last result row shows the new account (`role = learner`, `is_minor = false`) and its audit event.
 5. Reload the site: "Signed in as TEST Learner (Learner)". The first page registers this browser as a trusted device.
+
+## Applying B3 to Supabase (B2 is already applied)
+
+Apply it **before** merging the B3 code: the B3 code writes the new columns. The B2 code that is live keeps working.
+
+1. SQL Editor → **New query** → paste the whole of `db/apply/B3.sql` → **Run**. Expect "Success. No rows returned".
+   If the editor warns about a destructive operation, that's `drop constraint accounts_status_check` and
+   `accounts_pending_is_learner` (each replaced at once by a wider one), `drop index guardian_relationships_one_open_invite`
+   (replaced by `guardian_relationships_one_of_record`) and the Guardian-link trigger (recreated). Nothing is deleted.
+2. **New query** → paste `db/verify.sql` → **Run**. The first row must read
+   `OK: all 45 tables … B3 Guardians are in place`.
 
 ## Applying B2 to Supabase (B1 is already applied)
 

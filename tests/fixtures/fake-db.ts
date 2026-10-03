@@ -33,6 +33,13 @@ export function createFakeDb(tables: Record<string, Row[]> = {}) {
       && others.some((r) => r.event_type === "session" && r.ended_at == null && r.clerk_session_id === candidate.clerk_session_id)) {
       return dup("session_events_one_open");
     }
+    // B3: a teen has exactly one Guardian of record (0010: guardian_relationships_one_of_record).
+    if (table === "guardian_relationships") {
+      const open = (r: Row) => (r.withdrawn_at ?? null) === null && r.verification_status !== "failed";
+      if (open(candidate) && others.some((r) => open(r) && r.teen_account_id === candidate.teen_account_id)) {
+        return dup("guardian_relationships_one_of_record");
+      }
+    }
     if (table === "role_assignments") {
       const open = (r: Row) => r.status === "invited" || r.status === "claimed";
       const live = (r: Row) => r.status === "claimed" || r.status === "active";
@@ -196,6 +203,11 @@ export function createFakeDb(tables: Record<string, Row[]> = {}) {
     if (table === "enforcement_steps") return { acknowledged_at: null, limit_until: null };
     if (table === "session_events") return { occurred_at: now, ended_at: null, end_reason: null, conflict: false };
     if (table === "trusted_devices") return { revoked_at: null, trust_state: "pending_verification" };
+    if (table === "guardian_relationships") {
+      return { guardian_account_id: null, verification_status: "pending", withdrawn_at: null, withdrawal_reason: null, authorized_at: null,
+        clerk_invitation_id: null, relationship: null, voice_recordings: "off", uploads: "private" };
+    }
+    if (table === "consent_records") return { consented_at: now };
     return {};
   }
 
