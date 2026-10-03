@@ -136,6 +136,14 @@ export const CAPABILITIES = {
   "sources.conflicts.decide": { scope: "global", from: "reviewer: Resolve source conflicts (AuthorityDecision: which source is followed, and why)", reason: true },
   "ai.status": { scope: "global", from: "L1: AI orchestration status, spend and the provider health check" },
 
+  // ---- Course generation (L2): AI drafts, people approve. Each route also applies the course scope of
+  // courses.edit / courses.review / courses.publish (assigned courses for Course Admins and Reviewers). ----
+  "sources.research": { scope: "global", from: "L2: research a topic with live web search; what it finds is proposed, not usable until approved" },
+  "courses.view": { scope: "global", from: "L2: the course builder: blueprints, lesson versions, reviews (assigned courses for Course Admins and Reviewers)" },
+  "courses.build": { scope: "global", from: "courseAdmin: Build, edit, and version assigned courses only (L2: blueprints and lesson drafts)" },
+  "courses.verify": { scope: "global", from: "reviewer: Comment on and verify course versions in Review" },
+  "courses.release": { scope: "global", from: "courseAdmin: Publish, archive, and restore assigned courses (L2: publish a verified lesson version)", sensitive: true, reason: true },
+
   // ---- Nobody: support "Never sees payment details, private notes, or Mentor conversations" ----
   "billing.payment_details.view": { scope: "global", from: "support: Never sees payment details (no role holds this)" },
   "learners.private_notes.view": { scope: "global", from: "support: Never sees private notes (no role holds this)" },
@@ -177,6 +185,7 @@ const SUPER_ADMIN: Cap[] = [
   // decideAppeal checks inspectAccounts, which the prototype gives the Super Admin too.
   "support.appeal.decide", "security.suspend",
   "sources.library.view", "sources.search", "ai.status",
+  "sources.research", "courses.view", "courses.build", "courses.release",
 ];
 
 /** Every signed-in Account manages its own devices and can answer a safeguard step. */
@@ -200,12 +209,14 @@ export const ROLE_CAPS: Record<RoleKey, readonly Cap[]> = {
   courseAdmin: [
     "self.view", "learn",
     "courses.edit.assigned", "courses.publish.assigned", "courses.archive.assigned", "courses.restore.assigned",
-    "sources.flag.assigned", "access.basic", "sources.library.view", "sources.search", ...SELF_SECURITY,
+    "sources.flag.assigned", "access.basic", "sources.library.view", "sources.search",
+    "sources.research", "courses.view", "courses.build", "courses.release", ...SELF_SECURITY,
   ],
   reviewer: [
     "self.view", "learn",
     "courses.review.assigned", "sources.resolve.assigned", "work.evaluate.assigned", "access.basic",
     "sources.library.view", "sources.search", "sources.library.add", "sources.library.decide", "sources.claims.manage", "sources.conflicts.decide",
+    "sources.research", "courses.view", "courses.verify",
     ...SELF_SECURITY,
   ],
   support: [

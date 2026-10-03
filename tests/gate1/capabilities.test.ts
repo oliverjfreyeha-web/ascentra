@@ -81,6 +81,12 @@ const GLOBAL: Record<string, RoleKey[]> = {
   "sources.conflicts.decide": ["owner", "reviewer"],
   "sources.open_list.edit": ["owner"],
   "ai.status": ["owner", "superAdmin"],
+  // L2: course generation. The course scope (assigned courses) is applied by each route on top of these.
+  "sources.research": ["owner", "superAdmin", "courseAdmin", "reviewer"],
+  "courses.view": ["owner", "superAdmin", "courseAdmin", "reviewer"],
+  "courses.build": ["owner", "superAdmin", "courseAdmin"],
+  "courses.verify": ["owner", "reviewer"],
+  "courses.release": ["owner", "superAdmin", "courseAdmin"],
   "devices.replace": ALL,
   "security.verify": ALL,
   "security.appeal.submit": ALL,
@@ -119,6 +125,8 @@ const SENSITIVE = new Set([
   "devices.replace", "security.verify", "security.limit", "security.suspend", "billing.portal",
   "support.dob.change", "guardian.consent.give", "guardian.consent.withdraw",
   "privacy.export", "privacy.delete.request", "billing.refund", "billing.credit",
+  // L2: publishing a lesson version.
+  "courses.release",
 ]);
 
 /** F5: actions that must carry a reason (role and invite changes, ownership, publishing, archiving and
@@ -134,6 +142,8 @@ const REASON = new Set([
   "support.dob.change", "guardian.consent.withdraw",
   // B4: refunds and credits. L1: approving or rejecting a source, an authority decision, the open-license list.
   "billing.refund", "billing.credit", "sources.library.decide", "sources.conflicts.decide", "sources.open_list.edit",
+  // L2: publishing a lesson version.
+  "courses.release",
 ]);
 
 function ctx(role: RoleKey, { verified = true, courses }: { verified?: boolean; courses?: string[] } = {}): AuthContext {
