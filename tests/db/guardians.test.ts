@@ -34,7 +34,7 @@ describe("the B3 bundle on the live B2 database (Owner, an admin, a pending teen
     expect((await q("select verification_status, invited_email, voice_recordings, uploads from public.guardian_relationships")).rows)
       .toEqual([{ verification_status: "invited", invited_email: "mom@example.com", voice_recordings: "off", uploads: "private" }]);
     expect((await q("select identity_status from public.accounts where role = 'owner'")).rows[0].identity_status).toBe("none");
-    expect((await q(readSql("db/verify.sql"))).rows[0].table_name).toMatch(/^PROBLEM: 2 missing.*B3 applied, B4 NOT applied$/);
+    expect((await q(readSql("db/verify.sql"))).rows[0].table_name).toMatch(/^PROBLEM: 5 missing.*B3 applied, B4 NOT applied, L1 NOT applied$/);
   });
 
   it("publishes the Teen Terms and the Minor Privacy Notice word for word as the Guardian sees them", async () => {

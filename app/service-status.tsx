@@ -6,6 +6,7 @@ import { STATUS_LABELS, type ConnectionStatus, type ServiceName } from "@/lib/co
 const SERVICES: { key: ServiceName; name: string }[] = [
   { key: "supabase", name: "Database (Supabase)" },
   { key: "clerk", name: "Authentication (Clerk)" },
+  { key: "anthropic", name: "AI (Anthropic)" },
 ];
 
 type Health = { version: string; time: string; cached: boolean; services: Record<ServiceName, ConnectionStatus> };

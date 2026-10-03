@@ -39,6 +39,17 @@ export function createFakeDb(tables: Record<string, Row[]> = {}) {
       && others.some((r) => r.kind === "deletion" && r.status === "open" && r.account_id === candidate.account_id)) {
       return dup("privacy_requests_one_open_deletion");
     }
+    // L1: a library link or file once (0012: sources_library_url, sources_library_file).
+    if (table === "sources" && candidate.academy_id == null && candidate.license_class != null) {
+      const lib = others.filter((r) => r.academy_id == null && r.license_class != null);
+      if (candidate.url && lib.some((r) => String(r.url ?? "").toLowerCase() === String(candidate.url).toLowerCase())) return dup("sources_library_url");
+      if (candidate.content_sha256 && lib.some((r) => r.content_sha256 === candidate.content_sha256)) return dup("sources_library_file");
+    }
+    // L1: one open conflict per pair of claims, either way round (0012: source_conflicts_one_open_pair).
+    if (table === "source_conflicts" && (candidate.status ?? "open") === "open") {
+      const pair = (r: Row) => [r.claim_a_id, r.claim_b_id].map(String).sort().join("|");
+      if (others.some((r) => (r.status ?? "open") === "open" && pair(r) === pair(candidate))) return dup("source_conflicts_one_open_pair");
+    }
     // B3: a teen has exactly one Guardian of record (0010: guardian_relationships_one_of_record).
     if (table === "guardian_relationships") {
       const open = (r: Row) => (r.withdrawn_at ?? null) === null && r.verification_status !== "failed";
@@ -259,7 +270,49 @@ export function createFakeDb(tables: Record<string, Row[]> = {}) {
     return "changed";
   }
 
+  /** Mirrors public.put_source_chunks (0012): a web_summarize_only source keeps only a short quote per chunk. */
+  function putSourceChunks(a: Record<string, unknown>) {
+    const src = (data.sources ?? []).find((r) => r.id === a.p_source);
+    if (!src) return { data: null, error: { code: "P0002", message: "no such source" } };
+    data.source_chunks = (data.source_chunks ?? []).filter((c) => c.source_id !== a.p_source);
+    const excerpt = src.license_class === "web_summarize_only";
+    for (const c of a.p_chunks as { position: number; text: string; quote?: string; embedding?: number[] }[]) {
+      data.source_chunks.push({
+        id: randomUUID(), source_id: a.p_source, position: c.position, is_excerpt: excerpt, embedding: c.embedding ?? null,
+        content: excerpt ? (c.quote || c.text).slice(0, 300) : c.text, search_text: c.text.toLowerCase(), created_at: new Date().toISOString(),
+      });
+    }
+    src.chunk_count = (a.p_chunks as unknown[]).length;
+    return { data: src.chunk_count, error: null };
+  }
+  /** Mirrors public.match_source_chunks (0012) with word matching in place of full-text ranking. */
+  function matchSourceChunks(a: Record<string, unknown>) {
+    const words = String(a.p_query ?? "").toLowerCase().match(/[a-z0-9]+/g) ?? [];
+    const rows = (data.source_chunks ?? []).flatMap((c) => {
+      const s = (data.sources ?? []).find((r) => r.id === c.source_id);
+      if (!s || s.status !== "approved" || s.academy_id) return [];
+      const score = words.filter((w) => String(c.search_text).includes(w)).length;
+      return score ? [{ chunk_id: c.id, source_id: s.id, title: s.title, url: s.url ?? null, license_class: s.license_class, license_name: s.license_name ?? null, content: c.content, is_excerpt: c.is_excerpt, score }] : [];
+    });
+    return { data: rows.sort((x, y) => y.score - x.score).slice(0, Number(a.p_limit ?? 8)), error: null };
+  }
+  const uploads: { path: string; size: number; contentType?: string }[] = [];
+  const storage = {
+    from: () => ({
+      upload: async (path: string, bytes: Uint8Array, opts?: { contentType?: string }) => {
+        uploads.push({ path, size: bytes.byteLength, contentType: opts?.contentType });
+        return { data: { path }, error: null };
+      },
+      remove: async (paths: string[]) => {
+        for (const p of paths) uploads.splice(uploads.findIndex((u) => u.path === p), 1);
+        return { data: null, error: null };
+      },
+    }),
+  };
+
   const rpc = async (fn: string, args: Record<string, unknown> = {}) =>
+    fn === "put_source_chunks" ? putSourceChunks(args) :
+    fn === "match_source_chunks" ? matchSourceChunks(args) :
     fn === "support_change_date_of_birth" ? { data: supportChangeDob(args), error: null } :
     fn === "audit_verify_chain"
       ? { data: [{ ok: true, checked: data.audit_events.length, broken_at_seq: null, problem: null, head_seq: data.audit_events.length || null, head_hash: data.audit_events.at(-1)?.row_hash ?? null }], error: null }
@@ -267,5 +320,5 @@ export function createFakeDb(tables: Record<string, Row[]> = {}) {
         ? { data: [claimDeviceSlot(args)], error: null }
         : { data: null, error: { code: "42883", message: `no function ${fn}` } };
 
-  return { data, client: { from: query, rpc } };
+  return { data, uploads, client: { from: query, rpc, storage } };
 }

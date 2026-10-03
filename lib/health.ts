@@ -1,4 +1,6 @@
 import "server-only";
+import Anthropic from "@anthropic-ai/sdk";
+import { HEALTH_MODEL } from "@/lib/ai/config";
 import { createServiceClient } from "@/lib/db";
 import { connected, disconnected, type ConnectionStatus, type ServiceName } from "@/lib/connection-status";
 import { readEnv } from "@/lib/env";
@@ -56,17 +58,45 @@ export async function probeClerk(config: { secretKey?: string }, opts: ProbeOpti
   }
 }
 
+/**
+ * L1: Connected only if the model provider answers GET /v1/models/{id} with the key (no tokens, no cost). Without a
+ * key, AI features are off and the status says so; the rest of the site is unaffected.
+ */
+export async function probeAnthropic(config: { apiKey?: string }, opts: ProbeOptions = {}): Promise<ConnectionStatus> {
+  if (!config.apiKey) return disconnected("anthropic", "Not configured: AI features are off");
+  try {
+    const client = new Anthropic({ apiKey: config.apiKey, maxRetries: 0, timeout: opts.timeoutMs ?? TIMEOUT_MS, fetch: opts.fetch });
+    const m = await client.models.retrieve(HEALTH_MODEL);
+    return connected("anthropic", `GET /v1/models/${m.id} with the API key succeeded`);
+  } catch (err) {
+    if (err instanceof Anthropic.APIError && err.status) return disconnected("anthropic", `Models API returned ${err.status}`);
+    return disconnected("anthropic", describe(err));
+  }
+}
+
+/** The AI provider is probed at most every 10 minutes per server instance (the others every HEALTH_CACHE_SECONDS). */
+const AI_PROBE_SECONDS = 600;
+let aiCache: { expiresAt: number; status: Promise<ConnectionStatus> } | undefined;
+function anthropicStatus(now = Date.now()) {
+  if (!aiCache || aiCache.expiresAt <= now) {
+    aiCache = { expiresAt: now + AI_PROBE_SECONDS * 1000, status: probeAnthropic({ apiKey: readAiKey() }) };
+  }
+  return aiCache.status;
+}
+const readAiKey = () => process.env["ANTHROPIC_API_KEY"]?.trim() || undefined;
+
 export const HEALTH_CACHE_SECONDS = 30;
 
 type Services = Record<ServiceName, ConnectionStatus>;
 let cache: { expiresAt: number; services: Promise<Services> } | undefined;
 
 async function checkServices(): Promise<Services> {
-  const [supabase, clerk] = await Promise.all([
+  const [supabase, clerk, anthropic] = await Promise.all([
     probeSupabase({ url: readEnv("SUPABASE_URL"), serviceRoleKey: readEnv("SUPABASE_SERVICE_ROLE_KEY") }),
     probeClerk({ secretKey: readEnv("CLERK_SECRET_KEY") }),
+    anthropicStatus(),
   ]);
-  return { supabase, clerk };
+  return { supabase, clerk, anthropic };
 }
 
 /**
@@ -83,4 +113,5 @@ export async function getServiceStatuses(now = Date.now()): Promise<{ services: 
 
 export function resetHealthCacheForTests() {
   cache = undefined;
+  aiCache = undefined;
 }

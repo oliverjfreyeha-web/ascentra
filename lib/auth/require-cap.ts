@@ -81,6 +81,8 @@ type Opts = {
   device?: "trusted" | "any";
   /** Security and appeal routes stay open to a suspended account. */
   allowSuspended?: boolean;
+  /** The handler reads the body itself (a file upload); withCap doesn't parse it. */
+  rawBody?: boolean;
 };
 
 type RouteCtx = { params: Promise<Record<string, string | string[]>> };
@@ -123,7 +125,7 @@ export function withCap(action: Action, handler: Handler, opts: Opts = {}) {
     const decision = decide({ role: account.roleKey, assignedCourses: account.assignedCourses }, action, target);
     if (!decision.allowed) return (await requireCap(authCtx, action, target, { requestId, deviceId }))!;
 
-    const raw = await readBody(req);
+    const raw = opts.rawBody ? {} : await readBody(req);
     const needsReason = requiresReason(action);
     let recorded = 0;
     const audit: Extras["audit"] = async (e) => {
