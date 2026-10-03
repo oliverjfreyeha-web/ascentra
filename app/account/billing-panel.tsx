@@ -8,6 +8,7 @@ type Plan = { key: "basic" | "pro"; name: string; cents: number };
 type Billing = {
   configured: boolean;
   canSubscribe: boolean;
+  canManage: boolean;
   tier: "none" | "trial" | "basic" | "pro" | "full";
   source: string;
   subscription: null | {
@@ -48,6 +49,7 @@ export function BillingPanel() {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- the result of the Stripe redirect, read once
     if (back === "success") setMessage("Thanks. Your plan appears here as soon as Stripe confirms it (usually a few seconds).");
     else if (back === "canceled") setMessage("Checkout was canceled. Nothing was charged.");
+    else if (back === "canceled_plan") setMessage("Your plan is canceled. You keep access until the end of the paid period, and you won't be charged again.");
     void load();
     // Stripe confirms by webhook, a moment after the redirect: look again a few times.
     if (back === "success") {
@@ -69,6 +71,14 @@ export function BillingPanel() {
     }
     setBusy(false);
     setMessage(r.reason ?? "Checkout couldn't start. Nothing was charged.");
+  }
+
+  async function cancelPlan() {
+    setBusy(true);
+    const r = await call("POST", "/api/v1/billing/cancel", {});
+    if (r._status === 200 && typeof r.url === "string") return window.location.assign(r.url);
+    setBusy(false);
+    setMessage(r.reason ?? "The cancellation page couldn't open. Nothing was changed.");
   }
 
   async function manage() {
@@ -106,12 +116,21 @@ export function BillingPanel() {
         )}
       </dl>
 
-      {s && (
+      {s && data.canManage && (
         <p>
           <button type="button" onClick={manage} disabled={busy}>Manage billing</button>{" "}
-          <span className="muted">Cancel, change between Basic and Pro, or update your payment method (Stripe).</span>
+          {s.status !== "canceled" && (
+            <>
+              <button type="button" onClick={cancelPlan} disabled={busy}>Cancel plan</button>{" "}
+            </>
+          )}
+          <span className="muted">
+            Cancel in two steps: Cancel plan, then confirm on Stripe&apos;s page. You keep access until the paid period ends.
+            Manage billing changes plans or the payment method.
+          </span>
         </p>
       )}
+      {s && !data.canManage && <p className="muted">Your Guardian manages this plan.</p>}
 
       {!s && data.canSubscribe && !data.configured && <p className="muted">Plans aren&apos;t available yet.</p>}
       {!s && data.canSubscribe && data.configured && (

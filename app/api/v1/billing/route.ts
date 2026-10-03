@@ -16,6 +16,8 @@ export const GET = withCap("billing.view", async (_req, _ctx, account) => {
     configured: readBillingEnv().ok,
     // A teen's plan is chosen by their Guardian, in the Guardian Center.
     canSubscribe: account.roleKey === "learner" && !account.isMinor,
+    // Only the payer manages or cancels a plan (a teen's Guardian, never the teen).
+    canManage: !!live && live.payer_account_id === account.id,
     tier,
     source,
     subscription: live && {

@@ -1,4 +1,4 @@
--- Run in the Supabase SQL Editor after applying the migrations (F3, F4, F5, F6, B1, B2 and B3).
+-- Run in the Supabase SQL Editor after applying the migrations (F3, F4, F5, F6, B1, B2, B3 and B4).
 -- The first row is the verdict. The rest lists every expected table with whether it exists and
 -- whether row-level security is on, then any other table in public (which should not exist).
 with expected(table_name) as (values
@@ -13,7 +13,9 @@ with expected(table_name) as (values
   -- F6: the sharing tracker and the graduated steps.
   ('sharing_signals'), ('sharing_flags'), ('enforcement_steps'), ('appeals'),
   -- B1: Stripe customers and processed Stripe events.
-  ('billing_customers'), ('billing_events')
+  ('billing_customers'), ('billing_events'),
+  -- B4: notices sent and Privacy Center requests.
+  ('notices'), ('privacy_requests')
 ),
 public_tables as (
   select c.relname as table_name, c.relrowsecurity as rls_on
@@ -95,9 +97,14 @@ b3 as (
     exists (select 1 from pg_constraint where conname = 'accounts_status_check' and pg_get_constraintdef(oid) like '%paused%') as paused,
     (select count(*) from public.legal_document_versions where status = 'published'
        and (document_key, version) in (('teen_terms', 'v0.2'), ('minor_privacy_notice', 'v0.2'))) = 2 as teen_documents
+),
+b4 as (
+  select
+    exists (select 1 from private.schema_migrations where version = '0011_notices_and_privacy') as recorded,
+    exists (select 1 from pg_trigger where tgrelid = to_regclass('public.privacy_requests') and tgname = 'privacy_request_not_owner') as owner_guard
 )
 select 0 as sort,
-       case when (select count(*) from report where expected and table_exists and rls_on) = 45
+       case when (select count(*) from report where expected and table_exists and rls_on) = 47
              and not exists (select 1 from report where not expected)
              and (select triggers from insert_only) = 4
              and (select owner_triggers from f4) = 2 and (select invite_columns from f4) and (select recorded from f4)
@@ -111,7 +118,8 @@ select 0 as sort,
              and (select guardian_invites from b2) and (select staff_never_minor from b2)
              and (select recorded from b3) and (select identity_columns from b3) and (select one_guardian from b3)
              and (select paused from b3) and (select teen_documents from b3)
-            then 'OK: all 45 tables exist with row-level security on; audit_events and consent_records are insert-only; F4 admin invites and Owner protections are in place; F5 audit chain is in place; F6 devices, sessions and safeguards are in place; B1 billing is in place; B2 age rules and sign-up are in place; B3 Guardians are in place'
+             and (select recorded from b4) and (select owner_guard from b4)
+            then 'OK: all 47 tables exist with row-level security on; audit_events and consent_records are insert-only; F4 admin invites and Owner protections are in place; F5 audit chain is in place; F6 devices, sessions and safeguards are in place; B1 billing is in place; B2 age rules and sign-up are in place; B3 Guardians are in place; B4 notices and privacy requests are in place'
             else 'PROBLEM: ' || (select count(*) from report where expected and not table_exists) || ' missing, '
                  || (select count(*) from report where table_exists and not rls_on) || ' without RLS, '
                  || (select count(*) from report where not expected) || ' unexpected, '
@@ -133,6 +141,7 @@ select 0 as sort,
                  || ', B3 ' || case when (select recorded from b3) and (select identity_columns from b3) and (select one_guardian from b3)
                                          and (select paused from b3) and (select teen_documents from b3)
                                     then 'applied' else 'NOT applied' end
+                 || ', B4 ' || case when (select recorded from b4) and (select owner_guard from b4) then 'applied' else 'NOT applied' end
                  || case when (select staff_never_minor from b2) then '' else ', an Owner or admin is marked minor or pending' end
        end as table_name,
        null::boolean as table_exists, null::boolean as rls_on

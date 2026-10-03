@@ -6,6 +6,7 @@ import { decide, type RoleKey } from "@/lib/caps";
 import type { BillingEnv } from "@/lib/billing-env";
 import { PLANS, type PaidPlan } from "@/lib/billing-terms";
 import { mayPayFor } from "@/lib/guardians";
+import { tellGuardianBeforeTeenLosesAccess } from "@/lib/notices";
 
 /**
  * Subscriptions and entitlements, kept in step with Stripe. Stripe is the source of truth for the
@@ -126,7 +127,7 @@ export async function applySubscription(
   sub: Stripe.Subscription,
   env: BillingEnv,
   opts: { accountId?: string | null; eventId: string; eventAt: Date; retried?: boolean },
-): Promise<{ outcome: string; accountId: string | null; row?: SubscriptionRow }> {
+): Promise<{ outcome: string; accountId: string | null; row?: SubscriptionRow; previous?: SubscriptionRow | null }> {
   const db = getDb();
   const mapped = mapSubscription(sub, env);
   if ("error" in mapped) {
@@ -149,6 +150,11 @@ export async function applySubscription(
   if (existing?.processor_updated_at && new Date(existing.processor_updated_at) > opts.eventAt) return { outcome: "stale", accountId, row: existing };
 
   const fields = { ...mapped.row, processor_updated_at: opts.eventAt.toISOString(), updated_at: new Date().toISOString() };
+  // B4: a teen never loses access without the Guardian being told first. The notice goes out (or is recorded,
+  // for the banner) before the ended state is written; if that fails, the event fails and Stripe retries it.
+  if (existing && mapped.row.status === "ended" && existing.status !== "ended") {
+    await tellGuardianBeforeTeenLosesAccess({ ...existing, ...mapped.row });
+  }
   let row: SubscriptionRow;
   if (existing) {
     const { data, error } = await db.from("subscriptions").update(fields).eq("id", existing.id).select("*").single();
@@ -191,7 +197,7 @@ export async function applySubscription(
       target: { type: "account", id: accountId }, previous: label(existing), next: label(row), sensitive: true,
     });
   }
-  return { outcome: existing ? "updated" : "created", accountId, row };
+  return { outcome: existing ? "updated" : "created", accountId, row, previous: existing };
 }
 
 export async function accountOfCustomer(customerId: string | null | undefined): Promise<string | null> {
