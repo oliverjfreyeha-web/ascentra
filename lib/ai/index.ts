@@ -171,9 +171,9 @@ export async function structured<S extends z.ZodType>(
  * paused turn (the server's search loop hit its limit) is resumed, at most twice. Searches are billed per search.
  */
 export async function webResearch(
-  args: { system: string; user: string; maxUses?: number; estimateUsd?: number } & Who,
+  args: { system: string; user: string; maxUses?: number; estimateUsd?: number; purpose?: Extract<AiPurpose, "sources.research" | "courses.refresh.research"> } & Who,
 ): Promise<{ content: Anthropic.ContentBlock[]; searches: number; costUsd: number }> {
-  const purpose: AiPurpose = "sources.research";
+  const purpose: AiPurpose = args.purpose ?? "sources.research";
   const model = AI_MODELS[purpose];
   if (!aiConfigured()) {
     await logCall({ purpose, provider: "anthropic", model, status: "refused_off", account_id: args.accountId, request_id: args.requestId });

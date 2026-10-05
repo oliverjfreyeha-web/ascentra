@@ -5,6 +5,7 @@ import { useReverification } from "@clerk/nextjs";
 import { call, when, type ApiResult } from "../../../call";
 import { meFrom } from "../../../me";
 import { LessonView } from "../../../lesson-body";
+import { FreshnessPanel } from "./freshness-panel";
 import { can, courseDetailFrom, estimateFrom, usd, type CourseDetail, type Estimate, type LessonVersion, type OutdatedNote, type Plan } from "../../../courses-api";
 
 type Bp = CourseDetail["blueprints"][number];
@@ -60,6 +61,8 @@ export function CourseBuilder({ slug }: { slug: string }) {
       </p>
       {estimate && !aiOn && <p className="notice">AI is off: ANTHROPIC_API_KEY isn&apos;t set. Drafting is disabled; review and publishing still work.</p>}
       {message && <p role="status" className="notice">{message}</p>}
+
+      {detail.current && <FreshnessPanel slug={slug} freshness={detail.freshness} reports={detail.reports} role={role} busy={busy} act={act} />}
 
       {draftBp && (
         <BlueprintPanel bp={draftBp} canEdit={can("build", role)} busy={busy}
@@ -176,6 +179,7 @@ function LessonPanel({ lesson, role, busy, aiOn, estimate, outdated, onDraft, on
     <div className="notice">
       <p>
         <strong>{lesson.title}</strong>{lesson.minutes ? <span className="muted small"> · {lesson.minutes} min</span> : null}{" "}
+        {lesson.stale && <strong className="small">[stale: past its refresh date with no review] </strong>}
         <span className="muted small">· {lesson.versions.length ? lesson.versions.map((v) => `v${v.version} ${v.status}${v.status === "review" && v.verified ? " (verified)" : ""}`).join(", ") : "not drafted"}{live ? ` · learners see v${live.version}` : ""}</span>
       </p>
       {!open && can("build", role) && aiOn && (
@@ -185,6 +189,7 @@ function LessonPanel({ lesson, role, busy, aiOn, estimate, outdated, onDraft, on
         <details open={!!open}>
           <summary>v{shown.version} ({shown.status}{shown.status === "review" && shown.verified ? ", verified" : ""}) · drafted {when(shown.createdAt)} by {shown.generatedBy === "ai" ? `AI (${shown.model})` : "a person"}</summary>
           {shown.returnedNote && shown.status === "draft" && <p className="notice">Returned by the Reviewer: {shown.returnedNote}</p>}
+          {shown.changeSummary && <p className="muted small">{shown.fromRefresh ? "From a refresh. " : ""}{shown.changeSummary}</p>}
           {shown.verificationNote && <p className="muted small">Reviewer&apos;s verification ({when(shown.verifiedAt)}): {shown.verificationNote}</p>}
           {shown.removedForCopying.length > 0 && <p className="muted small">Removed for copying a source too closely: {shown.removedForCopying.map((r) => `"${r.text}…" (${r.copiedWords} words)`).join("; ")}</p>}
           {shown.diffAgainst != null && (

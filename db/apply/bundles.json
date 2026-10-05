@@ -62,6 +62,12 @@
       "migrations": [
         "0013_course_generation"
       ]
+    },
+    "L3": {
+      "requires": "0013_course_generation",
+      "migrations": [
+        "0014_freshness_cycle"
+      ]
     }
   }
 }

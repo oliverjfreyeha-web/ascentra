@@ -7,6 +7,7 @@ import { canSeeCourse } from "./common";
 import { diffLines, lessonLines, type Citation, type LessonBody } from "./lessons";
 import type { Plan } from "./blueprint";
 import type { OutdatedNote } from "./research";
+import { courseFreshness, refreshReports } from "./refresh";
 
 /** L2: what the course builder shows: courses, their Blueprints, lesson versions with diffs, and cost estimates. */
 
@@ -21,8 +22,9 @@ export async function listCourses(actor: Account) {
   const courses = ids.length ? (((await db.from("courses").select("id, academy_id, version, status, published_at, created_at").in("academy_id", ids)).data ?? []) as CourseRow[]) : [];
   const blueprints = ids.length ? (((await db.from("academy_blueprints").select("id, academy_id, status, kind, created_at").in("academy_id", ids)).data ?? []) as
     { id: string; academy_id: string; status: string; kind: string; created_at: string }[]).filter((b) => b.kind === "course") : [];
-  return academies.map((a) => ({
-    slug: a.slug, name: a.name,
+  const freshness = await Promise.all(academies.map((a) => courseFreshness(a.id)));
+  return academies.map((a, i) => ({
+    slug: a.slug, name: a.name, freshness: freshness[i],
     versions: courses.filter((c) => c.academy_id === a.id).sort((x, y) => x.version - y.version).map((c) => ({ id: c.id, version: c.version, status: c.status, publishedAt: c.published_at })),
     blueprints: { draft: blueprints.filter((b) => b.academy_id === a.id && b.status === "draft").length, approved: blueprints.filter((b) => b.academy_id === a.id && b.status === "approved").length },
   }));
@@ -42,7 +44,7 @@ type VersionRow = {
   id: string; lesson_id: string; version: number; status: string; title: string; body: LessonBody; citations: Citation[]; uncited_count: number;
   checks: { removedForCopying?: { text: string; copiedWords: number }[] }; last_verified_on: string | null; generated_by: string; model: string | null;
   created_at: string; submitted_at: string | null; verified_at: string | null; verified_by_account_id: string | null; verification_note: string | null;
-  returned_note: string | null; published_at: string | null; archived_at: string | null;
+  returned_note: string | null; published_at: string | null; archived_at: string | null; change_summary: string | null; refresh_run_id: string | null;
 };
 
 export async function courseDetail(actor: Account, slug: string) {
@@ -82,6 +84,7 @@ export async function courseDetail(actor: Account, slug: string) {
               removedForCopying: v.checks?.removedForCopying ?? [], lastVerifiedOn: v.last_verified_on, generatedBy: v.generated_by, model: v.model,
               createdAt: v.created_at, submittedAt: v.submitted_at, verifiedAt: v.verified_at, verified: !!v.verified_by_account_id,
               verificationNote: v.verification_note, returnedNote: v.returned_note, publishedAt: v.published_at, archivedAt: v.archived_at,
+              changeSummary: v.change_summary, fromRefresh: !!v.refresh_run_id,
               diffAgainst: base ? base.version : null,
               diff: diffLines(lessonLines(base?.body), lessonLines(v.body)),
             };
@@ -90,8 +93,12 @@ export async function courseDetail(actor: Account, slug: string) {
       }),
     }));
   }
+  const freshness = await courseFreshness(academy.id);
+  const stale = new Set(freshness.staleLessons);
+  for (const m of modules as { lessons: { id: string; stale?: boolean }[] }[]) for (const l of m.lessons) l.stale = stale.has(l.id);
   return {
     course: { slug: academy.slug, name: academy.name, outcome: academy.outcome },
+    freshness, reports: await refreshReports(academy.id),
     versions: courses.map((c) => ({ id: c.id, version: c.version, status: c.status, publishedAt: c.published_at, createdAt: c.created_at })),
     current: current ? { id: current.id, version: current.version, status: current.status } : null,
     blueprints: bps.filter((b) => b.kind === "course").map((b) => ({

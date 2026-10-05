@@ -13,4 +13,6 @@ export const EXPECTED_TABLES = [
   "source_chunks", "open_license_sources", "ai_calls",
   // L2
   "research_runs", "lesson_versions",
+  // L3
+  "course_refresh", "refresh_runs", "refresh_edits",
 ].sort();

@@ -31,7 +31,7 @@ export function LearnList() {
                 {m.lessons.map((l) => (
                   <li key={l.id}>
                     <Link href={`/learn/${l.id}`}>{l.title}</Link>{" "}
-                    <span className="muted small">{l.minutes ? `${l.minutes} min · ` : ""}last verified {l.lastVerifiedOn ?? "unknown"}{l.done ? " · done" : ""}</span>
+                    <span className="muted small">{l.minutes ? `${l.minutes} min · ` : ""}last verified {l.lastVerifiedOn ?? "unknown"}{l.done ? " · done" : ""}{l.updated ? " · updated" : ""}</span>
                   </li>
                 ))}
               </ul>

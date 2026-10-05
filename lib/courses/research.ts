@@ -36,7 +36,9 @@ export const RESEARCH_SYSTEM = [
 
 export type Finding = { text: string; citations: { url: string; title: string | null; citedText: string }[] };
 export type OutdatedNote = { item: string; replacedBy: string | null; note: string; sources: { url: string; title: string | null }[] };
-export type ParsedResearch = { findings: Finding[]; outdated: OutdatedNote[]; pages: Map<string, { title: string; pageAge: string | null }> };
+/** L3: how fast the field is changing, as observed in the sources: plain notes with citations, no predictions. */
+export type MarketSignal = { pace: "quick" | "moderate" | "stable" | "unclear"; notes: { text: string; sources: { url: string; title: string | null }[] }[] };
+export type ParsedResearch = { findings: Finding[]; outdated: OutdatedNote[]; signal: MarketSignal; pages: Map<string, { title: string; pageAge: string | null }> };
 
 /**
  * Reads the answer: the text with the API's web citations attached to the lines they support, and the search
@@ -67,7 +69,8 @@ export function parseResearch(content: Anthropic.ContentBlock[]): ParsedResearch
 
   const findings: Finding[] = [];
   const outdated: OutdatedNote[] = [];
-  let section: "current" | "outdated" | null = null;
+  const signal: MarketSignal = { pace: "unclear", notes: [] };
+  let section: "current" | "outdated" | "signal" | null = null;
   let offset = 0;
   for (const line of text.split("\n")) {
     const start = offset;
@@ -75,7 +78,7 @@ export function parseResearch(content: Anthropic.ContentBlock[]): ParsedResearch
     offset = end + 1;
     const t = line.trim();
     if (/^#+\s*/.test(t)) {
-      section = /outdated|replaced/i.test(t) ? "outdated" : /current|finding/i.test(t) ? "current" : null;
+      section = /outdated|replaced/i.test(t) ? "outdated" : /pace|market|signal/i.test(t) ? "signal" : /current|finding|chang|new/i.test(t) ? "current" : null;
       continue;
     }
     const item = /^(?:[-*•]|\d+[.)])\s+(.*)$/.exec(t)?.[1]?.trim();
@@ -83,6 +86,15 @@ export function parseResearch(content: Anthropic.ContentBlock[]): ParsedResearch
     const seen = new Set<string>();
     const cites = ranges.filter((r) => r.start < end && r.end > start).flatMap((r) => r.cites)
       .filter((c) => (seen.has(c.url + c.citedText) ? false : (seen.add(c.url + c.citedText), true)));
+    if (section === "signal") {
+      const overall = /^overall\b[:\s-]*(.*)$/i.exec(item);
+      if (overall) {
+        const v = overall[1].toLowerCase();
+        signal.pace = /quick|fast|rapid/.test(v) ? "quick" : /moderate|steady|some/.test(v) ? "moderate" : /stable|slow|little/.test(v) ? "stable" : "unclear";
+      }
+      if (signal.notes.length < 8) signal.notes.push({ text: item.slice(0, 400), sources: [...new Map(cites.map((c) => [c.url, { url: c.url, title: c.title }])).values()] });
+      continue;
+    }
     if (section === "current" && findings.length < MAX_FINDINGS) findings.push({ text: item.slice(0, 500), citations: cites });
     if (section === "outdated" && outdated.length < MAX_OUTDATED) {
       const m = /^(.+?)\s*(?:->|→|—>|=>)\s*(.+?)(?::\s+(.*))?$/.exec(item);
@@ -92,7 +104,68 @@ export function parseResearch(content: Anthropic.ContentBlock[]): ParsedResearch
         : { item: item.slice(0, 200), replacedBy: null, note: "", sources: srcs });
     }
   }
-  return { findings, outdated, pages };
+  return { findings, outdated, signal, pages };
+}
+
+/**
+ * Adds what a research answer found to the ledger as PROPOSED: one source per cited page (public https only, the cited
+ * words as its only stored text) and one claim per finding (cited, or marked as having no source). A page already in
+ * the library is cited as it is; its status doesn't change. Shared by "Research a topic" and the L3 refresh.
+ */
+export async function proposeFindings(parsed: ParsedResearch, runId: string, actorId: string | null) {
+  const db = getDb();
+  const quotesByUrl = new Map<string, { title: string | null; quotes: string[] }>();
+  for (const f of parsed.findings) for (const c of f.citations) {
+    const e = quotesByUrl.get(c.url) ?? { title: c.title, quotes: [] };
+    if (!e.quotes.includes(c.citedText)) e.quotes.push(c.citedText);
+    quotesByUrl.set(c.url, e);
+  }
+  const sourceIdByUrl = new Map<string, string>();
+  const newSourceIds: string[] = [];
+  const chunkIds = new Map<string, string>(); // url + quote → chunk id
+  const now = new Date().toISOString();
+  for (const [url, e] of [...quotesByUrl].slice(0, MAX_SOURCES)) {
+    const checked = checkFetchableUrl(url);
+    if (!checked.ok) continue;
+    const page = parsed.pages.get(url);
+    const title = clean(page?.title ?? e.title ?? checked.url.hostname, 300) || checked.url.hostname;
+    const ins = await db.from("sources").insert({
+      title, source_type: "Web research", url: checked.url.toString(), kind: "url", license_class: "web_summarize_only",
+      status: "proposed", found_at: now, last_checked_at: now, added_by_account_id: actorId, research_run_id: runId,
+      page_age: page?.pageAge ? clean(page.pageAge, 100) : null,
+    }).select("id").single();
+    let id: string;
+    if (ins.error?.code === "23505") {
+      const pattern = checked.url.toString().replace(/[\\%_]/g, "\\$&");
+      const existing = (((await db.from("sources").select("id").is("academy_id", null).ilike("url", pattern).limit(1)).data ?? []) as { id: string }[])[0];
+      if (!existing) continue;
+      id = existing.id;
+    } else if (ins.error) {
+      throw new Error(`research source insert failed: ${ins.error.message}`);
+    } else {
+      id = (ins.data as { id: string }).id;
+      newSourceIds.push(id);
+      const items = e.quotes.slice(0, 20).map((q, i) => ({ position: i, text: q, quote: q }));
+      const { error } = await db.rpc("put_source_chunks", { p_source: id, p_chunks: items });
+      if (error) throw new Error(`research chunks failed: ${error.message}`);
+      const chunks = ((await db.from("source_chunks").select("id, position").eq("source_id", id)).data ?? []) as { id: string; position: number }[];
+      for (const c of chunks) chunkIds.set(`${url}\u0000${e.quotes[c.position]}`, c.id);
+    }
+    sourceIdByUrl.set(url, id);
+  }
+  const claims = parsed.findings.filter((f) => !ATTORNEY.test(f.text)).map((f) => {
+    const c = f.citations.find((x) => sourceIdByUrl.has(x.url));
+    return c
+      ? { source_id: sourceIdByUrl.get(c.url), chunk_id: chunkIds.get(`${c.url}\u0000${c.citedText}`) ?? null, claim: f.text, cited_text: c.citedText.slice(0, 400),
+          citation_status: "cited", extracted_by: "ai", state: "proposed", added_by_account_id: actorId, research_run_id: runId }
+      : { source_id: null, claim: f.text, citation_status: "no_source", extracted_by: "ai", state: "proposed", added_by_account_id: actorId, research_run_id: runId };
+  });
+  if (claims.length) {
+    const { error } = await db.from("source_claims").insert(claims);
+    if (error) throw new Error(`research claims insert failed: ${error.message}`);
+  }
+  await db.from("research_runs").update({ source_count: sourceIdByUrl.size, claim_count: claims.length }).eq("id", runId);
+  return { sourceIdByUrl, newSourceIds, claims: claims.length, uncited: claims.filter((c) => c.citation_status === "no_source").length };
 }
 
 type Body = Record<string, unknown>;
@@ -134,70 +207,16 @@ export async function runResearch(actor: Account, body: Body, requestId?: string
   if (runErr) throw new Error(`research run insert failed: ${runErr.message}`);
   const runId = (run as { id: string }).id;
 
-  // One proposed source per cited page (public https only), with the cited words as its only stored text.
-  const quotesByUrl = new Map<string, { title: string | null; quotes: string[] }>();
-  for (const f of parsed.findings) for (const c of f.citations) {
-    const e = quotesByUrl.get(c.url) ?? { title: c.title, quotes: [] };
-    if (!e.quotes.includes(c.citedText)) e.quotes.push(c.citedText);
-    quotesByUrl.set(c.url, e);
-  }
-  const sourceIdByUrl = new Map<string, string>();
-  const chunkIds = new Map<string, string>(); // url + quote → chunk id
-  let added = 0;
-  const now = new Date().toISOString();
-  for (const [url, e] of [...quotesByUrl].slice(0, MAX_SOURCES)) {
-    const checked = checkFetchableUrl(url);
-    if (!checked.ok) continue;
-    const page = parsed.pages.get(url);
-    const title = clean(page?.title ?? e.title ?? checked.url.hostname, 300) || checked.url.hostname;
-    const ins = await db.from("sources").insert({
-      title, source_type: "Web research", url: checked.url.toString(), kind: "url", license_class: "web_summarize_only",
-      status: "proposed", found_at: now, last_checked_at: now, added_by_account_id: actor.id, research_run_id: runId,
-      page_age: page?.pageAge ? clean(page.pageAge, 100) : null,
-    }).select("id").single();
-    let id: string;
-    if (ins.error?.code === "23505") {
-      // Already in the library: the finding cites it as it is (approved or not); its status doesn't change.
-      const pattern = checked.url.toString().replace(/[\\%_]/g, "\\$&");
-      const existing = (((await db.from("sources").select("id").is("academy_id", null).ilike("url", pattern).limit(1)).data ?? []) as { id: string }[])[0];
-      if (!existing) continue;
-      id = existing.id;
-    } else if (ins.error) {
-      throw new Error(`research source insert failed: ${ins.error.message}`);
-    } else {
-      id = (ins.data as { id: string }).id;
-      added++;
-      const items = e.quotes.slice(0, 20).map((q, i) => ({ position: i, text: q, quote: q }));
-      const { error } = await db.rpc("put_source_chunks", { p_source: id, p_chunks: items });
-      if (error) throw new Error(`research chunks failed: ${error.message}`);
-      const chunks = ((await db.from("source_chunks").select("id, position").eq("source_id", id)).data ?? []) as { id: string; position: number }[];
-      for (const c of chunks) chunkIds.set(`${url}\u0000${e.quotes[c.position]}`, c.id);
-    }
-    sourceIdByUrl.set(url, id);
-  }
-
-  // Findings become proposed claims: cited (first citation's source and words) or marked as having no source.
-  const claims = parsed.findings.filter((f) => !ATTORNEY.test(f.text)).map((f) => {
-    const c = f.citations.find((x) => sourceIdByUrl.has(x.url));
-    return c
-      ? { source_id: sourceIdByUrl.get(c.url), chunk_id: chunkIds.get(`${c.url}\u0000${c.citedText}`) ?? null, claim: f.text, cited_text: c.citedText.slice(0, 400),
-          citation_status: "cited", extracted_by: "ai", state: "proposed", added_by_account_id: actor.id, research_run_id: runId }
-      : { source_id: null, claim: f.text, citation_status: "no_source", extracted_by: "ai", state: "proposed", added_by_account_id: actor.id, research_run_id: runId };
-  });
-  if (claims.length) {
-    const { error } = await db.from("source_claims").insert(claims);
-    if (error) throw new Error(`research claims insert failed: ${error.message}`);
-  }
-  await db.from("research_runs").update({ source_count: sourceIdByUrl.size, claim_count: claims.length }).eq("id", runId);
-
-  const uncited = claims.filter((c) => c.citation_status === "no_source").length;
+  const proposed = await proposeFindings(parsed, runId, actor.id);
+  const added = proposed.newSourceIds.length;
+  const uncited = proposed.uncited;
   return {
     ok: true, status: 201,
-    body: { id: runId, sources: sourceIdByUrl.size, newSources: added, claims: claims.length, uncited, outdated: parsed.outdated.length, searches: result.searches, costUsd: result.costUsd },
+    body: { id: runId, sources: proposed.sourceIdByUrl.size, newSources: added, claims: proposed.claims, uncited, outdated: parsed.outdated.length, searches: result.searches, costUsd: result.costUsd },
     event: {
       action: A, result: "Completed", target: { type: "research", id: runId, label: topic }, previous: "none",
-      next: `${added} new proposed source(s), ${claims.length} claim(s)`,
-      context: `Researched "${topic}" (${audience}) with web search (${result.searches} search(es), $${result.costUsd.toFixed(4)}): ${sourceIdByUrl.size} source(s) (${added} new, proposed), ${claims.length} claim(s)${uncited ? ` (${uncited} with no source, marked)` : ""}, ${parsed.outdated.length} outdated note(s). Nothing is usable until a Reviewer approves the sources.`,
+      next: `${added} new proposed source(s), ${proposed.claims} claim(s)`,
+      context: `Researched "${topic}" (${audience}) with web search (${result.searches} search(es), $${result.costUsd.toFixed(4)}): ${proposed.sourceIdByUrl.size} source(s) (${added} new, proposed), ${proposed.claims} claim(s)${uncited ? ` (${uncited} with no source, marked)` : ""}, ${parsed.outdated.length} outdated note(s). Nothing is usable until a Reviewer approves the sources.`,
     },
   };
 }

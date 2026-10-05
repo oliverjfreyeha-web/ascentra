@@ -91,7 +91,7 @@ async function insertSource(row: Record<string, unknown>): Promise<{ id: string 
 }
 
 /** Reads a public web page or PDF: at most MAX_FETCH_BYTES, 15 seconds, https only. */
-async function fetchText(url: URL): Promise<{ title: string | null; text: string; mime: string } | { error: string }> {
+async function fetchText(url: URL): Promise<{ title: string | null; text: string; mime: string } | { error: string; status?: number }> {
   let res: Response;
   let at = url;
   const signal = AbortSignal.timeout(15_000);
@@ -109,7 +109,7 @@ async function fetchText(url: URL): Promise<{ title: string | null; text: string
     if (!next.ok) return { error: "The link redirected to an address that isn't a public website." };
     at = next.url;
   }
-  if (!res.ok) return { error: `The page answered ${res.status}.` };
+  if (!res.ok) return { error: `The page answered ${res.status}.`, status: res.status };
   const mime = (res.headers.get("content-type") ?? "").split(";")[0].trim().toLowerCase();
   if (Number(res.headers.get("content-length") ?? 0) > MAX_FETCH_BYTES) return { error: "The page is larger than 2 MB." };
   const buf = new Uint8Array(await res.arrayBuffer());
@@ -121,6 +121,18 @@ async function fetchText(url: URL): Promise<{ title: string | null; text: string
   }
   if (mime.startsWith("text/")) return { title: null, text: normalize(new TextDecoder().decode(buf)), mime };
   return { error: `This kind of content (${mime || "unknown"}) can't be read. Use a web page, a PDF or plain text.` };
+}
+
+/**
+ * L3: reads a source's page again for the freshness check: "gone" when the site says it no longer exists (404/410),
+ * "unreachable" when it can't be read now (it may be back tomorrow), otherwise the page's text.
+ */
+export async function refetchPage(raw: string): Promise<{ ok: true; text: string } | { ok: false; gone: boolean; detail: string }> {
+  const checked = checkFetchableUrl(raw);
+  if (!checked.ok) return { ok: false, gone: false, detail: "The link isn't a public https address." };
+  const page = await fetchText(checked.url);
+  if ("error" in page) return { ok: false, gone: page.status === 404 || page.status === 410, detail: page.error };
+  return { ok: true, text: page.text };
 }
 
 async function pdfText(bytes: Uint8Array): Promise<string> {

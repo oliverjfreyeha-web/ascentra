@@ -72,6 +72,9 @@ export function CourseList() {
                 <span className="muted small">
                   ({c.slug}) · {c.versions.length ? c.versions.map((v) => `v${v.version} ${v.status}`).join(", ") : "no version yet"}
                   {c.blueprints.draft ? ` · ${c.blueprints.draft} Blueprint(s) to review` : ""}
+                  {c.versions.length > 0 && <> · last verified {c.freshness.lastVerifiedAt ? new Date(c.freshness.lastVerifiedAt).toLocaleDateString() : "not yet"}, next refresh {c.freshness.nextRefreshAt ? new Date(c.freshness.nextRefreshAt).toLocaleDateString() : "—"}{c.freshness.due ? " (due)" : ""}</>}
+                  {c.freshness.staleLessons.length > 0 && <strong> · {c.freshness.staleLessons.length} stale lesson(s)</strong>}
+                  {c.freshness.status !== "idle" && ` · ${c.freshness.status.replace("_", " ")}${c.freshness.note ? `: ${c.freshness.note}` : ""}`}
                 </span>
               </li>
             ))}
