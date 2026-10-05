@@ -11,4 +11,6 @@ export const EXPECTED_TABLES = [
   "billing_customers", "billing_events",
   "notices", "privacy_requests",
   "source_chunks", "open_license_sources", "ai_calls",
+  // L2
+  "research_runs", "lesson_versions",
 ].sort();

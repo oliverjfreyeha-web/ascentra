@@ -3,7 +3,8 @@ import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import type { z } from "zod";
 import { getDb } from "@/lib/db";
-import { AI_MODELS, EMBEDDING, HEALTH_MODEL, costUsd, spendCaps, type AiPurpose } from "./config";
+import secretEnv from "@/lib/secret-env-names.json";
+import { AI_EFFORT, AI_MODELS, EMBEDDING, HEALTH_MODEL, WEB_SEARCH, costUsd, spendCaps, type AiPurpose } from "./config";
 
 /**
  * L1: the AI orchestration service. Every model call and every embedding goes through here:
@@ -12,7 +13,9 @@ import { AI_MODELS, EMBEDDING, HEALTH_MODEL, costUsd, spendCaps, type AiPurpose 
  *   - logged in ai_calls: purpose, model, tokens, cost, outcome. Never the prompt, the answer or learner content;
  *   - a successful call or health check marks the provider Connected (connection_statuses), with evidence.
  * Prompt caching: the stable system prompt is cached automatically (top-level cache_control). Short prompts below
- * the model's minimum cacheable size are simply not cached; nothing breaks.
+ * the model's minimum cacheable size are simply not cached; nothing breaks. A step that repeats a large shared
+ * context (L2: every lesson of one course) passes it as `cachedContext`, cached at its own breakpoint.
+ * Prompts never carry secrets or learner data: assertPromptSafe refuses one that does, before any call.
  */
 
 export class AiUnavailable extends Error {
@@ -35,6 +38,7 @@ type CallLog = {
   purpose: string; provider: "anthropic" | "voyage"; model: string; status: "ok" | "error" | "refused_cap" | "refused_off";
   input_tokens?: number; output_tokens?: number; cache_read_tokens?: number; cache_write_tokens?: number;
   cost_usd?: number; duration_ms?: number; error_code?: string | null; account_id?: string | null; request_id?: string | null;
+  web_search_requests?: number;
 };
 async function logCall(row: CallLog) {
   const { error } = await getDb().from("ai_calls").insert(row);
@@ -59,13 +63,36 @@ export async function spendSoFar(now = new Date()): Promise<{ day: number; month
 
 type Who = { accountId?: string | null; requestId?: string | null };
 
-async function gate(purpose: string, provider: "anthropic" | "voyage", model: string, who: Who) {
+/**
+ * Refuses a call once the day's or the month's spend has reached its cap, or when this run's estimate would take it
+ * past one: the admin gets a plain message saying which cap and how much is left.
+ */
+async function gate(purpose: string, provider: "anthropic" | "voyage", model: string, who: Who, estimate = 0) {
   const caps = spendCaps();
   const spent = await spendSoFar();
-  if (spent.day >= caps.perDay || spent.month >= caps.perMonth) {
+  const left = { day: Math.max(0, caps.perDay - spent.day), month: Math.max(0, caps.perMonth - spent.month) };
+  const reached = spent.day >= caps.perDay || spent.month >= caps.perMonth;
+  if (reached || estimate > left.day || estimate > left.month) {
     await logCall({ purpose, provider, model, status: "refused_cap", account_id: who.accountId, request_id: who.requestId });
-    throw new AiUnavailable("cap_reached", `The AI spend cap is reached (today $${spent.day.toFixed(2)} of $${caps.perDay}, this month $${spent.month.toFixed(2)} of $${caps.perMonth}). Try again later.`);
+    const which = left.day <= left.month ? `today's cap of $${caps.perDay}` : `this month's cap of $${caps.perMonth}`;
+    throw new AiUnavailable("cap_reached", reached
+      ? `The AI spend cap is reached (today $${spent.day.toFixed(2)} of $${caps.perDay}, this month $${spent.month.toFixed(2)} of $${caps.perMonth}). Nothing was run. Try again later, or the Owner can raise AI_DAILY_CAP_USD / AI_MONTHLY_CAP_USD.`
+      : `This run is estimated at up to $${estimate.toFixed(2)}, and only $${Math.min(left.day, left.month).toFixed(2)} is left under ${which}. Nothing was run. Try again later, or the Owner can raise the cap.`);
   }
+}
+
+const EMAIL = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
+/**
+ * Prompts carry course material only: never a secret (any configured secret's value) and never personal data. An
+ * email address in an admin's topic is refused; nothing about learners is ever passed to these builders.
+ */
+export function assertPromptSafe(...parts: string[]) {
+  const text = parts.join("\n");
+  for (const name of secretEnv.names) {
+    const v = process.env[name]?.trim();
+    if (v && v.length >= 8 && text.includes(v)) throw new AiUnavailable("failed", "The prompt would contain a secret. Nothing was sent.");
+  }
+  if (EMAIL.test(text)) throw new AiUnavailable("failed", "Remove the email address: prompts carry course material only, never personal details.");
 }
 
 /** Records Connected (with evidence) or Disconnected (with a reason) for a provider. */
@@ -82,32 +109,35 @@ export async function setConnection(service: "anthropic" | "voyage", ok: boolean
   }
 }
 
-function client() {
+function client(timeout = 60_000) {
   const apiKey = key("ANTHROPIC_API_KEY");
   if (!apiKey) throw new AiUnavailable("ai_off", AI_OFF);
-  return new Anthropic({ apiKey, maxRetries: 2, timeout: 60_000 });
+  return new Anthropic({ apiKey, maxRetries: 2, timeout });
 }
 
 /** One structured-output call: the answer is validated against `schema` (Zod). */
 export async function structured<S extends z.ZodType>(
   purpose: AiPurpose,
-  args: { system: string; user: string; schema: S; maxTokens?: number } & Who,
+  args: { system: string; user: string; schema: S; maxTokens?: number; cachedContext?: string; estimateUsd?: number; timeoutMs?: number } & Who,
 ): Promise<z.infer<S>> {
   const model = AI_MODELS[purpose];
   if (!aiConfigured()) {
     await logCall({ purpose, provider: "anthropic", model, status: "refused_off", account_id: args.accountId, request_id: args.requestId });
     throw new AiUnavailable("ai_off", AI_OFF);
   }
-  await gate(purpose, "anthropic", model, args);
+  assertPromptSafe(args.system, args.user, args.cachedContext ?? "");
+  await gate(purpose, "anthropic", model, args, args.estimateUsd ?? 0);
   const started = Date.now();
+  const effort = AI_EFFORT[purpose];
   try {
-    const res = await client().messages.parse({
+    const res = await client(args.timeoutMs).messages.parse({
       model,
       max_tokens: args.maxTokens ?? 4096,
-      cache_control: { type: "ephemeral" },
-      system: args.system,
+      ...(args.cachedContext
+        ? { system: [{ type: "text" as const, text: args.system }, { type: "text" as const, text: args.cachedContext, cache_control: { type: "ephemeral" as const } }] }
+        : { cache_control: { type: "ephemeral" as const }, system: args.system }),
       messages: [{ role: "user", content: args.user }],
-      output_config: { format: zodOutputFormat(args.schema) },
+      output_config: { format: zodOutputFormat(args.schema), ...(effort ? { effort } : {}) },
     });
     const u = res.usage;
     const usage = { input: u.input_tokens, output: u.output_tokens, cacheRead: u.cache_read_input_tokens ?? 0, cacheWrite: u.cache_creation_input_tokens ?? 0 };
@@ -132,6 +162,69 @@ export async function structured<S extends z.ZodType>(
       await setConnection("anthropic", false, `The API key was refused (${status}).`);
     }
     throw new AiUnavailable("failed", `The AI call failed${status ? ` (${status})` : ""}. Nothing was saved.`);
+  }
+}
+
+/**
+ * L2: research with Claude's web search tool (server-side: Anthropic runs the searches). Returns the answer's content
+ * blocks: text with web citations (url, title, the cited words) and the search results (url, title, page age). A
+ * paused turn (the server's search loop hit its limit) is resumed, at most twice. Searches are billed per search.
+ */
+export async function webResearch(
+  args: { system: string; user: string; maxUses?: number; estimateUsd?: number } & Who,
+): Promise<{ content: Anthropic.ContentBlock[]; searches: number; costUsd: number }> {
+  const purpose: AiPurpose = "sources.research";
+  const model = AI_MODELS[purpose];
+  if (!aiConfigured()) {
+    await logCall({ purpose, provider: "anthropic", model, status: "refused_off", account_id: args.accountId, request_id: args.requestId });
+    throw new AiUnavailable("ai_off", AI_OFF);
+  }
+  assertPromptSafe(args.system, args.user);
+  await gate(purpose, "anthropic", model, args, args.estimateUsd ?? 0);
+  const started = Date.now();
+  const usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, webSearches: 0 };
+  const content: Anthropic.ContentBlock[] = [];
+  try {
+    let messages: Anthropic.MessageParam[] = [{ role: "user", content: args.user }];
+    for (let turn = 0; turn < 3; turn++) {
+      const res = await client(240_000).messages.create({
+        model,
+        max_tokens: 8000,
+        cache_control: { type: "ephemeral" },
+        system: args.system,
+        messages,
+        tools: [{ type: WEB_SEARCH.type, name: "web_search", max_uses: args.maxUses ?? WEB_SEARCH.maxUses }],
+      });
+      const u = res.usage;
+      usage.input += u.input_tokens;
+      usage.output += u.output_tokens;
+      usage.cacheRead += u.cache_read_input_tokens ?? 0;
+      usage.cacheWrite += u.cache_creation_input_tokens ?? 0;
+      usage.webSearches += u.server_tool_use?.web_search_requests ?? 0;
+      content.push(...res.content);
+      if (res.stop_reason !== "pause_turn") break;
+      // Resume where the server stopped: the same question and everything the assistant has said so far.
+      messages = [{ role: "user", content: args.user }, { role: "assistant", content: content as unknown as Anthropic.ContentBlockParam[] }];
+    }
+    await logCall({
+      purpose, provider: "anthropic", model, status: "ok", input_tokens: usage.input, output_tokens: usage.output,
+      cache_read_tokens: usage.cacheRead, cache_write_tokens: usage.cacheWrite, web_search_requests: usage.webSearches,
+      cost_usd: costUsd(model, usage), duration_ms: Date.now() - started, account_id: args.accountId, request_id: args.requestId,
+    });
+    await setConnection("anthropic", true, `A ${model} call succeeded at ${new Date().toISOString()}`);
+    return { content, searches: usage.webSearches, costUsd: costUsd(model, usage) };
+  } catch (err) {
+    const status = err instanceof Anthropic.APIError ? err.status : undefined;
+    await logCall({
+      purpose, provider: "anthropic", model, status: "error", duration_ms: Date.now() - started, web_search_requests: usage.webSearches,
+      cost_usd: costUsd(model, usage), error_code: status ? `http_${status}` : err instanceof Error ? err.name : "unknown",
+      account_id: args.accountId, request_id: args.requestId,
+    });
+    if (err instanceof Anthropic.AuthenticationError || err instanceof Anthropic.PermissionDeniedError) {
+      await setConnection("anthropic", false, `The API key was refused (${status}).`);
+    }
+    const hint = status === 400 ? " If web search is turned off for your Anthropic organization, turn it on in the Claude Console (Settings → Capabilities)." : "";
+    throw new AiUnavailable("failed", `The research call failed${status ? ` (${status})` : ""}. Nothing was saved.${hint}`);
   }
 }
 

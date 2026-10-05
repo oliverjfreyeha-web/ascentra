@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { call, when, type ApiResult } from "../../call";
 import { meFrom } from "../../me";
+import { can } from "../../courses-api";
+import { ResearchPanel } from "./research-panel";
 
 type Source = {
   id: string; title: string; url: string | null; kind: string; licenseClass: string; licenseName: string | null; status: string;
@@ -88,6 +90,8 @@ export function SourceLibrary() {
         setMessage(r._status === 200 ? `Health check: ${r.status === "connected" ? "Connected" : "Disconnected"}. ${r.detail ?? ""}` : r.reason ?? "Check failed.");
         await loadAi();
       }} busy={busy} />
+
+      <ResearchPanel canRun={can("research", role)} onDone={() => void load()} />
 
       {canEdit && <AddSource busy={busy} openItems={openItems} act={act} />}
 

@@ -5,7 +5,7 @@ export default function SourcesPage() {
   return (
     <main className="wide">
       <p className="muted">
-        <Link href="/">Home</Link> · <Link href="/admin/audit">Audit log</Link>
+        <Link href="/">Home</Link> · <Link href="/admin/courses">Course builder</Link> · <Link href="/admin/audit">Audit log</Link>
       </p>
       <h1>Source library</h1>
       <p className="muted">

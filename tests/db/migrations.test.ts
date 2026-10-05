@@ -31,7 +31,7 @@ describe("applying every migration, in order, to an empty database", () => {
     expect(rows.map((r) => r.version)).toEqual(migrationFiles().map((f) => f.replace(/\.sql$/, "")));
   });
 
-  it("creates exactly the 50 tables (39 entities + 4 F6 + 2 B1 + 2 B4 + 3 L1 tables)", async () => {
+  it("creates exactly the 52 tables (39 entities + 4 F6 + 2 B1 + 2 B4 + 3 L1 + 2 L2 tables)", async () => {
     const { rows } = await db.client.query(
       "select tablename from pg_tables where schemaname = 'public' order by tablename",
     );
@@ -46,7 +46,7 @@ describe("applying every migration, in order, to an empty database", () => {
         on c.table_schema = 'public' and c.table_name = t.tablename
       where t.schemaname = 'public' group by t.tablename`);
     for (const r of rows) expect(r.cols, r.tablename).toEqual(["created_at", "id", "retention_class", "updated_at"]);
-    expect(rows).toHaveLength(50);
+    expect(rows).toHaveLength(52);
   });
 
   it("refuses to apply a migration twice, and changes nothing when it does", async () => {
@@ -61,8 +61,8 @@ describe("applying every migration, in order, to an empty database", () => {
 
   it("passes the verification query in db/verify.sql", async () => {
     const { rows } = await db.client.query(readSql("db/verify.sql"));
-    expect(rows[0].table_name).toMatch(/^OK: all 50 tables.*B3 Guardians are in place; B4 notices and privacy requests are in place; L1 source library is in place$/);
-    expect(rows.filter((r) => r.sort === 1 && r.table_exists && r.rls_on)).toHaveLength(50);
+    expect(rows[0].table_name).toMatch(/^OK: all 52 tables.*B3 Guardians are in place; B4 notices and privacy requests are in place; L1 source library is in place; L2 course generation and review are in place$/);
+    expect(rows.filter((r) => r.sort === 1 && r.table_exists && r.rls_on)).toHaveLength(52);
   });
 });
 
@@ -89,6 +89,7 @@ describe("the F3 then F4 SQL Editor bundles on a database that has only 0001", (
     await db.client.query(readSql("db/apply/B3.sql"));
     await db.client.query(readSql("db/apply/B4.sql"));
     await db.client.query(readSql("db/apply/L1.sql"));
+    await db.client.query(readSql("db/apply/L2.sql"));
     const { rows } = await db.client.query(
       "select a.role, a.is_minor, a.retention_class, p.id is not null as has_id from public.accounts a join public.profiles p on p.account_id = a.id",
     );
@@ -118,6 +119,8 @@ describe("the F3 then F4 SQL Editor bundles on a database that has only 0001", (
     await expect(db.client.query(readSql("db/apply/B4.sql"))).rejects.toThrow(/already applied/);
     await db.client.query("rollback");
     await expect(db.client.query(readSql("db/apply/L1.sql"))).rejects.toThrow(/already applied/);
+    await db.client.query("rollback");
+    await expect(db.client.query(readSql("db/apply/L2.sql"))).rejects.toThrow(/already applied/);
     await db.client.query("rollback");
     expect(await count()).toBe(before);
   });
@@ -160,7 +163,7 @@ describe("the F5 bundle on a database at F4 that already has audit rows", () => 
     expect(rows).toEqual([{ seq: "1", action: "older" }, { seq: "2", action: "newer" }]);
     expect((await db.client.query("select ok, checked from public.audit_verify_chain()")).rows[0]).toEqual({ ok: true, checked: "2" });
     // Until F6 is applied, the verdict names what's missing.
-    expect((await db.client.query(readSql("db/verify.sql"))).rows[0].table_name).toMatch(/^PROBLEM: 11 missing.*F5 applied, F6 NOT applied, B1 NOT applied, B2 NOT applied, B3 NOT applied, B4 NOT applied, L1 NOT applied$/);
+    expect((await db.client.query(readSql("db/verify.sql"))).rows[0].table_name).toMatch(/^PROBLEM: 13 missing.*F5 applied, F6 NOT applied, B1 NOT applied, B2 NOT applied, B3 NOT applied, B4 NOT applied, L1 NOT applied, L2 NOT applied$/);
   });
 
   it("leaves the insert-only trigger on", async () => {
@@ -195,7 +198,7 @@ describe("the F6 bundle on the live F5 database (Owner, audit rows)", () => {
     expect((await db.client.query("select ok, checked from public.audit_verify_chain()")).rows[0]).toEqual({ ok: true, checked: "2" });
     expect((await db.client.query("select count(*)::int as n from public.accounts where role = 'owner'")).rows[0].n).toBe(1);
     expect((await db.client.query("select count(*)::int as n from public.trusted_devices")).rows[0].n).toBe(0);
-    expect((await db.client.query(readSql("db/verify.sql"))).rows[0].table_name).toMatch(/^PROBLEM: 7 missing.*F6 applied, B1 NOT applied, B2 NOT applied, B3 NOT applied, B4 NOT applied, L1 NOT applied$/);
+    expect((await db.client.query(readSql("db/verify.sql"))).rows[0].table_name).toMatch(/^PROBLEM: 9 missing.*F6 applied, B1 NOT applied, B2 NOT applied, B3 NOT applied, B4 NOT applied, L1 NOT applied, L2 NOT applied$/);
   });
 
   it("keeps working with what the F5 code writes (an audit row with no device)", async () => {
@@ -230,7 +233,7 @@ describe("the B1 bundle on the live F6 database (Owner, audit rows)", () => {
     await db.client.query(readSql("db/apply/B1.sql"));
     expect((await db.client.query("select ok from public.audit_verify_chain()")).rows[0].ok).toBe(true);
     expect((await db.client.query("select count(*)::int as n from public.accounts where role = 'owner'")).rows[0].n).toBe(1);
-    expect((await db.client.query(readSql("db/verify.sql"))).rows[0].table_name).toMatch(/^PROBLEM: 5 missing.*B1 applied, B2 NOT applied, B3 NOT applied, B4 NOT applied, L1 NOT applied$/);
+    expect((await db.client.query(readSql("db/verify.sql"))).rows[0].table_name).toMatch(/^PROBLEM: 7 missing.*B1 applied, B2 NOT applied, B3 NOT applied, B4 NOT applied, L1 NOT applied, L2 NOT applied$/);
   });
 
   it("publishes the Automatic Renewal Terms word for word as the checkout shows them", async () => {

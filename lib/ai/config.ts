@@ -1,8 +1,13 @@
 /**
- * L1: AI settings. Every model and embedding call goes through lib/ai (the orchestration service), which reads these.
+ * L1/L2: AI settings. Every model and embedding call goes through lib/ai (the orchestration service), which reads these.
  * The cheapest model that does each job well:
  *   - claims.extract: short factual claims with a verbatim quote, from one passage at a time → Claude Haiku 4.5.
  *   - conflicts.detect: does claim A contradict claim B (yes/no + why) → Claude Haiku 4.5.
+ *   - sources.research (L2): web search, then list cited findings and what has become outdated → Claude Haiku 4.5
+ *     with the web search tool (the answer's citations come from the API, not from the model's memory).
+ *   - courses.blueprint (L2): structure modules, lessons and skills around cited claims → Claude Sonnet 5.5 (a
+ *     course outline is planning, which Haiku does noticeably worse), at medium effort to hold cost down.
+ *   - lessons.draft (L2): write a lesson in its own words with inline citations → Claude Sonnet 5.5, medium effort.
  *   - embeddings: Voyage AI voyage-3.5-lite (Anthropic has no embeddings endpoint; Voyage is the one its docs use).
  * Spend caps are a Owner decision: the values here are PLACEHOLDERS. AI_DAILY_CAP_USD / AI_MONTHLY_CAP_USD (plain
  * numbers, not secrets) override them without a code change.
@@ -10,7 +15,17 @@
 export const AI_MODELS = {
   "claims.extract": "claude-haiku-4-5",
   "conflicts.detect": "claude-haiku-4-5",
+  "sources.research": "claude-haiku-4-5",
+  "courses.blueprint": "claude-sonnet-5-5",
+  "lessons.draft": "claude-sonnet-5-5",
 } as const;
+
+/** Effort for the steps on models that take it (Sonnet 5.5): medium holds cost down without losing structure. */
+export const AI_EFFORT: Partial<Record<AiPurposeKey, "low" | "medium" | "high">> = { "courses.blueprint": "medium", "lessons.draft": "medium" };
+type AiPurposeKey = keyof typeof AI_MODELS;
+
+/** The web search tool (L2 research). Billed per search on top of tokens. Basic version: Haiku 4.5 supports it. */
+export const WEB_SEARCH = { type: "web_search_20250305", maxUses: 5, usdPerSearch: 0.01 } as const;
 export type AiPurpose = keyof typeof AI_MODELS;
 
 /** The model the health check asks about (GET /v1/models/{id}: free, proves the key works). */
@@ -24,14 +39,42 @@ export const SPEND_CAPS_USD = { perDay: 5, perMonth: 50 } as const;
 /** Per million tokens, in US dollars (Anthropic and Voyage list prices). Cache writes 1.25x input, reads 0.1x. */
 export const PRICES: Record<string, { input: number; output: number; cacheWrite: number; cacheRead: number }> = {
   "claude-haiku-4-5": { input: 1, output: 5, cacheWrite: 1.25, cacheRead: 0.1 },
+  "claude-sonnet-5-5": { input: 2, output: 10, cacheWrite: 2.5, cacheRead: 0.2 },
   "voyage-3.5-lite": { input: 0.02, output: 0, cacheWrite: 0, cacheRead: 0 },
 };
 
-export function costUsd(model: string, u: { input?: number; output?: number; cacheWrite?: number; cacheRead?: number }): number {
+export function costUsd(model: string, u: { input?: number; output?: number; cacheWrite?: number; cacheRead?: number; webSearches?: number }): number {
   const p = PRICES[model];
-  if (!p) return 0;
-  const usd = ((u.input ?? 0) * p.input + (u.output ?? 0) * p.output + (u.cacheWrite ?? 0) * p.cacheWrite + (u.cacheRead ?? 0) * p.cacheRead) / 1_000_000;
+  const search = (u.webSearches ?? 0) * WEB_SEARCH.usdPerSearch;
+  if (!p) return Math.round(search * 1_000_000) / 1_000_000;
+  const usd = ((u.input ?? 0) * p.input + (u.output ?? 0) * p.output + (u.cacheWrite ?? 0) * p.cacheWrite + (u.cacheRead ?? 0) * p.cacheRead) / 1_000_000 + search;
   return Math.round(usd * 1_000_000) / 1_000_000;
+}
+
+/**
+ * Budgets per step for the estimate shown before a run (L2): tokens are upper-end guesses (search results and
+ * thinking count as tokens), so the estimate errs high. Real costs are logged per call in ai_calls.
+ */
+export const STEP_BUDGETS = {
+  research: { purpose: "sources.research", input: 40_000, output: 4_000, webSearches: WEB_SEARCH.maxUses },
+  blueprint: { purpose: "courses.blueprint", input: 25_000, output: 10_000, webSearches: 0 },
+  lesson: { purpose: "lessons.draft", input: 20_000, output: 10_000, webSearches: 0 },
+} as const;
+export type Step = keyof typeof STEP_BUDGETS;
+
+export function estimateUsd(step: Step, count = 1): number {
+  const b = STEP_BUDGETS[step];
+  const one = costUsd(AI_MODELS[b.purpose], { input: b.input, output: b.output, webSearches: b.webSearches });
+  return Math.round(one * Math.max(1, count) * 100) / 100;
+}
+
+/** The whole course: one research run, one blueprint, and every lesson drafted once. */
+export function courseEstimate(lessons: number) {
+  const research = estimateUsd("research");
+  const blueprint = estimateUsd("blueprint");
+  const perLesson = estimateUsd("lesson");
+  const n = Math.max(0, Math.floor(lessons));
+  return { research, blueprint, perLesson, lessons: n, total: Math.round((research + blueprint + perLesson * n) * 100) / 100 };
 }
 
 export function spendCaps(source: Record<string, string | undefined> = process.env) {

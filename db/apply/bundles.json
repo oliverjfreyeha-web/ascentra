@@ -56,6 +56,12 @@
       "migrations": [
         "0012_source_library"
       ]
+    },
+    "L2": {
+      "requires": "0012_source_library",
+      "migrations": [
+        "0013_course_generation"
+      ]
     }
   }
 }

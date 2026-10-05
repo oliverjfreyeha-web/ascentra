@@ -57,7 +57,10 @@ describe("reading /api/v1/me in the pages", () => {
       });
     })("app");
     const callers = files.filter((f) => /["'`]\/api\/v1\/me["'`]/.test(readFileSync(f, "utf8")));
-    expect(callers.sort()).toEqual(["app/account-panel.tsx", "app/admin/audit/audit-log.tsx", "app/admin/sources/source-library.tsx"]);
+    expect(callers.sort()).toEqual([
+      "app/account-panel.tsx", "app/admin/audit/audit-log.tsx", "app/admin/courses/[slug]/course-builder.tsx", "app/admin/courses/course-list.tsx",
+      "app/admin/sources/source-library.tsx",
+    ]);
     for (const f of callers) {
       const src = readFileSync(f, "utf8");
       expect(src, f).toMatch(/\bmeFrom\(/);

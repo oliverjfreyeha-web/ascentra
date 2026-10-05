@@ -79,20 +79,39 @@ export function createFakeDb(tables: Record<string, Row[]> = {}) {
     let payload: Row = {};
     let orderBy: { col: string; asc: boolean } | null = null;
     let limitN: number | null = null;
-    const like = (v: unknown, pattern: string) =>
-      new RegExp(`^${pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/%/g, ".*")}$`, "i").test(String(v ?? ""));
+    // Postgres ILIKE: % any run, _ one character, a backslash escapes the next character.
+    const like = (v: unknown, pattern: string) => {
+      let re = "";
+      for (let i = 0; i < pattern.length; i++) {
+        const ch = pattern[i];
+        if (ch === "\\" && i + 1 < pattern.length) re += pattern[++i].replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        else if (ch === "%") re += ".*";
+        else if (ch === "_") re += ".";
+        else re += ch.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      }
+      return new RegExp(`^${re}$`, "i").test(String(v ?? ""));
+    };
 
     const run = (): { data: unknown; error: Err; count?: number } => {
       const match = (r: Row) => filters.every((f) => f(r));
       if (op === "insert") {
         const now = new Date().toISOString();
-        const row: Row = { id: randomUUID(), status: table === "accounts" ? "active" : undefined, created_at: now, ...defaults(table, now), ...payload };
-        // audit_events: the database numbers rows (0006's chain trigger); mirror the numbering here.
-        if (table === "audit_events") Object.assign(row, { seq: rows().length + 1, occurred_at: new Date().toISOString(), row_hash: `hash${rows().length + 1}` });
-        const err = violates(table, row);
-        if (err) return { data: null, error: err };
-        rows().push(row);
-        return { data: [row], error: null };
+        // Like Supabase: an array inserts several rows, all or nothing.
+        const items = (Array.isArray(payload) ? payload : [payload]) as Row[];
+        const made: Row[] = [];
+        for (const item of items) {
+          const row: Row = { id: randomUUID(), status: table === "accounts" ? "active" : undefined, created_at: now, ...defaults(table, now), ...item };
+          // audit_events: the database numbers rows (0006's chain trigger); mirror the numbering here.
+          if (table === "audit_events") Object.assign(row, { seq: rows().length + 1, occurred_at: new Date().toISOString(), row_hash: `hash${rows().length + 1}` });
+          const err = violates(table, row);
+          if (err) {
+            made.forEach((m) => rows().splice(rows().indexOf(m), 1));
+            return { data: null, error: err };
+          }
+          rows().push(row);
+          made.push(row);
+        }
+        return { data: made, error: null };
       }
       if (op === "update") {
         const hit = rows().filter(match);
