@@ -15,4 +15,6 @@ export const EXPECTED_TABLES = [
   "research_runs", "lesson_versions",
   // L3
   "course_refresh", "refresh_runs", "refresh_edits",
+  // L4
+  "mentor_daily_usage",
 ].sort();

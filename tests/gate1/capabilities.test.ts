@@ -90,6 +90,9 @@ const GLOBAL: Record<string, RoleKey[]> = {
   // L3: the Owner sets the refresh interval; builders and Reviewers queue a refresh.
   "courses.refresh.configure": ["owner"],
   "courses.refresh.run": ["owner", "superAdmin", "courseAdmin", "reviewer"],
+  // L4: the safety review queue.
+  "safety.view": ["owner", "superAdmin"],
+  "safety.review": ["owner", "superAdmin"],
   "devices.replace": ALL,
   "security.verify": ALL,
   "security.appeal.submit": ALL,
@@ -147,6 +150,8 @@ const REASON = new Set([
   "billing.refund", "billing.credit", "sources.library.decide", "sources.conflicts.decide", "sources.open_list.edit",
   // L2: publishing a lesson version. L3: the refresh interval.
   "courses.release", "courses.refresh.configure",
+  // L4: reviewing a safety event.
+  "safety.review",
 ]);
 
 function ctx(role: RoleKey, { verified = true, courses }: { verified?: boolean; courses?: string[] } = {}): AuthContext {

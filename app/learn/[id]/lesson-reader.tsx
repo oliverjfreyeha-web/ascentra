@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { call } from "../../call";
 import { LessonView } from "../../lesson-body";
+import { MentorPanel } from "./mentor-panel";
 import { learnerLessonFrom, type LearnerLesson } from "../../courses-api";
 
 /** L2: one published lesson, with its citations and "last verified" date. Progress records the version read. */
@@ -56,6 +57,7 @@ export function LessonReader({ id }: { id: string }) {
         ? <p className="muted">Done.</p>
         : <button type="button" onClick={() => void complete()}>Mark as done</button>}
       {message && <p role="status">{message}</p>}
+      <MentorPanel lessonId={id} />
     </>
   );
 }

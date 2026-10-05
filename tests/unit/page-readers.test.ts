@@ -16,6 +16,11 @@ const READERS: [RegExp, string][] = [
   [/\/api\/v1\/learn\/courses/, "learnerCoursesFrom"],
   [/\/api\/v1\/learn\/lessons\//, "learnerLessonFrom"],
   [/["'`]\/api\/v1\/sources\?status=approved["'`]/, "librarySourcesFrom"],
+  // L4
+  [/\/api\/v1\/mentor\/threads\?lessonId=/, "mentorThreadsFrom"],
+  [/\/api\/v1\/mentor\/threads\/\$\{/, "mentorThreadFrom"],
+  [/call\("POST", "\/api\/v1\/mentor"/, "mentorReplyFrom"],
+  [/\/api\/v1\/safety\/events\?status=/, "safetyEventsFrom"],
 ];
 
 const pages = (function walk(dir: string): string[] {

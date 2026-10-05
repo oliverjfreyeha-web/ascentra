@@ -1,4 +1,4 @@
--- Run in the Supabase SQL Editor after applying the migrations (F3, F4, F5, F6, B1, B2, B3, B4, L1, L2 and L3).
+-- Run in the Supabase SQL Editor after applying the migrations (F3, F4, F5, F6, B1, B2, B3, B4, L1, L2, L3 and L4).
 -- The first row is the verdict. The rest lists every expected table with whether it exists and
 -- whether row-level security is on, then any other table in public (which should not exist).
 with expected(table_name) as (values
@@ -21,7 +21,9 @@ with expected(table_name) as (values
   -- L2: research runs and lesson versions.
   ('research_runs'), ('lesson_versions'),
   -- L3: refresh settings and queue, change reports, suggested edits.
-  ('course_refresh'), ('refresh_runs'), ('refresh_edits')
+  ('course_refresh'), ('refresh_runs'), ('refresh_edits'),
+  -- L4: Mentor message counts per day.
+  ('mentor_daily_usage')
 ),
 public_tables as (
   select c.relname as table_name, c.relrowsecurity as rls_on
@@ -133,9 +135,16 @@ l3 as (
     exists (select 1 from pg_trigger where tgrelid = to_regclass('public.refresh_edits') and tgname = 'refresh_edit_rules') as edit_rules,
     exists (select 1 from information_schema.columns where table_schema = 'public'
        and table_name = 'lesson_versions' and column_name = 'change_summary') as change_summary
+),
+l4 as (
+  select
+    exists (select 1 from private.schema_migrations where version = '0015_mentor_and_safety') as recorded,
+    exists (select 1 from pg_trigger where tgrelid = to_regclass('public.safety_events') and tgname = 'safety_event_rules') as safety_rules,
+    exists (select 1 from information_schema.columns where table_schema = 'public'
+       and table_name = 'mentor_threads' and column_name = 'lesson_id') as mentor_threads
 )
 select 0 as sort,
-       case when (select count(*) from report where expected and table_exists and rls_on) = 55
+       case when (select count(*) from report where expected and table_exists and rls_on) = 56
              and not exists (select 1 from report where not expected)
              and (select triggers from insert_only) = 4
              and (select owner_triggers from f4) = 2 and (select invite_columns from f4) and (select recorded from f4)
@@ -154,7 +163,8 @@ select 0 as sort,
              and (select retrieval_private from l1) and (select decisions_insert_only from l1)
              and (select recorded from l2) and (select review_rules from l2) and (select progress_rule from l2) and (select blueprint_plan from l2)
              and (select recorded from l3) and (select edit_rules from l3) and (select change_summary from l3)
-            then 'OK: all 55 tables exist with row-level security on; audit_events and consent_records are insert-only; F4 admin invites and Owner protections are in place; F5 audit chain is in place; F6 devices, sessions and safeguards are in place; B1 billing is in place; B2 age rules and sign-up are in place; B3 Guardians are in place; B4 notices and privacy requests are in place; L1 source library is in place; L2 course generation and review are in place; L3 freshness cycle is in place'
+             and (select recorded from l4) and (select safety_rules from l4) and (select mentor_threads from l4)
+            then 'OK: all 56 tables exist with row-level security on; audit_events and consent_records are insert-only; F4 admin invites and Owner protections are in place; F5 audit chain is in place; F6 devices, sessions and safeguards are in place; B1 billing is in place; B2 age rules and sign-up are in place; B3 Guardians are in place; B4 notices and privacy requests are in place; L1 source library is in place; L2 course generation and review are in place; L3 freshness cycle is in place; L4 Mentor and safety checks are in place'
             else 'PROBLEM: ' || (select count(*) from report where expected and not table_exists) || ' missing, '
                  || (select count(*) from report where table_exists and not rls_on) || ' without RLS, '
                  || (select count(*) from report where not expected) || ' unexpected, '
@@ -184,6 +194,8 @@ select 0 as sort,
                                          and (select blueprint_plan from l2)
                                     then 'applied' else 'NOT applied' end
                  || ', L3 ' || case when (select recorded from l3) and (select edit_rules from l3) and (select change_summary from l3)
+                                    then 'applied' else 'NOT applied' end
+                 || ', L4 ' || case when (select recorded from l4) and (select safety_rules from l4) and (select mentor_threads from l4)
                                     then 'applied' else 'NOT applied' end
                  || case when (select staff_never_minor from b2) then '' else ', an Owner or admin is marked minor or pending' end
        end as table_name,

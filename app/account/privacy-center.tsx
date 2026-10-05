@@ -12,6 +12,8 @@ type Request = { id: string; kind: string; status: string; due_at: string; compl
 type Privacy = {
   consents: Consent[]; requests: Request[]; subjects: { id: string; name: string }[];
   teenHandledByGuardian: boolean; canRequestDeletion: boolean; dueDays: { export: number; deletion: number };
+  /** L4: how many Mentor conversations this account has (they're in the download and covered by a deletion request). */
+  mentorThreads: number;
 };
 
 /**
@@ -125,6 +127,21 @@ export function PrivacyCenter() {
           )}
         </>
       )}
+      <h3>Mentor conversations</h3>
+      <p className="small muted">
+        Private to you: Support never sees them, and they aren&apos;t used to train AI models. They&apos;re included in your data download and in a
+        deletion request.
+      </p>
+      <p>
+        {data.mentorThreads} conversation(s).{" "}
+        {data.mentorThreads > 0 && (
+          <button type="button" disabled={busy} onClick={() => {
+            if (window.confirm("Delete all your Mentor conversations now? This can't be undone.")) {
+              void run(() => call("DELETE", "/api/v1/mentor/threads"), (r) => setMessage(`Deleted ${r.deleted as number} Mentor conversation(s).`));
+            }
+          }}>Delete all my Mentor conversations</button>
+        )}
+      </p>
       <h3>Your requests</h3>
       {data.requests.length === 0 ? <p className="muted">None.</p> : (
         <ul>

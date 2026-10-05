@@ -329,7 +329,16 @@ export function createFakeDb(tables: Record<string, Row[]> = {}) {
     }),
   };
 
+  // L4: count_mentor_message (one row per account and day).
+  function countMentorMessage(a: Record<string, unknown>) {
+    data.mentor_daily_usage ??= [];
+    let row = data.mentor_daily_usage.find((r) => r.account_id === a.p_account && r.day === a.p_day);
+    if (!row) { row = { id: randomUUID(), account_id: a.p_account, day: a.p_day, messages: 0 }; data.mentor_daily_usage.push(row); }
+    row.messages = Number(row.messages) + 1;
+    return { data: row.messages, error: null };
+  }
   const rpc = async (fn: string, args: Record<string, unknown> = {}) =>
+    fn === "count_mentor_message" ? countMentorMessage(args) :
     fn === "put_source_chunks" ? putSourceChunks(args) :
     fn === "match_source_chunks" ? matchSourceChunks(args) :
     fn === "support_change_date_of_birth" ? { data: supportChangeDob(args), error: null } :
