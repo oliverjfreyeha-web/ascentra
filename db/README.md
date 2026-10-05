@@ -17,7 +17,8 @@ security is on for every table and denies by default.
 | `apply/B3.sql` | The one file to paste for B3: 0010 (Guardians: identity result, one Guardian of record per teen, paused teens, teen defaults, Teen Terms and Minor Privacy Notice v0.2). Requires B2. |
 | `apply/B4.sql` | The one file to paste for B4: 0011 (notices sent, Privacy Center requests with due dates). Requires B3. |
 | `apply/L1.sql` | The one file to paste for L1: 0012 (pgvector; the source library, passages for search, cited claims, conflicts, authority decisions, the open-license list, the AI call log; the private `source-documents` bucket). Requires B4. |
-| `apply/L2.sql` | **The one file to paste for L2**: 0013 (research runs, course Blueprints, lesson versions with Draft → Review → Published, progress on the version studied). Requires L1. |
+| `apply/L2.sql` | The one file to paste for L2: 0013 (research runs, course Blueprints, lesson versions with Draft → Review → Published, progress on the version studied). Requires L1. |
+| `apply/L3.sql` | **The one file to paste for L3**: 0014 (the freshness cycle: refresh settings and nightly queue, change reports, suggested edits, update summaries). Requires L2. |
 | `ops/create-test-learner.sql` | Owner-only, by hand: one adult test learner for an existing Clerk user (see below). Not a migration. |
 | `verify.sql` | Run after applying. First row is the verdict. |
 | `test/supabase-shim.sql` | Tests only: recreates Supabase's API roles and `auth.jwt()` on plain Postgres. Never apply it to Supabase. |
@@ -39,6 +40,15 @@ with an admin invite, and the untouched template. One transaction: a refusal cha
 4. Supabase SQL Editor → paste `db/ops/create-test-learner.sql`, set `clerk_user_id`, `email` and `reason` at the
    top → **Run**. The last result row shows the new account (`role = learner`, `is_minor = false`) and its audit event.
 5. Reload the site: "Signed in as TEST Learner (Learner)". The first page registers this browser as a trusted device.
+
+## Applying L3 to Supabase (L2 is already applied)
+
+Apply it **before** merging the L3 code: the L3 code reads the new tables and columns. The L2 code that is live keeps working.
+
+1. SQL Editor → **New query** → paste the whole of `db/apply/L3.sql` → **Run**. Expect "Success. No rows returned".
+   Nothing in it drops or changes existing data.
+2. **New query** → paste `db/verify.sql` → **Run**. The first row must read
+   `OK: all 55 tables … L3 freshness cycle is in place`.
 
 ## Applying L2 to Supabase (L1 is already applied)
 

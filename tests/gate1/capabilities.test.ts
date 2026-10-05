@@ -87,6 +87,9 @@ const GLOBAL: Record<string, RoleKey[]> = {
   "courses.build": ["owner", "superAdmin", "courseAdmin"],
   "courses.verify": ["owner", "reviewer"],
   "courses.release": ["owner", "superAdmin", "courseAdmin"],
+  // L3: the Owner sets the refresh interval; builders and Reviewers queue a refresh.
+  "courses.refresh.configure": ["owner"],
+  "courses.refresh.run": ["owner", "superAdmin", "courseAdmin", "reviewer"],
   "devices.replace": ALL,
   "security.verify": ALL,
   "security.appeal.submit": ALL,
@@ -142,8 +145,8 @@ const REASON = new Set([
   "support.dob.change", "guardian.consent.withdraw",
   // B4: refunds and credits. L1: approving or rejecting a source, an authority decision, the open-license list.
   "billing.refund", "billing.credit", "sources.library.decide", "sources.conflicts.decide", "sources.open_list.edit",
-  // L2: publishing a lesson version.
-  "courses.release",
+  // L2: publishing a lesson version. L3: the refresh interval.
+  "courses.release", "courses.refresh.configure",
 ]);
 
 function ctx(role: RoleKey, { verified = true, courses }: { verified?: boolean; courses?: string[] } = {}): AuthContext {

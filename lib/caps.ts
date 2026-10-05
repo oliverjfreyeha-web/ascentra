@@ -143,6 +143,9 @@ export const CAPABILITIES = {
   "courses.build": { scope: "global", from: "courseAdmin: Build, edit, and version assigned courses only (L2: blueprints and lesson drafts)" },
   "courses.verify": { scope: "global", from: "reviewer: Comment on and verify course versions in Review" },
   "courses.release": { scope: "global", from: "courseAdmin: Publish, archive, and restore assigned courses (L2: publish a verified lesson version)", sensitive: true, reason: true },
+  // ---- Freshness cycle (L3): the Owner sets the interval; builders and Reviewers queue a refresh (course scope applies) ----
+  "courses.refresh.configure": { scope: "global", from: "L3: a refresh setting per course (30 to 60 days); the Owner can change it", reason: true },
+  "courses.refresh.run": { scope: "global", from: "L3: queue a course's refresh for the next run, after seeing its cost estimate" },
 
   // ---- Nobody: support "Never sees payment details, private notes, or Mentor conversations" ----
   "billing.payment_details.view": { scope: "global", from: "support: Never sees payment details (no role holds this)" },
@@ -166,6 +169,7 @@ export const OWNER_ONLY_CAPS = [
   "billing.refund",
   "billing.credit",
   "sources.open_list.edit",
+  "courses.refresh.configure",
 ] as const satisfies readonly Cap[];
 
 /** Held by no role. Listed so tests can prove it. */
@@ -185,7 +189,7 @@ const SUPER_ADMIN: Cap[] = [
   // decideAppeal checks inspectAccounts, which the prototype gives the Super Admin too.
   "support.appeal.decide", "security.suspend",
   "sources.library.view", "sources.search", "ai.status",
-  "sources.research", "courses.view", "courses.build", "courses.release",
+  "sources.research", "courses.view", "courses.build", "courses.release", "courses.refresh.run",
 ];
 
 /** Every signed-in Account manages its own devices and can answer a safeguard step. */
@@ -210,13 +214,13 @@ export const ROLE_CAPS: Record<RoleKey, readonly Cap[]> = {
     "self.view", "learn",
     "courses.edit.assigned", "courses.publish.assigned", "courses.archive.assigned", "courses.restore.assigned",
     "sources.flag.assigned", "access.basic", "sources.library.view", "sources.search",
-    "sources.research", "courses.view", "courses.build", "courses.release", ...SELF_SECURITY,
+    "sources.research", "courses.view", "courses.build", "courses.release", "courses.refresh.run", ...SELF_SECURITY,
   ],
   reviewer: [
     "self.view", "learn",
     "courses.review.assigned", "sources.resolve.assigned", "work.evaluate.assigned", "access.basic",
     "sources.library.view", "sources.search", "sources.library.add", "sources.library.decide", "sources.claims.manage", "sources.conflicts.decide",
-    "sources.research", "courses.view", "courses.verify",
+    "sources.research", "courses.view", "courses.verify", "courses.refresh.run",
     ...SELF_SECURITY,
   ],
   support: [

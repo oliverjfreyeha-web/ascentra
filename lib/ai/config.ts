@@ -8,6 +8,9 @@
  *   - courses.blueprint (L2): structure modules, lessons and skills around cited claims → Claude Sonnet 5.5 (a
  *     course outline is planning, which Haiku does noticeably worse), at medium effort to hold cost down.
  *   - lessons.draft (L2): write a lesson in its own words with inline citations → Claude Sonnet 5.5, medium effort.
+ *   - courses.refresh.research (L3): what changed in the field since the last verification, with web search → Haiku 4.5.
+ *   - courses.refresh.report (L3): which lesson paragraphs are now doubtful, and cited replacement text → Sonnet 5.5,
+ *     medium effort (it rewrites lesson text, which Haiku does noticeably worse).
  *   - embeddings: Voyage AI voyage-3.5-lite (Anthropic has no embeddings endpoint; Voyage is the one its docs use).
  * Spend caps are a Owner decision: the values here are PLACEHOLDERS. AI_DAILY_CAP_USD / AI_MONTHLY_CAP_USD (plain
  * numbers, not secrets) override them without a code change.
@@ -18,10 +21,12 @@ export const AI_MODELS = {
   "sources.research": "claude-haiku-4-5",
   "courses.blueprint": "claude-sonnet-5-5",
   "lessons.draft": "claude-sonnet-5-5",
+  "courses.refresh.research": "claude-haiku-4-5",
+  "courses.refresh.report": "claude-sonnet-5-5",
 } as const;
 
 /** Effort for the steps on models that take it (Sonnet 5.5): medium holds cost down without losing structure. */
-export const AI_EFFORT: Partial<Record<AiPurposeKey, "low" | "medium" | "high">> = { "courses.blueprint": "medium", "lessons.draft": "medium" };
+export const AI_EFFORT: Partial<Record<AiPurposeKey, "low" | "medium" | "high">> = { "courses.blueprint": "medium", "lessons.draft": "medium", "courses.refresh.report": "medium" };
 type AiPurposeKey = keyof typeof AI_MODELS;
 
 /** The web search tool (L2 research). Billed per search on top of tokens. Basic version: Haiku 4.5 supports it. */
@@ -59,7 +64,12 @@ export const STEP_BUDGETS = {
   research: { purpose: "sources.research", input: 40_000, output: 4_000, webSearches: WEB_SEARCH.maxUses },
   blueprint: { purpose: "courses.blueprint", input: 25_000, output: 10_000, webSearches: 0 },
   lesson: { purpose: "lessons.draft", input: 20_000, output: 10_000, webSearches: 0 },
+  refreshResearch: { purpose: "courses.refresh.research", input: 40_000, output: 4_000, webSearches: WEB_SEARCH.maxUses },
+  refreshReport: { purpose: "courses.refresh.report", input: 30_000, output: 10_000, webSearches: 0 },
 } as const;
+
+/** L3: one course's refresh (a research pass and a change report). */
+export const refreshEstimate = () => Math.round((estimateUsd("refreshResearch") + estimateUsd("refreshReport")) * 100) / 100;
 export type Step = keyof typeof STEP_BUDGETS;
 
 export function estimateUsd(step: Step, count = 1): number {
