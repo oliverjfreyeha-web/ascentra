@@ -13,7 +13,8 @@ import type { SubscriptionRow } from "@/lib/billing";
  * the Guardian.
  */
 export type NoticeKind =
-  | "trial_ending" | "renewal_upcoming" | "payment_failed" | "subscription_canceled" | "subscription_ended" | "guardian_consent_withdrawn";
+  | "trial_ending" | "renewal_upcoming" | "payment_failed" | "subscription_canceled" | "subscription_ended" | "guardian_consent_withdrawn"
+  | "mentor_allowance_80" | "mentor_allowance_100";
 export type NoticeOutcome = "sent" | "skipped" | "failed" | "duplicate";
 
 type Person = { id: string; email: string };
@@ -158,6 +159,25 @@ export async function noticeConsentWithdrawn(guardianId: string, teenId: string,
       text: `Your Guardian withdrew their consent on ${day(withdrawnAt)}, so your ASCENTRA account is paused. Nothing was deleted: your progress is kept. Only your Guardian can give consent again.`,
     }),
   ];
+}
+
+/**
+ * L5: the Guardian is told when their teen has used 80% and 100% of the Mentor allowance for the period. Once each per
+ * period (the dedupe key). If email isn't configured, the notice is recorded as skipped and the Guardian sees a banner.
+ * Amounts only: never what the teen asked the Mentor.
+ */
+export async function noticeMentorAllowance(sub: SubscriptionRow, periodId: string, pct: 80 | 100, usedUsd: number, usableUsd: number, resetsAt: string | null) {
+  const { payer, teen } = await partiesOf(sub);
+  if (!payer || !teen) return null;
+  const amounts = `$${Math.min(usedUsd, usableUsd).toFixed(2)} of $${usableUsd.toFixed(2)}`;
+  return notify({
+    kind: pct === 100 ? "mentor_allowance_100" : "mentor_allowance_80", to: payer, aboutId: teen.id, subscriptionId: sub.id,
+    dedupeKey: `mentor_allowance_${pct}:${periodId}`,
+    subject: pct === 100 ? `${teen.name}'s Mentor allowance is used up` : `${teen.name} has used 80% of their Mentor allowance`,
+    text: pct === 100
+      ? `${teen.name} has used all of this period's Mentor allowance (${amounts}). The Mentor is paused for ${teen.name} until it resets on ${day(resetsAt)}, unless you raise it. Lessons work as usual. You won't be charged anything unless you choose a higher allowance.\n\nOnly you can change it: ${where("/guardian", "Guardian Center")}`
+      : `${teen.name} has used ${amounts} of this period's Mentor allowance. It resets on ${day(resetsAt)}. Nothing changes unless you choose a higher allowance.\n\n${where("/guardian", "Guardian Center")}`,
+  });
 }
 
 /**

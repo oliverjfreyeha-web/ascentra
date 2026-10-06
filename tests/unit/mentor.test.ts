@@ -66,6 +66,12 @@ beforeEach(async () => {
   db = seedFake();
   fake.db = db;
   db.data.entitlements = [{ id: "e1", account_id: ROLE_ID.learner, tier: "pro", valid_from: "2026-01-01T00:00:00Z", valid_until: null }];
+  // L5: the learner's plan carries a $20 Mentor allowance for the current period.
+  db.data.subscriptions = [{
+    id: "sub-l", payer_account_id: ROLE_ID.learner, beneficiary_account_id: ROLE_ID.learner, plan: "pro", status: "active",
+    mentor_addon_cents: 2000, renews_at: "2099-01-01T00:00:00.000Z", created_at: "2026-01-01T00:00:00Z",
+  }];
+  db.data.mentor_allowance_periods = [{ id: "per-l", subscription_id: "sub-l", account_id: ROLE_ID.learner, period_start: "2026-01-01T00:00:00.000Z", period_end: "2099-01-01T00:00:00.000Z", addon_cents: 2000, trial: false }];
   db.data.sources = [];
   for (const [id, slug] of [["s-leads", "leads"], ["s-sales", "sales"]]) {
     db.data.sources.push({ id, title: `${slug} study`, url: `https://example.org/${slug}`, status: "approved", academy_id: null, license_class: "open" });
@@ -109,7 +115,10 @@ describe("answers from the course's sources", () => {
     expect(promptText(parses()[1].params)).toMatch(/P1 \[Lead response study\]: Reply to new leads within five minutes\./);
     expect(promptText(parses()[1].params)).not.toMatch(/Sales calls study/);
     expect((parses()[1].params as { cache_control?: unknown }).cache_control).toEqual({ type: "ephemeral" });
-    expect(reply.mentor).toEqual({ aiOn: true, dailyCap: 40 });
+    expect(reply.mentor).toMatchObject({ aiOn: true, dailyCap: 40, allowance: { status: "active", usableUsd: 14, canChange: true } });
+    // L5: the message's real cost (three Haiku calls of 500 in / 80 out tokens) is in the allowance ledger.
+    expect(db.data.mentor_allowance_usage).toMatchObject([{ period_id: "per-l", account_id: ROLE_ID.learner, cost_usd: 0.0027, counted_usd: 0.0027, price_scale: 1 }]);
+    expect(reply.mentor.allowance.usedUsd).toBe(0.0027);
     expect(db.data.mentor_daily_usage).toMatchObject([{ account_id: ROLE_ID.learner, messages: 1 }]);
   });
 

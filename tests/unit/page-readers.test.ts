@@ -21,6 +21,11 @@ const READERS: [RegExp, string][] = [
   [/\/api\/v1\/mentor\/threads\/\$\{/, "mentorThreadFrom"],
   [/call\("POST", "\/api\/v1\/mentor"/, "mentorReplyFrom"],
   [/\/api\/v1\/safety\/events\?status=/, "safetyEventsFrom"],
+  // L5: the Mentor allowance parts of the billing and Guardian answers.
+  [/call\("GET", "\/api\/v1\/billing"\)/, "mentorAddonFrom"],
+  [/call\("GET", "\/api\/v1\/guardian"\)/, "teenAllowancesFrom"],
+  [/"\/api\/v1\/billing\/mentor-addon", body\(\{ agreed: false \}\)/, "addonQuoteFrom"],
+  [/"\/api\/v1\/billing\/mentor-addon", body\(\{ confirm: true/, "addonChangeFrom"],
 ];
 
 const pages = (function walk(dir: string): string[] {

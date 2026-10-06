@@ -3,10 +3,11 @@ import type Stripe from "stripe";
 import { getDb } from "@/lib/db";
 import { recordAudit, SYSTEM_ACTOR, type AuditActor } from "@/lib/audit";
 import { decide, type RoleKey } from "@/lib/caps";
-import type { BillingEnv } from "@/lib/billing-env";
+import { readAddonPrices, type BillingEnv } from "@/lib/billing-env";
 import { PLANS, type PaidPlan } from "@/lib/billing-terms";
 import { mayPayFor } from "@/lib/guardians";
 import { tellGuardianBeforeTeenLosesAccess } from "@/lib/notices";
+import { syncAllowancePeriod } from "@/lib/mentor-allowance";
 
 /**
  * Subscriptions and entitlements, kept in step with Stripe. Stripe is the source of truth for the
@@ -37,6 +38,10 @@ export type SubscriptionRow = {
   processor_price_id: string | null;
   processor_status: string | null;
   processor_updated_at: string | null;
+  // L5: the Mentor allowance add-on Stripe bills next (cents), and its item on the same subscription.
+  mentor_addon_cents: number;
+  mentor_addon_price_id: string | null;
+  mentor_addon_item_id: string | null;
   created_at: string;
 };
 
@@ -57,12 +62,23 @@ export function planOfPrice(priceId: string | null | undefined, env: Pick<Billin
  *   incomplete (the first payment hasn't gone through) → null: nothing to record yet.
  */
 export type MappedRow = Omit<SubscriptionRow, "id" | "payer_account_id" | "beneficiary_account_id" | "created_at" | "processor_updated_at">;
-export type Mapped = { row: MappedRow; pricePlan: PaidPlan } | { error: string } | { skip: string };
+export type Mapped = { row: MappedRow; pricePlan: PaidPlan; period: { start: string; end: string } } | { error: string } | { skip: string };
+/** L5: the add-on's price ids → cents (from readAddonPrices). Empty while the add-on isn't set up. */
+export type AddonPriceMap = (priceId: string | null | undefined) => 500 | 1000 | 2000 | null;
 
-export function mapSubscription(sub: Stripe.Subscription, env: Pick<BillingEnv, "STRIPE_PRICE_BASIC" | "STRIPE_PRICE_PRO">): Mapped {
-  const item = sub.items.data[0];
+/**
+ * L5: the plan is the item whose price is Basic or Pro; the Mentor allowance add-on, if any, is the item whose price is
+ * one of the three add-on prices. Any other item, or more than one of either, is refused.
+ */
+export function mapSubscription(sub: Stripe.Subscription, env: Pick<BillingEnv, "STRIPE_PRICE_BASIC" | "STRIPE_PRICE_PRO">, addonOf: AddonPriceMap = () => null): Mapped {
+  const items = sub.items.data;
+  const planItems = items.filter((i) => planOfPrice(i.price?.id, env));
+  const addonItems = items.filter((i) => addonOf(i.price?.id));
+  const stray = items.find((i) => !planOfPrice(i.price?.id, env) && !addonOf(i.price?.id));
+  const item = planItems[0];
   const pricePlan = planOfPrice(item?.price?.id, env);
-  if (!pricePlan) return { error: `unknown price ${item?.price?.id ?? "(none)"}` };
+  if (!pricePlan || planItems.length > 1 || addonItems.length > 1 || stray) return { error: `unknown price ${(stray ?? item)?.price?.id ?? "(none)"}` };
+  const addon = addonItems[0] ?? null;
   let status: SubStatus;
   switch (sub.status) {
     case "trialing":
@@ -101,8 +117,12 @@ export function mapSubscription(sub: Stripe.Subscription, env: Pick<BillingEnv, 
       processor_customer_id: typeof sub.customer === "string" ? sub.customer : sub.customer.id,
       processor_price_id: item.price.id,
       processor_status: sub.status,
+      mentor_addon_cents: addon ? addonOf(addon.price.id)! : 0,
+      mentor_addon_price_id: addon?.price.id ?? null,
+      mentor_addon_item_id: addon?.id ?? null,
     },
     pricePlan,
+    period: { start: iso(item.current_period_start)!, end: periodEnd! },
   };
 }
 
@@ -118,6 +138,7 @@ export function entitlementOf(row: Pick<SubscriptionRow, "plan" | "status" | "pa
 
 const WEBHOOK_ACTOR: AuditActor = SYSTEM_ACTOR("Stripe webhook");
 const label = (r: { plan: string; status: string } | null) => (r ? `${r.plan} (${r.status})` : "none");
+export const addonLabel = (cents: number) => (cents ? `$${(cents / 100).toFixed(2)}/month` : "none");
 
 /**
  * Writes Stripe's current view of one subscription: the subscriptions row, its entitlement row, and an
@@ -126,10 +147,11 @@ const label = (r: { plan: string; status: string } | null) => (r ? `${r.plan} ($
 export async function applySubscription(
   sub: Stripe.Subscription,
   env: BillingEnv,
-  opts: { accountId?: string | null; eventId: string; eventAt: Date; retried?: boolean },
+  opts: { accountId?: string | null; eventId: string; eventAt: Date; retried?: boolean; fresh?: boolean },
 ): Promise<{ outcome: string; accountId: string | null; row?: SubscriptionRow; previous?: SubscriptionRow | null }> {
   const db = getDb();
-  const mapped = mapSubscription(sub, env);
+  const addonPrices = readAddonPrices();
+  const mapped = mapSubscription(sub, env, addonPrices.ok ? addonPrices.centsOf : () => null);
   if ("error" in mapped) {
     await recordAudit({
       actor: WEBHOOK_ACTOR, action: "billing.subscription.sync", result: "Blocked",
@@ -146,10 +168,13 @@ export async function applySubscription(
   const accountId = existing?.payer_account_id ?? opts.accountId ?? (await accountOfCustomer(mapped.row.processor_customer_id)) ?? (sub.metadata?.account_id || null);
   if (!accountId) return { outcome: "no_account", accountId: null };
 
-  // An older event never overwrites a newer state.
-  if (existing?.processor_updated_at && new Date(existing.processor_updated_at) > opts.eventAt) return { outcome: "stale", accountId, row: existing };
+  // An older event never overwrites a newer state. fresh (L5): the subscription exactly as Stripe returned it from our
+  // own change just now, which is newer than anything recorded, whatever the clocks say.
+  const last = existing?.processor_updated_at ? new Date(existing.processor_updated_at) : null;
+  if (existing && last && last > opts.eventAt && !opts.fresh) return { outcome: "stale", accountId, row: existing };
+  const at = last && opts.fresh && last >= opts.eventAt ? new Date(last.getTime() + 1) : opts.eventAt;
 
-  const fields = { ...mapped.row, processor_updated_at: opts.eventAt.toISOString(), updated_at: new Date().toISOString() };
+  const fields = { ...mapped.row, processor_updated_at: at.toISOString(), updated_at: new Date().toISOString() };
   // B4: a teen never loses access without the Guardian being told first. The notice goes out (or is recorded,
   // for the banner) before the ended state is written; if that fails, the event fails and Stripe retries it.
   if (existing && mapped.row.status === "ended" && existing.status !== "ended") {
@@ -195,6 +220,16 @@ export async function applySubscription(
         ? `Subscription changed in Stripe: ${label(existing)} → ${label(row)}.`
         : `Subscription started in Stripe: ${label(row)}${row.trial_ends_at ? `, trial ends ${row.trial_ends_at.slice(0, 10)}` : ""}.`,
       target: { type: "account", id: accountId }, previous: label(existing), next: label(row), sensitive: true,
+    });
+  }
+  // L5: the Mentor allowance for this billing period, and an audit event when the add-on changed in Stripe.
+  await syncAllowancePeriod(row, mapped.period);
+  if ((existing?.mentor_addon_cents ?? 0) !== row.mentor_addon_cents) {
+    await recordAudit({
+      actor: WEBHOOK_ACTOR, action: "billing.mentor_addon.change", result: "Completed", requestId: opts.eventId, sensitive: true,
+      context: `Mentor allowance add-on in Stripe: ${addonLabel(existing?.mentor_addon_cents ?? 0)} → ${addonLabel(row.mentor_addon_cents)} (billed from the next charge; a raise is also usable at once).`,
+      target: { type: "account", id: row.beneficiary_account_id }, previous: addonLabel(existing?.mentor_addon_cents ?? 0), next: addonLabel(row.mentor_addon_cents),
+      reason: "Kept in step with Stripe",
     });
   }
   return { outcome: existing ? "updated" : "created", accountId, row, previous: existing };

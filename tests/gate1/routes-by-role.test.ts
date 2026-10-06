@@ -90,6 +90,7 @@ const EXPECTED: Record<string, string> = {
   "GET /api/v1/audit": "audit.view",
   "GET /api/v1/billing": "billing.view",
   "POST /api/v1/billing/checkout": "billing.subscribe",
+  "POST /api/v1/billing/mentor-addon": "billing.subscribe",
   "POST /api/v1/billing/portal": "billing.portal",
   "GET /api/v1/billing/alerts": "billing.view",
   "POST /api/v1/billing/cancel": "billing.cancel",

@@ -19,7 +19,8 @@ security is on for every table and denies by default.
 | `apply/L1.sql` | The one file to paste for L1: 0012 (pgvector; the source library, passages for search, cited claims, conflicts, authority decisions, the open-license list, the AI call log; the private `source-documents` bucket). Requires B4. |
 | `apply/L2.sql` | The one file to paste for L2: 0013 (research runs, course Blueprints, lesson versions with Draft → Review → Published, progress on the version studied). Requires L1. |
 | `apply/L3.sql` | The one file to paste for L3: 0014 (the freshness cycle: refresh settings and nightly queue, change reports, suggested edits, update summaries). Requires L2. |
-| `apply/L4.sql` | **The one file to paste for L4**: 0015 (Mentor threads per lesson, the daily message count, safety events with a review queue that keeps each record as written). Requires L3. |
+| `apply/L4.sql` | The one file to paste for L4: 0015 (Mentor threads per lesson, the daily message count, safety events with a review queue that keeps each record as written). Requires L3. |
+| `apply/L5.sql` | **The one file to paste for L5**: 0016 (the Mentor allowance add-on on subscriptions, the allowance per billing period and its ledger, the Guardian's 80%/100% notices, the Mentor Allowance Terms v0.1). Requires L4. |
 | `ops/create-test-learner.sql` | Owner-only, by hand: one adult test learner for an existing Clerk user (see below). Not a migration. |
 | `verify.sql` | Run after applying. First row is the verdict. |
 | `test/supabase-shim.sql` | Tests only: recreates Supabase's API roles and `auth.jwt()` on plain Postgres. Never apply it to Supabase. |
@@ -41,6 +42,15 @@ with an admin invite, and the untouched template. One transaction: a refusal cha
 4. Supabase SQL Editor → paste `db/ops/create-test-learner.sql`, set `clerk_user_id`, `email` and `reason` at the
    top → **Run**. The last result row shows the new account (`role = learner`, `is_minor = false`) and its audit event.
 5. Reload the site: "Signed in as TEST Learner (Learner)". The first page registers this browser as a trusted device.
+
+## Applying L5 to Supabase (L4 is already applied)
+
+Apply it **before** merging the L5 code: the L5 code reads the new tables and columns. The L4 code that is live keeps working.
+
+1. SQL Editor → **New query** → paste the whole of `db/apply/L5.sql` → **Run**. Expect "Success. No rows returned".
+   Nothing in it drops or changes existing data (existing subscriptions get no add-on).
+2. **New query** → paste `db/verify.sql` → **Run**. The first row must read
+   `OK: all 58 tables … L5 Mentor allowance is in place`.
 
 ## Applying L4 to Supabase (L3 is already applied)
 

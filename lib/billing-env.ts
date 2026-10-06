@@ -33,6 +33,30 @@ export function readBillingEnv(source: Record<string, string | undefined> = proc
   };
 }
 
+/**
+ * L5: the Mentor allowance add-on's three monthly prices ($5, $10, $20). Separate from the plan variables on purpose:
+ * while any is missing, the add-on is off (it can't be chosen, and nothing about it is charged) and plans keep working.
+ */
+export const ADDON_PRICE_VARS = { 500: "STRIPE_PRICE_MENTOR_5", 1000: "STRIPE_PRICE_MENTOR_10", 2000: "STRIPE_PRICE_MENTOR_20" } as const;
+export type AddonPrices = { ok: true; byCents: Record<500 | 1000 | 2000, string>; centsOf: (priceId: string | null | undefined) => 500 | 1000 | 2000 | null } | { ok: false; problems: string[] };
+
+export function readAddonPrices(source: Record<string, string | undefined> = process.env): AddonPrices {
+  const problems: string[] = [];
+  const byCents = {} as Record<500 | 1000 | 2000, string>;
+  for (const [cents, name] of Object.entries(ADDON_PRICE_VARS)) {
+    const v = source[name]?.trim();
+    if (!v) problems.push(`${name} is missing`);
+    else if (!v.startsWith("price_")) problems.push(`${name} is invalid (must be a Stripe price id, price_…)`);
+    else byCents[Number(cents) as 500 | 1000 | 2000] = v;
+  }
+  if (problems.length) return { ok: false, problems };
+  const centsOf = (id: string | null | undefined) => {
+    for (const [c, p] of Object.entries(byCents)) if (p === id) return Number(c) as 500 | 1000 | 2000;
+    return null;
+  };
+  return { ok: true, byCents, centsOf };
+}
+
 export const BILLING_OFF = "Billing isn't set up yet. Nothing was charged. Try again later.";
 
 export function billingUnavailable(problems: string[]): Response {

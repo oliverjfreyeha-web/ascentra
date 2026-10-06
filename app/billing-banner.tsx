@@ -6,7 +6,7 @@ import { useAuth } from "@clerk/nextjs";
 
 type Alert = { kind: string; forAccountId: string; message: string; href: string };
 
-/** B4: a failed payment is shown on every page until it's fixed (the API decides; nothing here is trusted). */
+/** B4: a failed payment is shown on every page until it's fixed; L5: a teen's Mentor allowance email that couldn't be sent. The API decides; nothing here is trusted. */
 export function BillingBanner() {
   const { isSignedIn } = useAuth();
   const [alerts, setAlerts] = useState<Alert[]>([]);
@@ -26,7 +26,7 @@ export function BillingBanner() {
     <div role="alert" className="notice banner">
       {alerts.map((a) => (
         <p key={a.forAccountId + a.kind}>
-          {a.message} <Link href={a.href}>Plan and billing</Link>
+          {a.message} <Link href={a.href}>{a.href === "/guardian" ? "Guardian Center" : "Plan and billing"}</Link>
         </p>
       ))}
     </div>
