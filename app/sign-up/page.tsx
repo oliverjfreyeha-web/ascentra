@@ -5,12 +5,17 @@ import { SignUp } from "@clerk/nextjs";
 export default function SignUpPage() {
   return (
     <main>
-      <h1>Create an ASCENTRA account</h1>
-      <p className="muted">ASCENTRA is available in the United States.</p>
-      <SignUp routing="hash" signInUrl="/sign-in" forceRedirectUrl="/welcome" />
-      <p className="muted">
-        Already have an account? <Link href="/sign-in">Sign in</Link>
-      </p>
+      <div className="ui-auth ui-auth--wide">
+        <div className="ui-auth__halo" aria-hidden="true" />
+        <div className="ui-auth__card">
+          <h1>Create an ASCENTRA account</h1>
+          <p className="muted">ASCENTRA is available in the United States.</p>
+          <SignUp routing="hash" signInUrl="/sign-in" forceRedirectUrl="/welcome" />
+          <p className="muted">
+            Already have an account? <Link href="/sign-in">Sign in</Link>
+          </p>
+        </div>
+      </div>
     </main>
   );
 }

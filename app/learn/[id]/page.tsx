@@ -4,8 +4,8 @@ import { LessonReader } from "./lesson-reader";
 export default async function LessonPage({ params }: PageProps<"/learn/[id]">) {
   const { id } = await params;
   return (
-    <main>
-      <p className="muted"><Link href="/">Home</Link> · <Link href="/learn">Learn</Link></p>
+    <main className="ui-main-wide ui-lesson">
+      <nav className="ui-crumbs" aria-label="Breadcrumb"><Link href="/">Home</Link> · <Link href="/learn">Learn</Link></nav>
       <LessonReader id={id} />
     </main>
   );

@@ -24,8 +24,8 @@ export function LearnList() {
     });
   }, []);
   const prompt = askInterview ? (
-    <p className="notice">Get a path for you: <Link href="/learn/path">answer four quick questions</Link> (you can skip it).</p>
-  ) : <p className="small"><Link href="/learn/path">My path</Link></p>;
+    <p className="ui-banner"><span className="ui-banner__mark" aria-hidden="true" /><span>Get a path for you: <Link href="/learn/path">answer four quick questions</Link> (you can skip it).</span></p>
+  ) : <p className="small"><Link href="/learn/path" className="ui-btn ui-btn--secondary ui-btn--sm">My path</Link></p>;
   if (failed) return <>{prompt}<p role="status">{failed}</p></>;
   if (!courses) return <p className="muted">Loading…</p>;
   if (!courses.length) return <>{prompt}<p className="muted">No published lessons yet.</p></>;
@@ -33,14 +33,14 @@ export function LearnList() {
     <>
       {prompt}
       {courses.map((c) => (
-        <section key={c.slug} aria-labelledby={`c-${c.slug}`}>
-          <h2 id={`c-${c.slug}`}>{c.name}</h2>
+        <section key={c.slug} aria-labelledby={`c-${c.slug}`} className="ui-block ui-course">
+          <div className="ui-course__head"><h2 id={`c-${c.slug}`}>{c.name}</h2></div>
           {c.modules.map((m, i) => (
-            <div key={i}>
+            <div key={i} className="ui-module">
               <h3>{m.title}</h3>
-              <ul>
+              <ul className="ui-rows">
                 {m.lessons.map((l) => (
-                  <li key={l.id}>
+                  <li key={l.id} data-done={l.done || undefined}>
                     <Link href={`/learn/${l.id}`}>{l.title}</Link>{" "}
                     <span className="muted small">{l.minutes ? `${l.minutes} min · ` : ""}last verified {l.lastVerifiedOn ?? "unknown"}{l.done ? " · done" : ""}{l.updated ? " · updated" : ""}</span>
                   </li>

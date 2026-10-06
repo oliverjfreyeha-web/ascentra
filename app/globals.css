@@ -21,27 +21,37 @@
 }
 
 html {
-  background: var(--color-base);
+  background: var(--gradient-page);
+  background-color: var(--color-base);
+  background-attachment: fixed;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
 }
 
 body {
+  position: relative;
   margin: 0;
   min-height: 100vh;
   color: var(--color-text);
-  /* A calm, faint wash of the accent at the top of the page: depth without glow. */
-  background:
-    radial-gradient(60rem 32rem at 12% -10%, rgb(160 189 219 / 0.07), transparent 70%),
-    radial-gradient(48rem 28rem at 100% 0%, rgb(201 184 242 / 0.045), transparent 70%),
-    var(--color-base);
-  background-attachment: fixed;
+  background: transparent;
   font-family: var(--font-sans);
   font-size: var(--text-base);
   line-height: var(--leading-normal);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   font-feature-settings: "ss01", "cv11";
+}
+
+/* D2: a very faint grain over the page background (behind all content), so the gradients never band. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-image: var(--grain);
+  background-size: 140px 140px;
+  opacity: var(--grain-opacity);
+  pointer-events: none;
 }
 
 main {
@@ -142,28 +152,41 @@ button:not(.link):not(.primary):not([class*="ui-"]) {
   padding: var(--space-2) var(--space-4);
   border: var(--border-control);
   border-radius: var(--radius-sm);
-  background: var(--color-surface);
+  background-color: var(--color-surface);
+  background-image: var(--inner-highlight);
   color: var(--color-text);
-  transition: background-color var(--duration-quick) var(--ease-out), border-color var(--duration-quick) var(--ease-out);
+  box-shadow: var(--elev-1);
+  transition: background-color var(--duration-quick) var(--ease-out), border-color var(--duration-quick) var(--ease-out),
+    transform var(--duration-fast) var(--ease-smooth-out), box-shadow var(--duration-fast) var(--ease-smooth-out);
 }
 
 button:not(.link):not(.primary):not([class*="ui-"]):hover:not(:disabled) {
-  background: var(--color-raised);
+  background-color: var(--color-raised);
   border-color: var(--color-accent);
+  transform: translateY(-1px);
+  box-shadow: var(--elev-2);
+}
+
+button:not(.link):not([class*="ui-"]):active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: var(--elev-1);
 }
 
 button.primary {
-  padding: var(--space-2) var(--space-4);
-  border: 1px solid var(--color-accent);
+  padding: var(--space-2) var(--space-5);
+  border: 1px solid var(--color-accent-strong);
   border-radius: var(--radius-sm);
   color: var(--color-on-accent);
-  background: var(--color-accent);
+  background-color: var(--color-accent);
+  background-image: linear-gradient(180deg, rgb(255 255 255 / 0.22), rgb(255 255 255 / 0) 60%), var(--gradient-accent);
   font-weight: var(--weight-medium);
+  box-shadow: var(--elev-1), var(--glow-button);
+  transition: transform var(--duration-fast) var(--ease-smooth-out), box-shadow var(--duration-fast) var(--ease-smooth-out);
 }
 
 button.primary:hover:not(:disabled) {
-  background: var(--color-accent-strong);
-  border-color: var(--color-accent-strong);
+  transform: translateY(-1px);
+  box-shadow: var(--elev-2), 0 0 0 1px rgb(160 189 219 / 0.35), 0 8px 28px -6px rgb(160 189 219 / 0.42);
 }
 
 button.link {
@@ -179,6 +202,8 @@ button.link {
 button:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
 }
 
 input:not([type="checkbox"]):not([type="radio"]):not([class*="ui-"]),
@@ -186,17 +211,71 @@ select:not([class*="ui-"]),
 textarea:not([class*="ui-"]) {
   font: inherit;
   color: var(--color-text);
-  background: var(--color-surface);
+  background: rgb(8 8 19 / 0.55);
   border: var(--border-control);
   border-radius: var(--radius-sm);
   padding: var(--space-2) var(--space-3);
   max-width: 100%;
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.35);
+  transition: border-color var(--duration-quick) var(--ease-out), box-shadow var(--duration-quick) var(--ease-out);
 }
 
-input[type="checkbox"],
-input[type="radio"] {
-  accent-color: var(--color-accent);
+input:not([type="checkbox"]):not([type="radio"]):not([class*="ui-"]):focus-visible,
+select:not([class*="ui-"]):focus-visible,
+textarea:not([class*="ui-"]):focus-visible {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.35), 0 0 0 3px rgb(160 189 219 / 0.25);
 }
+
+/* D2: checkboxes and radios drawn from the tokens (native inputs, so labels, keyboard and forms behave as before). */
+input[type="checkbox"]:not(.ui-check input),
+input[type="radio"] {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: none;
+  display: inline-grid;
+  place-content: center;
+  width: 1.05rem;
+  height: 1.05rem;
+  margin: 0 0.15rem 0 0;
+  vertical-align: -0.15rem;
+  border: var(--border-control);
+  border-radius: var(--radius-xs);
+  background: rgb(8 8 19 / 0.6);
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.4);
+  cursor: pointer;
+  transition: background-color var(--duration-quick) var(--ease-out), border-color var(--duration-quick) var(--ease-out);
+}
+input[type="radio"] { border-radius: 50%; }
+input[type="checkbox"]:not(.ui-check input)::after {
+  content: "";
+  width: 0.65rem;
+  height: 0.65rem;
+  background: var(--color-on-accent);
+  clip-path: polygon(14% 52%, 0 66%, 38% 100%, 100% 22%, 86% 8%, 38% 72%);
+  transform: scale(0);
+  transition: transform var(--duration-quick) var(--ease-smooth-out);
+}
+input[type="radio"]::after {
+  content: "";
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: var(--color-on-accent);
+  transform: scale(0);
+  transition: transform var(--duration-quick) var(--ease-smooth-out);
+}
+input[type="checkbox"]:checked,
+input[type="radio"]:checked { background: var(--gradient-accent); border-color: var(--color-accent-strong); }
+input[type="checkbox"]:checked::after,
+input[type="radio"]:checked::after { transform: scale(1); }
+input[type="checkbox"]:hover:not(:disabled),
+input[type="radio"]:hover:not(:disabled) { border-color: var(--color-accent); }
+input[type="checkbox"]:focus-visible,
+input[type="radio"]:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+input[type="checkbox"]:disabled,
+input[type="radio"]:disabled { opacity: 0.5; cursor: not-allowed; }
 
 ::placeholder {
   color: var(--color-text-muted);
@@ -291,8 +370,9 @@ table.plain td {
 .notice {
   border: 1px solid rgb(232 195 126 / 0.45);
   border-radius: var(--radius-md);
-  background: var(--tint-warning);
-  padding: var(--space-4);
+  background: linear-gradient(180deg, rgb(232 195 126 / 0.11), rgb(232 195 126 / 0.04));
+  box-shadow: var(--elev-1);
+  padding: var(--space-4) var(--space-5);
   margin: 0 0 var(--space-4);
 }
 

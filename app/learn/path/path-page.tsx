@@ -49,7 +49,7 @@ export function PathPage() {
       ) : (
         <>
           {path.interview ? (
-            <p className="small">Your answers: {path.interview.goal} · {path.interview.level} · {path.interview.minutesPerWeek} minutes a week.{" "}
+            <p className="small ui-answers">Your answers: {path.interview.goal} · {path.interview.level} · {path.interview.minutesPerWeek} minutes a week.{" "}
               <button type="button" className="link" onClick={() => setEditing(true)}>Redo the interview</button>{" "}
               <button type="button" className="link" onClick={() => {
                 if (window.confirm("Delete your interview answers and your path?")) void call("DELETE", "/api/v1/learn/interview").then(() => load());
@@ -59,17 +59,17 @@ export function PathPage() {
             <p>You skipped the interview. <button type="button" onClick={() => setEditing(true)}>Take the interview</button></p>
           )}
           {!path.plan && <p className="notice">Choose a plan or start the free trial (Account → Billing) to get a path.</p>}
-          {path.aiNotice && <p className="small notice" role="note">{path.aiNotice}</p>}
+          {path.aiNotice && <p className="ui-ai-notice" role="note">{path.aiNotice}</p>}
           {path.note && !path.aiNotice && <p className="small muted">{path.note}</p>}
           {path.note && path.aiNotice && path.note !== path.aiNotice && <p className="small muted">{path.note.replace(path.aiNotice, "").trim()}</p>}
           {path.plan === "basic" && <p className="small muted">Your plan&apos;s path covers one subject. Pro adds more subjects.</p>}
-          <ol aria-label="Your path">
+          <ol aria-label="Your path" className="ui-path">
             {path.courses.map((c, i) => (
               <li key={c.slug}>
                 <strong>{c.firstLessonId ? <Link href={`/learn/${c.firstLessonId}`}>{c.name}</Link> : c.name}</strong>
                 <div className="small">Why: {c.why}</div>
                 <div className="small muted">About {Math.round(c.minutes / 60 * 10) / 10} hours ({c.lessons} lesson{c.lessons === 1 ? "" : "s"}): about {c.weeks} week{c.weeks === 1 ? "" : "s"} at your pace · last verified {c.lastVerifiedOn ?? "unknown"}</div>
-                <div className="small">
+                <div className="small ui-path__actions">
                   <button type="button" className="link" disabled={busy || i === 0} aria-label={`Move ${c.name} up`}
                     onClick={() => { const o = path.courses.map((x) => x.slug); [o[i - 1], o[i]] = [o[i], o[i - 1]]; void change("PATCH", "/api/v1/learn/path", { order: o }); }}>Move up</button>{" · "}
                   <button type="button" className="link" disabled={busy || i === path.courses.length - 1} aria-label={`Move ${c.name} down`}
@@ -81,7 +81,7 @@ export function PathPage() {
           </ol>
           {path.courses.length === 0 && path.plan && <p className="muted">No published course on your path. Redo the interview, or add one below.</p>}
           {path.canAdd && path.addable.length > 0 && <AddCourse path={path} busy={busy} onAdd={(slug) => void change("POST", "/api/v1/learn/path/courses", { slug })} />}
-          <p className="small">
+          <p className="small ui-block ui-block--slim">
             Practice items: {path.activityMode === "personal" ? "picked for your answers (each lesson says why)" : "the default set (every reviewed item)"}.{" "}
             <button type="button" className="link" disabled={busy} onClick={() => void call("PUT", "/api/v1/learn/path/activities", { mode: path.activityMode === "personal" ? "default" : "personal" }).then(() => load())}>
               {path.activityMode === "personal" ? "Use the default set" : "Pick them for my answers"}
@@ -134,24 +134,24 @@ function Interview({ info, onDone, onCancel }: { info: InterviewInfo; onDone: (m
     onDone(r._status === 200 ? "Skipped. You can take the interview any time from this page." : r.reason ?? null, null);
   }
   return (
-    <form onSubmit={submit} aria-label="Interview">
+    <form onSubmit={submit} aria-label="Interview" className="ui-form ui-block">
       <p className="small muted">Four quick questions about your learning: no personal details. Your answers are private to you and in your Privacy Center download.</p>
       {message && <p role="status">{message}</p>}
       <fieldset><legend>1. What do you want from this?</legend>
-        {info.options.goals.map((g) => <p key={g.key}><label><input type="radio" name="goal" checked={goal === g.key} onChange={() => setGoal(g.key)} /> {g.label}</label></p>)}
+        <div className="ui-pills">{info.options.goals.map((g) => <p key={g.key}><label className="ui-pill"><input type="radio" name="goal" checked={goal === g.key} onChange={() => setGoal(g.key)} /> {g.label}</label></p>)}</div>
       </fieldset>
       <fieldset><legend>2. Where are you now?</legend>
-        {info.options.levels.map((l) => <p key={l.key}><label><input type="radio" name="level" checked={level === l.key} onChange={() => setLevel(l.key)} /> {l.label}</label></p>)}
+        <div className="ui-pills">{info.options.levels.map((l) => <p key={l.key}><label className="ui-pill"><input type="radio" name="level" checked={level === l.key} onChange={() => setLevel(l.key)} /> {l.label}</label></p>)}</div>
       </fieldset>
       <fieldset><legend>3. Time each week</legend>
-        {info.options.minutes.map((m) => <label key={m} style={{ marginRight: "1em" }}><input type="radio" name="minutes" checked={minutes === m} onChange={() => setMinutes(m)} /> {m >= 60 ? `${m / 60} hour${m === 60 ? "" : "s"}` : `${m} min`}</label>)}
+        <div className="ui-pills">{info.options.minutes.map((m) => <label key={m} className="ui-pill"><input type="radio" name="minutes" checked={minutes === m} onChange={() => setMinutes(m)} /> {m >= 60 ? `${m / 60} hour${m === 60 ? "" : "s"}` : `${m} min`}</label>)}</div>
       </fieldset>
       <fieldset><legend>4. Topics and interests (optional)</legend>
-        {info.options.topics.map((t) => <label key={t.slug} style={{ marginRight: "1em", display: "inline-block" }}><input type="checkbox" checked={topics.includes(t.slug)} onChange={() => toggle(topics, t.slug, setTopics)} /> {t.name}{t.hasCourse ? "" : " (no course yet)"}</label>)}
+        <div className="ui-pills">{info.options.topics.map((t) => <label key={t.slug} className="ui-pill"><input type="checkbox" checked={topics.includes(t.slug)} onChange={() => toggle(topics, t.slug, setTopics)} /> {t.name}{t.hasCourse ? "" : " (no course yet)"}</label>)}</div>
         <p className="small muted">Interests:</p>
-        {info.options.interests.map((t) => <label key={t} style={{ marginRight: "1em", display: "inline-block" }}><input type="checkbox" checked={interests.includes(t)} onChange={() => toggle(interests, t, setInterests)} /> {t.replace(/-/g, " ")}</label>)}
+        <div className="ui-pills">{info.options.interests.map((t) => <label key={t} className="ui-pill"><input type="checkbox" checked={interests.includes(t)} onChange={() => toggle(interests, t, setInterests)} /> {t.replace(/-/g, " ")}</label>)}</div>
       </fieldset>
-      <p>
+      <p className="ui-actions">
         <button type="submit" className="primary" disabled={busy || !goal || !level || !minutes}>{a ? "Save and rebuild my path" : "Build my path"}</button>{" "}
         {!a && <button type="button" disabled={busy} onClick={() => void skip()}>Skip for now</button>}
         {onCancel && <button type="button" onClick={onCancel}>Cancel</button>}
@@ -172,10 +172,10 @@ function RequestTopic({ levels }: { levels: { key: string; label: string }[] }) 
     if (res?.recorded) setTopic("");
   }
   return (
-    <form onSubmit={send} aria-label="Ask for a course">
+    <form onSubmit={send} aria-label="Ask for a course" className="ui-block ui-form">
       <h2>Can&apos;t find a topic?</h2>
       <p className="small muted">Only the topic and level are sent, without your name. Courses are written and reviewed by people before anyone sees them.</p>
-      <p>
+      <p className="ui-actions">
         <label>Topic <input value={topic} onChange={(e) => setTopic(e.target.value)} maxLength={80} size={30} /></label>{" "}
         <label>Level <select value={level} onChange={(e) => setLevel(e.target.value)}>{levels.map((l) => <option key={l.key} value={l.key}>{l.label}</option>)}</select></label>{" "}
         <button type="submit" disabled={topic.trim().length < 3}>Ask for it</button>

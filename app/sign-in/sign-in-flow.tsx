@@ -45,7 +45,7 @@ export function SignInFlow() {
 
   return (
     <section aria-label="Passkey sign-in">
-      <button type="button" className="primary" onClick={withPasskey} disabled={!isLoaded || fetchStatus === "fetching"}>
+      <button type="button" className="primary ui-wide" onClick={withPasskey} disabled={!isLoaded || fetchStatus === "fetching"}>
         Sign in with a passkey
       </button>
       {message && (

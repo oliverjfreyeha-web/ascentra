@@ -67,9 +67,9 @@ export function PrivacyCenter() {
     });
   }
 
-  if (!data) return <section><h2>Privacy Center</h2><p className="muted">{message ?? "Loading…"}</p></section>;
+  if (!data) return <section className="ui-block"><h2>Privacy Center</h2><p className="muted">{message ?? "Loading…"}</p></section>;
   return (
-    <section aria-labelledby="privacy-h">
+    <section aria-labelledby="privacy-h" className="ui-block">
       <h2 id="privacy-h">Privacy Center</h2>
       {message && <p role="status">{message}</p>}
       <h3>What you agreed to</h3>
@@ -112,12 +112,12 @@ export function PrivacyCenter() {
               </label>
             </p>
           )}
-          <p>
+          <p className="ui-actions">
             <button type="button" disabled={busy} onClick={download}>Download data (JSON)</button>{" "}
             {data.canRequestDeletion && !confirmDelete && <button type="button" disabled={busy} onClick={() => setConfirmDelete(true)}>Request deletion</button>}
           </p>
           {confirmDelete && (
-            <p>
+            <p className="ui-legal">
               Request deletion of {subject ? data.subjects.find((s) => s.id === subject)?.name : "your account"}? It&apos;s handled within{" "}
               {data.dueDays.deletion} days. Nothing is deleted before then, and you can still use your account meanwhile.{" "}
               <button type="button" disabled={busy}

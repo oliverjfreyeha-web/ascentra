@@ -3,9 +3,11 @@ import { LearnList } from "./learn-list";
 
 export default function LearnPage() {
   return (
-    <main>
-      <p className="muted"><Link href="/">Home</Link></p>
-      <h1>Learn</h1>
+    <main className="ui-main-wide">
+      <nav className="ui-crumbs" aria-label="Breadcrumb"><Link href="/">Home</Link></nav>
+      <header className="ui-page-head">
+        <h1>Learn</h1>
+      </header>
       <LearnList />
     </main>
   );

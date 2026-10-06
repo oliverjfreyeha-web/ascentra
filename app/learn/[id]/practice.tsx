@@ -28,7 +28,7 @@ export function Practice({ items, score, selection, onScore, onModeChanged }: {
     if (m) onModeChanged();
   }
   return (
-    <section aria-labelledby="practice-h">
+    <section aria-labelledby="practice-h" className="ui-practice-section">
       <h2 id="practice-h">Practice</h2>
       {selection.note && <p className="small muted">{selection.note}</p>}
       {selection.personalized && <p><button type="button" className="link" onClick={() => void switchTo("default")}>Show the default set</button></p>}
@@ -78,7 +78,7 @@ function ItemView({ item: a, onScore }: { item: LearnerActivity; onScore: (s: { 
   };
 
   return (
-    <fieldset className="notice">
+    <fieldset className="ui-practice">
       <legend><strong>{a.typeLabel}</strong> · {a.graded ? "Graded" : a.label} · {a.level}</legend>
       {a.why && <p className="small muted">Why this one: {a.why.join("; ")}.</p>}
       <p id={`${name}-prompt`}>{a.prompt}</p>
@@ -87,7 +87,7 @@ function ItemView({ item: a, onScore }: { item: LearnerActivity; onScore: (s: { 
         <p key={i}><label><input type="radio" name={name} checked={answer.choice === i} onChange={() => setAnswer({ choice: i })} /> {o}</label></p>
       ))}
       {a.type === "true_false" && [true, false].map((v) => (
-        <label key={String(v)} style={{ marginRight: "1em" }}><input type="radio" name={name} checked={answer.value === v} onChange={() => setAnswer({ value: v })} /> {v ? "True" : "False"}</label>
+        <label key={String(v)} className="ui-pill"><input type="radio" name={name} checked={answer.value === v} onChange={() => setAnswer({ value: v })} /> {v ? "True" : "False"}</label>
       ))}
       {a.type === "matching" && list(a.content.left).map((l, i) => (
         <p key={i}><label>{l}{" "}
@@ -140,14 +140,14 @@ function ItemView({ item: a, onScore }: { item: LearnerActivity; onScore: (s: { 
       <div aria-live="polite">
         {message && <p role="status">{message}</p>}
         {result?.graded && (
-          <div>
+          <div className="ui-result">
             <p><strong>{a.type === "flashcard" ? (result.correct ? "You knew it." : "Not yet: review it again.") : result.correct ? "Correct." : "Not quite."}</strong>{" "}
               {a.type === "flashcard" ? `Back: ${String(result.correctAnswer)}` : `Correct answer: ${correctText(result)}`}</p>
             <p>{result.explanation} <span className="small muted">Source: {result.citation.url ? <a href={result.citation.url} target="_blank" rel="noreferrer noopener">{result.citation.title}</a> : result.citation.title}</span></p>
           </div>
         )}
         {result && !result.graded && (
-          <div>
+          <div className="ui-result">
             <p className="small"><strong>{result.label}.</strong></p>
             {Object.entries(result.reveal).map(([k, v]) => <p key={k} className="small">{k === "sampleAnswer" ? "Sample answer" : k === "keyPoints" ? "Key points" : k === "mistake" ? "The mistake" : k === "options" ? "Outcomes" : k}:{" "}
               {Array.isArray(v) ? v.map((x) => (typeof x === "string" ? x : `${(x as { text: string }).text}: ${(x as { outcome: string }).outcome} (${(x as { fit: string }).fit})`)).join("; ") : String(v)}</p>)}
@@ -155,7 +155,7 @@ function ItemView({ item: a, onScore }: { item: LearnerActivity; onScore: (s: { 
           </div>
         )}
         {feedback && (
-          <div className="notice">
+          <div className="ui-result">
             <p className="small"><strong>{feedback.label}</strong></p>
             <p>{feedback.feedback}</p>
             {feedback.note && <p className="small muted">{feedback.note}</p>}

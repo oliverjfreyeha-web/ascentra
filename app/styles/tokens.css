@@ -102,6 +102,45 @@
   --shadow-2: 0 8px 24px -8px rgb(0 0 0 / 0.55), 0 1px 0 rgb(255 255 255 / 0.03) inset;
   --shadow-3: 0 24px 64px -16px rgb(0 0 0 / 0.7), 0 1px 0 rgb(255 255 255 / 0.04) inset;
 
+  /* ── Depth (D2): three elevation levels, each a stack of soft shadows so surfaces float ── */
+  --elev-1:
+    0 1px 1px rgb(0 0 0 / 0.35),
+    0 4px 10px -4px rgb(0 0 0 / 0.45),
+    inset 0 1px 0 rgb(232 237 245 / 0.04);
+  --elev-2:
+    0 1px 2px rgb(0 0 0 / 0.4),
+    0 10px 24px -10px rgb(0 0 0 / 0.6),
+    0 24px 48px -24px rgb(4 6 20 / 0.7),
+    inset 0 1px 0 rgb(232 237 245 / 0.06);
+  --elev-3:
+    0 2px 4px rgb(0 0 0 / 0.4),
+    0 18px 40px -12px rgb(0 0 0 / 0.65),
+    0 48px 96px -32px rgb(4 6 20 / 0.85),
+    inset 0 1px 0 rgb(232 237 245 / 0.08);
+  /* The 1px light along the top edge of glass and raised cards. */
+  --edge-highlight: linear-gradient(90deg, transparent, rgb(160 189 219 / 0.45) 30%, rgb(232 237 245 / 0.55) 50%, rgb(160 189 219 / 0.45) 70%, transparent);
+  /* Inner light on buttons and key cards: brighter at the top, fading down. */
+  --inner-highlight: linear-gradient(180deg, rgb(232 237 245 / 0.07), rgb(232 237 245 / 0) 55%);
+  /* Surfaces with a hint of depth (top a touch lighter). */
+  --gradient-surface: linear-gradient(180deg, rgb(26 28 56 / 0.78), rgb(14 15 31 / 0.72));
+  --gradient-raised: linear-gradient(180deg, rgb(32 35 66 / 0.86), rgb(18 20 40 / 0.84));
+  --gradient-accent: linear-gradient(180deg, #b6cde4, #9ab7d6 60%, #8eaccd);
+  /* Faint Frozen glows (never neon): used large and blurred, behind key areas only. */
+  --glow-accent: rgb(160 189 219 / 0.16);
+  --glow-accent-soft: rgb(160 189 219 / 0.08);
+  --glow-violet: rgb(201 184 242 / 0.07);
+  --glow-button: 0 0 0 1px rgb(160 189 219 / 0.25), 0 6px 22px -6px rgb(160 189 219 / 0.35);
+  /* The page: a deep multi-stop gradient with two large, soft glows. */
+  --gradient-page:
+    radial-gradient(70rem 40rem at 15% -12%, rgb(160 189 219 / 0.11), transparent 62%),
+    radial-gradient(52rem 34rem at 105% 8%, rgb(201 184 242 / 0.06), transparent 60%),
+    radial-gradient(60rem 40rem at 50% 120%, rgb(160 189 219 / 0.05), transparent 65%),
+    linear-gradient(180deg, #0b0c1c 0%, #080813 38%, #070711 100%);
+  /* Grain: a tiny SVG noise tile laid over the page at very low opacity, so flat areas don't band. */
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .5 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --grain-opacity: 0.035;
+  --duration-ambient: 24s; /* the landing scene's slow drift */
+
   /* ── Motion (transitions.dev scale) ─────────────────────────────── */
   --duration-stagger: 40ms;
   --duration-micro: 80ms;
@@ -140,6 +179,7 @@
     --duration-medium: 0ms;
     --duration-slow: 0ms;
     --duration-very-slow: 0ms;
+    --duration-ambient: 0ms;
     --distance-micro: 0px;
     --distance-base: 0px;
     --scale-modal: 1;

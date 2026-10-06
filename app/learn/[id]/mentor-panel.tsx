@@ -69,16 +69,16 @@ export function MentorPanel({ lessonId }: { lessonId: string }) {
   }
 
   return (
-    <section aria-labelledby="mentor-h" className="notice">
+    <section aria-labelledby="mentor-h" className="ui-block ui-mentor">
       <h2 id="mentor-h">Mentor</h2>
-      <p className="small" role="note">
+      <p className="ui-ai-notice" role="note">
         <strong>AI notice:</strong> the Mentor is an AI (Claude). It answers only from this course&apos;s approved sources and cites them; it can
         still be wrong, so check the source. It won&apos;t do graded work, but it will explain and give hints. Don&apos;t share personal details.
         Your conversations are private to you (Support never sees them) and are not used to train AI models.
       </p>
       {info && !info.aiOn && <p>The Mentor is off right now (AI isn&apos;t set up). Your lessons work as usual.</p>}
-      {messages.map((m, i) => (
-        <div key={i} className={m.role === "mentor" ? "notice" : ""}>
+      {messages.length > 0 && <div className="ui-chat">{messages.map((m, i) => (
+        <div key={i} className={m.role === "mentor" ? "ui-msg ui-msg--mentor" : "ui-msg ui-msg--you"}>
           <p className="small muted">{m.role === "learner" ? "You" : `Mentor · AI-generated${m.kind && KIND_NOTE[m.kind] ? ` · ${KIND_NOTE[m.kind]}` : ""}`}</p>
           <p>{m.text}{m.citations?.length ? <sup> {m.citations.map((c) => `[${c.ref}]`).join("")}</sup> : null}</p>
           {m.citations?.length ? (
@@ -88,10 +88,10 @@ export function MentorPanel({ lessonId }: { lessonId: string }) {
           ) : null}
           {m.note && <p className="small muted">{m.note}</p>}
         </div>
-      ))}
+      ))}</div>}
       {status === "paused" && <p className="muted small">This conversation is paused. Start a new one to keep going with your lesson.</p>}
       {info?.allowance.line && (
-        <p className="small" aria-label="Mentor allowance meter">
+        <p className="small ui-meter-line" aria-label="Mentor allowance meter">
           <meter min={0} max={info.allowance.usableUsd || 1} value={Math.min(info.allowance.usedUsd, info.allowance.usableUsd)} />{" "}
           {info.allowance.line}{info.allowance.trial ? " (free trial allowance)" : ""}
         </p>
@@ -106,9 +106,9 @@ export function MentorPanel({ lessonId }: { lessonId: string }) {
       )}
       {info?.aiOn && (
         <form onSubmit={ask}>
-          <p>
+          <p className="ui-composer">
             <label>Ask about this lesson <input value={text} onChange={(e) => setText(e.target.value)} maxLength={2000} size={60} /></label>{" "}
-            <button type="submit" disabled={busy || !text.trim()}>{busy ? "Thinking…" : "Ask"}</button>
+            <button type="submit" className="primary" disabled={busy || !text.trim()}>{busy ? "Thinking…" : "Ask"}</button>
           </p>
           <p className="small muted">
             Up to {info.dailyCap} messages a day.{" "}

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { meFrom } from "../../me";
-import { BACKGROUNDS, CONTROL_BORDERS, PALETTE, TEXT_COLORS, contrast, type PaletteName } from "../../ui/palette";
+import { BACKGROUNDS, CONTROL_BORDERS, DEPTH_SURFACES, PALETTE, TEXT_COLORS, contrast, type PaletteName } from "../../ui/palette";
 import { STATUS_TEXT, StatusLabel, type StatusState } from "../../ui/status-label";
 import { Tabs } from "../../ui/tabs";
 import { Menu } from "../../ui/menu";
@@ -61,7 +61,7 @@ export function StyleGuide() {
           Every token and base component in one place. All names, numbers and states on this page are sample data; nothing here is live.
         </p>
         <nav aria-label="Sections" className="ui-row">
-          {["Color", "Contrast", "Type", "Space", "Shape", "Motion", "Buttons", "Forms", "Surfaces", "Overlays", "Status", "Data", "Feedback"].map((s) => (
+          {["Color", "Contrast", "Type", "Space", "Shape", "Motion", "Buttons", "Forms", "Surfaces", "Overlays", "Status", "Data", "Feedback", "Depth", "Learner"].map((s) => (
             <a key={s} href={`#sg-${s.toLowerCase()}`} className="ui-badge">{s}</a>
           ))}
         </nav>
@@ -306,6 +306,51 @@ export function StyleGuide() {
             <div className="ui-row"><span className="ui-skeleton ui-skeleton--circle" /><span className="ui-skeleton" style={{ flex: 1 }} /></div>
             <span className="ui-skeleton ui-skeleton--block" />
           </div>
+        </div>
+      </Section>
+
+      <Section id="sg-depth" title="Depth" note="Three elevation levels, frosted glass with a top-edge highlight, a faint grain over the page, and large, soft Frozen glows behind key areas.">
+        <div className="sg-glass-stage">
+          <div className="ui-grid">
+            {["elev-1", "elev-2", "elev-3"].map((e) => (
+              <div key={e} className="ui-card ui-card--raised" style={{ boxShadow: `var(--${e})` }}><code>--{e}</code></div>
+            ))}
+            <div className="ui-panel"><code>.ui-panel</code><p className="muted">Frosted glass over the gradients.</p></div>
+          </div>
+        </div>
+        <div className="ui-hero" style={{ marginTop: "var(--space-5)", padding: "var(--space-7) var(--space-5)" }}>
+          <div className="ui-scene" aria-hidden="true"><div className="ui-scene__grid" /><div className="ui-scene__glow" /><div className="ui-scene__orb" /></div>
+          <p className="ui-eyebrow">.ui-hero with .ui-scene (the glows drift slowly; still with reduced motion)</p>
+          <h1 style={{ fontSize: "var(--text-3xl)" }}>Sample headline</h1>
+        </div>
+        <div className="ui-table-wrap">
+          <table className="ui-table">
+            <caption>Contrast on the lighter tops of the depth surfaces.</caption>
+            <thead><tr><th scope="col">Surface</th><th scope="col">text</th><th scope="col">muted</th><th scope="col">accent</th></tr></thead>
+            <tbody>
+              {Object.entries(DEPTH_SURFACES).map(([n, bg]) => (
+                <tr key={n}><th scope="row">{n}</th>
+                  {(["color-text", "color-text-muted", "color-accent"] as const).map((f) => <td key={f} className="num" style={{ background: bg, color: `var(--${f})` }}>{contrast(PALETTE[f], bg).toFixed(2)}:1</td>)}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Section>
+
+      <Section id="sg-learner" title="Learner patterns" note="Used by the public and learner screens (D2). Sample data only.">
+        <div className="ui-stack">
+          <p className="ui-ai-notice" role="note"><strong>AI notice:</strong> a sample disclosure, always shown in full with the accent edge.</p>
+          <div className="ui-choices">
+            <label className="ui-choice"><input type="radio" name="sg-plan" defaultChecked /> <span><b className="ui-choice__title">Sample plan A</b> <span className="ui-choice__price">$0.00</span> <span className="ui-choice__note">per month (sample)</span></span></label>
+            <label className="ui-choice"><input type="radio" name="sg-plan" /> <span><b className="ui-choice__title">Sample plan B</b> <span className="ui-choice__price">$0.00</span> <span className="ui-choice__note">per month (sample)</span></span></label>
+          </div>
+          <div className="ui-legal"><p><b>Sample terms</b> <span className="muted">v0</span></p><p className="small">Legal and consent text keeps its own warm-edged box, at full size.</p></div>
+          <label className="ui-consent"><input type="checkbox" /> <b>Consent.</b> A sample consent checkbox with its full sentence beside it.</label>
+          <ol className="ui-steps"><li data-state="done">Sample step: done</li><li data-state="now">Sample step: in progress</li><li data-state="next">Sample step: next</li></ol>
+          <p className="ui-meter-line small"><meter min={0} max={10} value={3} /> Sample allowance: used 3 of 10</p>
+          <div className="ui-chat"><div className="ui-msg ui-msg--you"><p>Sample question.</p></div><div className="ui-msg ui-msg--mentor"><p>Sample answer.</p></div></div>
+          <article className="ui-prose"><p>A sample paragraph with a citation marker<sup> <a href="#sg-learner">[1]</a></sup> and an uncited one <span className="ui-nosource">[No source]</span>.</p></article>
         </div>
       </Section>
     </div>

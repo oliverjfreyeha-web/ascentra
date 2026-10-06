@@ -6,9 +6,9 @@ import { ProGate } from "./pro-gate";
 export default function ProPage() {
   return (
     <main>
-      <p className="muted"><Link href="/">Home</Link> · <Link href="/account">Account</Link></p>
-      <h1>Pro tools</h1>
-      <ProGate />
+      <nav className="ui-crumbs" aria-label="Breadcrumb"><Link href="/">Home</Link> · <Link href="/account">Account</Link></nav>
+      <header className="ui-page-head"><h1>Pro tools</h1></header>
+      <div className="ui-block"><ProGate /></div>
     </main>
   );
 }

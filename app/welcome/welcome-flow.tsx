@@ -120,10 +120,10 @@ function DobStep({ onDone, onRefused }: { onDone: (s: State) => void; onRefused:
   }
 
   return (
-    <form onSubmit={submit} noValidate>
+    <form onSubmit={submit} noValidate className="ui-form">
       <h1>What&apos;s your date of birth?</h1>
       <p className="muted">We use it to set up the right kind of account. It isn&apos;t shown on your profile, and you can&apos;t change it later yourself.</p>
-      <fieldset>
+      <fieldset className="dob">
         <legend>Date of birth</legend>
         <label>
           Month{" "}
@@ -142,12 +142,12 @@ function DobStep({ onDone, onRefused }: { onDone: (s: State) => void; onRefused:
         </label>
       </fieldset>
       <p>
-        <label>
+        <label className="ui-consent">
           <input type="checkbox" checked={us} onChange={(e) => setUs(e.target.checked)} /> I live in the United States
         </label>
       </p>
       {error && <p role="alert">{error}</p>}
-      <p>
+      <p className="ui-actions">
         <button type="submit" className="primary" disabled={busy}>Continue</button> · <SignOut />
       </p>
     </form>
@@ -184,7 +184,7 @@ function GuardianStep({ s, onDone }: { s: Extract<State, { state: "guardian" }>;
 
   if (editing || !s.guardianEmail) {
     return (
-      <form onSubmit={(e) => void submit(e)} noValidate>
+      <form onSubmit={(e) => void submit(e)} noValidate className="ui-form">
         <h1>A parent or guardian sets this up with you</h1>
         {s.progress === "failed" && <p role="alert">The adult you invited couldn&apos;t be verified as your Guardian. Invite a different parent or guardian.</p>}
         <p>
@@ -192,13 +192,13 @@ function GuardianStep({ s, onDone }: { s: Extract<State, { state: "guardian" }>;
           learning, billing and messages stay off.
         </p>
         <p>
-          <label>
+          <label className="ui-stacked">
             Your parent or guardian&apos;s email{" "}
             <input type="email" value={value} onChange={(e) => setValue(e.target.value)} autoComplete="off" aria-invalid={!!error} />
           </label>
         </p>
         {error && <p role="alert">{error}</p>}
-        <p>
+        <p className="ui-actions">
           <button type="submit" className="primary" disabled={busy}>Invite my Guardian</button> · <SignOut />
         </p>
       </form>
@@ -209,9 +209,9 @@ function GuardianStep({ s, onDone }: { s: Extract<State, { state: "guardian" }>;
     <section>
       <h1>Waiting for your Guardian</h1>
       <p>Your account stays paused until your Guardian finishes setup. You don&apos;t need to do anything else right now.</p>
-      <ol>
+      <ol className="ui-steps">
         {STEPS.map(([step, text]) => (
-          <li key={step}>
+          <li key={step} data-state={ORDER.indexOf(step) < at ? "done" : ORDER.indexOf(step) === at ? "now" : "next"}>
             {text}: {ORDER.indexOf(step) < at ? "done" : ORDER.indexOf(step) === at ? "in progress" : "next"}
             {step === "invited" && ` (${s.guardianEmail}${s.emailSent ? "" : ", not sent yet"})`}
           </li>
@@ -219,7 +219,7 @@ function GuardianStep({ s, onDone }: { s: Extract<State, { state: "guardian" }>;
       </ol>
       {error && <p role="alert">{error}</p>}
       {canChange && (
-        <p>
+        <p className="ui-actions">
           <button type="button" className="link" disabled={busy} onClick={() => void submit(null, true)}>Send the invitation again</button> ·{" "}
           <button type="button" className="link" onClick={() => setEditing(true)}>Use a different email</button> · <SignOut />
         </p>
@@ -248,7 +248,7 @@ function GuardianSignup({ teenName, onDone }: { teenName: string; onDone: (s: St
   }
 
   return (
-    <form onSubmit={submit} noValidate>
+    <form onSubmit={submit} noValidate className="ui-form">
       <h1>Be {teenName}&apos;s Guardian on ASCENTRA</h1>
       <p>
         {teenName} asked you to set up their account. This is your own Guardian account, separate from {teenName}&apos;s. Next
@@ -257,13 +257,15 @@ function GuardianSignup({ teenName, onDone }: { teenName: string; onDone: (s: St
       </p>
       <fieldset>
         <legend>You are {teenName}&apos;s</legend>
-        <label><input type="radio" name="rel" value="parent" checked={relationship === "parent"} onChange={() => setRelationship("parent")} /> Parent</label>{" "}
-        <label><input type="radio" name="rel" value="legal_guardian" checked={relationship === "legal_guardian"} onChange={() => setRelationship("legal_guardian")} /> Legal guardian</label>
+        <span className="ui-pills">
+          <label className="ui-pill"><input type="radio" name="rel" value="parent" checked={relationship === "parent"} onChange={() => setRelationship("parent")} /> Parent</label>{" "}
+          <label className="ui-pill"><input type="radio" name="rel" value="legal_guardian" checked={relationship === "legal_guardian"} onChange={() => setRelationship("legal_guardian")} /> Legal guardian</label>
+        </span>
       </fieldset>
-      <p><label><input type="checkbox" checked={adult} onChange={(e) => setAdult(e.target.checked)} /> I&apos;m 18 or older</label></p>
-      <p><label><input type="checkbox" checked={us} onChange={(e) => setUs(e.target.checked)} /> I live in the United States</label></p>
+      <p><label className="ui-consent"><input type="checkbox" checked={adult} onChange={(e) => setAdult(e.target.checked)} /> I&apos;m 18 or older</label></p>
+      <p><label className="ui-consent"><input type="checkbox" checked={us} onChange={(e) => setUs(e.target.checked)} /> I live in the United States</label></p>
       {error && <p role="alert">{error}</p>}
-      <p>
+      <p className="ui-actions">
         <button type="submit" className="primary" disabled={busy}>Continue</button> · <SignOut />
       </p>
     </form>
