@@ -146,6 +146,9 @@ export const CAPABILITIES = {
   // ---- Freshness cycle (L3): the Owner sets the interval; builders and Reviewers queue a refresh (course scope applies) ----
   "courses.refresh.configure": { scope: "global", from: "L3: a refresh setting per course (30 to 60 days); the Owner can change it", reason: true },
   "courses.refresh.run": { scope: "global", from: "L3: queue a course's refresh for the next run, after seeing its cost estimate" },
+  // ---- Topic catalog (L6): the Owner, Course Admins and Reviewers see it; the Owner and Course Admins queue topics ----
+  "catalog.view": { scope: "global", from: "L6: a topic catalog admin page (Owner, Course Admin, Reviewer)" },
+  "catalog.queue": { scope: "global", from: "L6: batch generation: the Owner or Course Admin selects topics and the server queues them" },
   // ---- Mentor safety (L4): the review queue holds no conversation text ----
   "safety.view": { scope: "global", from: "L4: a review queue for the Owner and Super Admin (categories and actions, never conversation text)" },
   "safety.review": { scope: "global", from: "L4: safety checks with SafetyEvent records and a review queue for the Owner and Super Admin", reason: true },
@@ -218,13 +221,13 @@ export const ROLE_CAPS: Record<RoleKey, readonly Cap[]> = {
     "self.view", "learn",
     "courses.edit.assigned", "courses.publish.assigned", "courses.archive.assigned", "courses.restore.assigned",
     "sources.flag.assigned", "access.basic", "sources.library.view", "sources.search",
-    "sources.research", "courses.view", "courses.build", "courses.release", "courses.refresh.run", ...SELF_SECURITY,
+    "sources.research", "courses.view", "courses.build", "courses.release", "courses.refresh.run", "catalog.view", "catalog.queue", ...SELF_SECURITY,
   ],
   reviewer: [
     "self.view", "learn",
     "courses.review.assigned", "sources.resolve.assigned", "work.evaluate.assigned", "access.basic",
     "sources.library.view", "sources.search", "sources.library.add", "sources.library.decide", "sources.claims.manage", "sources.conflicts.decide",
-    "sources.research", "courses.view", "courses.verify", "courses.refresh.run",
+    "sources.research", "courses.view", "courses.verify", "courses.refresh.run", "catalog.view",
     ...SELF_SECURITY,
   ],
   support: [

@@ -26,6 +26,18 @@ const READERS: [RegExp, string][] = [
   [/call\("GET", "\/api\/v1\/guardian"\)/, "teenAllowancesFrom"],
   [/"\/api\/v1\/billing\/mentor-addon", body\(\{ agreed: false \}\)/, "addonQuoteFrom"],
   [/"\/api\/v1\/billing\/mentor-addon", body\(\{ confirm: true/, "addonChangeFrom"],
+  // L6: the topic catalog and the activity library.
+  [/call\("GET", "\/api\/v1\/catalog"\)/, "catalogFrom"],
+  [/"\/api\/v1\/catalog\/queue", \{ slugs: picked \}/, "batchQuoteFrom"],
+  [/"\/api\/v1\/catalog\/queue", \{ slugs: picked, confirm: true/, "batchQueuedFrom"],
+  [/`\$\{base\}\/activities`\)/, "libraryFrom"],
+  [/`\$\{base\}\/lessons\/\$\{l\.id\}\/activities`/, "poolDraftedFrom"],
+  [/`\$\{base\}\/lessons\/\$\{l\.id\}\/misses`/, "missesFrom"],
+  [/`\$\{base\}\/modules\/\$\{m\.id\}\/activities\/publish`, \{ reason/, "modulePublishedFrom"],
+  [/`\$\{base\}\/activities\/\$\{i\.id\}\/review`/, "itemStatusFrom"],
+  [/\/api\/v1\/learn\/activities\/\$\{a\.id\}\/attempt/, "attemptFrom"],
+  [/\/api\/v1\/learn\/activities\/\$\{a\.id\}\/feedback/, "feedbackFrom"],
+  [/\/api\/v1\/learn\/lessons\/\$\{encodeURIComponent\(id\)\}/, "lessonActivitiesFrom"],
 ];
 
 const pages = (function walk(dir: string): string[] {

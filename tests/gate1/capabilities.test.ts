@@ -90,6 +90,9 @@ const GLOBAL: Record<string, RoleKey[]> = {
   // L3: the Owner sets the refresh interval; builders and Reviewers queue a refresh.
   "courses.refresh.configure": ["owner"],
   "courses.refresh.run": ["owner", "superAdmin", "courseAdmin", "reviewer"],
+  // L6: the topic catalog.
+  "catalog.view": ["owner", "courseAdmin", "reviewer"],
+  "catalog.queue": ["owner", "courseAdmin"],
   // L4: the safety review queue.
   "safety.view": ["owner", "superAdmin"],
   "safety.review": ["owner", "superAdmin"],

@@ -80,6 +80,12 @@
       "migrations": [
         "0016_mentor_allowance"
       ]
+    },
+    "L6": {
+      "requires": "0016_mentor_allowance",
+      "migrations": [
+        "0017_activity_library"
+      ]
     }
   }
 }

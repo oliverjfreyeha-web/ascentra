@@ -72,6 +72,11 @@ export function AccountPanel() {
           <Link href="/admin/sources">Source library</Link> · <Link href="/admin/courses">Course builder</Link> ·{" "}
         </>
       )}
+      {me && ["owner", "courseAdmin", "reviewer"].includes(me.roleKey) && (
+        <>
+          <Link href="/admin/catalog">Topic catalog</Link> ·{" "}
+        </>
+      )}
       {me && me.roleKey !== "guardian" && (
         <>
           <Link href="/learn">Learn</Link> ·{" "}

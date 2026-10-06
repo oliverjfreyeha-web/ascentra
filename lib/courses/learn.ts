@@ -51,7 +51,7 @@ export async function learnerCourses(actor: Account) {
 
 const VERSION_COLUMNS = "id, lesson_id, course_id, version, title, body, citations, uncited_count, last_verified_on, published_at, status, change_summary";
 
-async function publishedVersion(lessonId: string): Promise<{ v: Version; course: { slug: string; name: string } } | null> {
+export async function publishedVersion(lessonId: string): Promise<{ v: Version; course: { slug: string; name: string } } | null> {
   if (!isUuid(lessonId)) return null;
   const db = getDb();
   const v = (((await db.from("lesson_versions").select(VERSION_COLUMNS)

@@ -337,7 +337,20 @@ export function createFakeDb(tables: Record<string, Row[]> = {}) {
     row.messages = Number(row.messages) + 1;
     return { data: row.messages, error: null };
   }
+  // L6: publish_module_activities (0017): the variety rule, then archive what approved refresh drafts replace, then publish.
+  function publishModuleActivities(a: Record<string, unknown>) {
+    const items = (data.activity_items ?? []).filter((i) => i.module_id === a.p_module);
+    const replaced = new Set(items.filter((i) => i.status === "approved" && i.previous_item_id).map((i) => i.previous_item_id));
+    const types = new Set(items.filter((i) => i.status === "approved" || (i.status === "published" && !replaced.has(i.id))).map((i) => i.item_type)).size;
+    if (types < 3) return { data: null, error: { code: "23514", message: `ASCENTRA: a module needs at least 3 different activity types to be published (this one has ${types}).` } };
+    const now = new Date().toISOString();
+    for (const i of items) if (i.status === "published" && replaced.has(i.id)) Object.assign(i, { status: "archived", archived_at: now });
+    let n = 0;
+    for (const i of items) if (i.status === "approved") { Object.assign(i, { status: "published", published_at: now, published_by_account_id: a.p_actor }); n++; }
+    return { data: n, error: null };
+  }
   const rpc = async (fn: string, args: Record<string, unknown> = {}) =>
+    fn === "publish_module_activities" ? publishModuleActivities(args) :
     fn === "count_mentor_message" ? countMentorMessage(args) :
     fn === "put_source_chunks" ? putSourceChunks(args) :
     fn === "match_source_chunks" ? matchSourceChunks(args) :

@@ -19,4 +19,6 @@ export const EXPECTED_TABLES = [
   "mentor_daily_usage",
   // L5
   "mentor_allowance_periods", "mentor_allowance_usage",
+  // L6
+  "catalog_topics", "catalog_jobs", "activity_items", "activity_attempts",
 ].sort();
