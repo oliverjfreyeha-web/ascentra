@@ -45,3 +45,8 @@ next-env.d.ts
 /test-results/
 /playwright-report/
 /e2e/.state/
+
+# transitions.dev skill (installed with `npx skills add Jakubantalik/transitions.dev`; restore from skills-lock.json).
+# Its license forbids republishing the collection, so the files stay out of git.
+/.claude/skills/transitions-dev/
+/.claude/skills/transitions-polish/

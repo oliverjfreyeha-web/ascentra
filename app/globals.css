@@ -1,195 +1,339 @@
+/*
+ * Global styles: the shared layout and plain elements, built only on the tokens in ./styles/tokens.css.
+ * D1 changes the look only: every class name the screens use (.muted, .small, .notice, .st-*, button.primary, …) is
+ * kept with the same meaning. Base components live in ./styles/components.css under the ui- prefix.
+ */
+
+/* Names the screens already use, now pointing at the tokens. */
 :root {
-  --bg: #ffffff;
-  --fg: #171717;
-  --muted: #5c5c66;
-  --line: #d9d9e0;
-  --ok: #1f7a4d;
-  --disc: #8a4b00;
+  --bg: var(--color-base);
+  --fg: var(--color-text);
+  --muted: var(--color-text-muted);
+  --line: var(--color-line);
+  --ok: var(--color-success);
+  --disc: var(--color-warning);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0d0e12;
-    --fg: #ececf1;
-    --muted: #a0a0ad;
-    --line: #2c2e36;
-    --ok: #5fd69b;
-    --disc: #f0b36a;
-  }
-}
-
-* {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
+}
+
+html {
+  background: var(--color-base);
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
   margin: 0;
-  color: var(--fg);
-  background: var(--bg);
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  line-height: 1.5;
+  min-height: 100vh;
+  color: var(--color-text);
+  /* A calm, faint wash of the accent at the top of the page: depth without glow. */
+  background:
+    radial-gradient(60rem 32rem at 12% -10%, rgb(160 189 219 / 0.07), transparent 70%),
+    radial-gradient(48rem 28rem at 100% 0%, rgb(201 184 242 / 0.045), transparent 70%),
+    var(--color-base);
+  background-attachment: fixed;
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "ss01", "cv11";
 }
 
 main {
-  max-width: 40rem;
+  max-width: var(--width-prose);
   margin: 0 auto;
-  padding: 3rem 1rem;
+  padding: var(--space-7) var(--space-4);
+}
+
+main.wide {
+  max-width: var(--width-wide);
+}
+
+h1,
+h2,
+h3,
+h4 {
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-tight);
+  font-weight: var(--weight-semibold);
+  text-wrap: balance;
 }
 
 h1 {
-  font-size: 1.5rem;
-  margin: 0 0 1.5rem;
+  font-size: var(--text-xl);
+  margin: 0 0 var(--space-5);
+}
+
+h2 {
+  font-size: var(--text-lg);
+  margin: var(--space-6) 0 var(--space-3);
+}
+
+h3 {
+  font-size: var(--text-md);
+  margin: var(--space-5) 0 var(--space-2);
+}
+
+p {
+  margin: 0 0 var(--space-4);
+}
+
+a {
+  color: var(--color-accent);
+  text-decoration: underline;
+  text-decoration-color: rgb(160 189 219 / 0.4);
+  text-underline-offset: 0.2em;
+  transition: color var(--duration-quick) var(--ease-out), text-decoration-color var(--duration-quick) var(--ease-out);
+}
+
+a:hover {
+  color: var(--color-accent-strong);
+  text-decoration-color: currentColor;
+}
+
+code,
+kbd,
+samp,
+pre {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+}
+
+hr {
+  border: 0;
+  border-top: var(--border-hairline);
+  margin: var(--space-6) 0;
+}
+
+::selection {
+  background: rgb(160 189 219 / 0.3);
+  color: var(--color-text);
+}
+
+/* One focus ring everywhere: shown for keyboard focus, never removed. */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-xs);
 }
 
 .muted {
-  color: var(--muted);
-  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
 }
 
+.small {
+  font-size: var(--text-sm);
+}
+
+/* ── Plain form controls (screens not yet restyled get these) ─────── */
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+button:not(.link):not(.primary):not([class*="ui-"]) {
+  padding: var(--space-2) var(--space-4);
+  border: var(--border-control);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  transition: background-color var(--duration-quick) var(--ease-out), border-color var(--duration-quick) var(--ease-out);
+}
+
+button:not(.link):not(.primary):not([class*="ui-"]):hover:not(:disabled) {
+  background: var(--color-raised);
+  border-color: var(--color-accent);
+}
+
+button.primary {
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-sm);
+  color: var(--color-on-accent);
+  background: var(--color-accent);
+  font-weight: var(--weight-medium);
+}
+
+button.primary:hover:not(:disabled) {
+  background: var(--color-accent-strong);
+  border-color: var(--color-accent-strong);
+}
+
+button.link {
+  padding: 0;
+  border: 0;
+  color: var(--color-accent);
+  background: none;
+  text-decoration: underline;
+  text-decoration-color: rgb(160 189 219 / 0.4);
+  text-underline-offset: 0.2em;
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([class*="ui-"]),
+select:not([class*="ui-"]),
+textarea:not([class*="ui-"]) {
+  font: inherit;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: var(--border-control);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  max-width: 100%;
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--color-accent);
+}
+
+::placeholder {
+  color: var(--color-text-muted);
+  opacity: 1;
+}
+
+section + section,
+p + section {
+  margin-top: var(--space-6);
+}
+
+/* ── The Home status list ─────────────────────────────────────────── */
 .services {
   list-style: none;
   padding: 0;
   margin: 0;
-  border-top: 1px solid var(--line);
+  border-top: var(--border-hairline);
 }
 
 .services li {
-  padding: 0.75rem 0;
-  border-bottom: 1px solid var(--line);
+  padding: var(--space-3) 0;
+  border-bottom: var(--border-hairline);
 }
 
 .services .row {
   display: flex;
   justify-content: space-between;
-  gap: 1rem;
+  gap: var(--space-4);
 }
 
 .st {
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   white-space: nowrap;
 }
 
 .st-disconnected {
-  color: var(--disc);
+  color: var(--color-warning);
 }
 
 .st-connected {
-  color: var(--ok);
+  color: var(--color-success);
 }
 
 .st span {
   margin-right: 0.35em;
 }
 
-button {
-  font: inherit;
-  cursor: pointer;
-}
-
-button.primary {
-  padding: 0.6rem 1rem;
-  border: 0;
-  border-radius: 6px;
-  color: var(--bg);
-  background: var(--fg);
-}
-
-button.link {
-  padding: 0;
-  border: 0;
-  color: inherit;
-  background: none;
-  text-decoration: underline;
-}
-
-button:disabled {
-  opacity: 0.6;
-  cursor: default;
-}
-
-section + section,
-p + section {
-  margin-top: 1.5rem;
-}
-
-main.wide {
-  max-width: 80rem;
-}
-
+/* ── Tables ───────────────────────────────────────────────────────── */
 .table-wrap {
   overflow-x: auto;
 }
 
 table {
   border-collapse: collapse;
-  font-size: 0.875rem;
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
 }
 
 th,
 td {
   text-align: left;
   vertical-align: top;
-  padding: 0.4rem 0.5rem;
-  border-bottom: 1px solid var(--line);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: var(--border-hairline);
 }
 
-.filters label {
-  display: inline-block;
-  margin: 0 0.5rem 0.5rem 0;
-}
-
-/* F6: device and session notices */
-.notice {
-  border: 1px solid var(--disc);
-  border-radius: 6px;
-  padding: 1rem;
-  margin: 0 0 1rem;
-}
-
-.notice.banner {
-  max-width: 40rem;
-  margin: 1rem auto 0;
-  padding: 0.75rem 1rem;
-  font-size: 0.9375rem;
-}
-
-.notice h1 {
-  margin-bottom: 0.75rem;
+th {
+  color: var(--color-text-muted);
+  font-weight: var(--weight-medium);
 }
 
 table.plain {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.875rem;
+  font-size: var(--text-sm);
 }
 
 table.plain th,
 table.plain td {
   text-align: left;
-  padding: 0.35rem 0.5rem 0.35rem 0;
-  border-bottom: 1px solid var(--line);
+  padding: var(--space-2) var(--space-3) var(--space-2) 0;
+  border-bottom: var(--border-hairline);
   vertical-align: top;
+}
+
+.filters label {
+  display: inline-block;
+  margin: 0 var(--space-2) var(--space-2) 0;
+}
+
+/* F6: device and session notices */
+.notice {
+  border: 1px solid rgb(232 195 126 / 0.45);
+  border-radius: var(--radius-md);
+  background: var(--tint-warning);
+  padding: var(--space-4);
+  margin: 0 0 var(--space-4);
+}
+
+.notice.banner {
+  max-width: var(--width-prose);
+  margin: var(--space-4) auto 0;
+  padding: var(--space-3) var(--space-4);
+  font-size: 0.9375rem;
+}
+
+.notice h1 {
+  margin-bottom: var(--space-3);
 }
 
 /* Account → Billing */
 dl.kv {
   display: grid;
   grid-template-columns: max-content 1fr;
-  gap: 0.25rem 1rem;
-  margin: 0.5rem 0 1rem;
+  gap: var(--space-1) var(--space-4);
+  margin: var(--space-2) 0 var(--space-4);
 }
 
 dl.kv dt {
-  color: var(--muted, inherit);
+  color: var(--color-text-muted);
 }
 
 dl.kv dd {
   margin: 0;
 }
 
-.small {
-  font-size: 0.875rem;
-}
-
 /* L6: text for screen readers only (table captions, live results). */
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
+/* Reduced motion: also stops any animation or transition not built on the tokens. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
