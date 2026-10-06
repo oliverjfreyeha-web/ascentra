@@ -3,6 +3,7 @@
   "crons": [
     { "path": "/api/cron/audit-verify", "schedule": "17 3 * * *" },
     { "path": "/api/cron/notices", "schedule": "41 15 * * *" },
-    { "path": "/api/cron/refresh", "schedule": "23 4 * * *" }
+    { "path": "/api/cron/refresh", "schedule": "23 4 * * *" },
+    { "path": "/api/cron/catalog", "schedule": "47 5 * * *" }
   ]
 }

@@ -11,6 +11,7 @@ import {
 import { fromDbRole } from "@/lib/admin-rules";
 import type { AdminRole, RoleKey } from "@/lib/caps";
 import { readEnv } from "@/lib/env";
+import { getDb } from "@/lib/db";
 
 export type Account = {
   id: string;
@@ -79,28 +80,44 @@ export async function getAuthContext(): Promise<AuthContext | null> {
 
   const row = await findAccountByClerkId(session.userId);
   if (!row) return null;
-  const assignment = row.role === "admin" ? await findLiveAssignment(row.id) : null;
-  if (accountRefusal(row, assignment, readEnv("OWNER_EMAIL"))) return null;
-  const roleKey = roleKeyOf(row, assignment);
-  if (!roleKey) return null;
-
-  const profile = await findProfile(row.id);
-  const adminRole = row.role === "admin" ? fromDbRole(assignment?.role) : null;
+  const account = await accountOfRow(row);
+  if (!account) return null;
   return {
-    account: {
-      id: row.id,
-      email: row.email,
-      role: row.role,
-      displayName: profile?.display_name ?? row.email,
-      roleKey,
-      adminRole,
-      assignedCourses: adminRole ? [...(assignment?.scope ?? [])] : [],
-      isMinor: row.role === "learner" && row.is_minor,
-    },
+    account,
     sessionId: session.sessionId ?? null,
     // Second factor verified within the last 10 minutes (Clerk's strict_mfa level).
     recentlyVerified: () => session.has({ reverification: "strict_mfa" }),
   };
+}
+
+/** The Account for a row, with the same checks as a signed-in request (null when the row can't be used now). */
+async function accountOfRow(row: AccountRow): Promise<Account | null> {
+  const assignment = row.role === "admin" ? await findLiveAssignment(row.id) : null;
+  if (accountRefusal(row, assignment, readEnv("OWNER_EMAIL"))) return null;
+  const roleKey = roleKeyOf(row, assignment);
+  if (!roleKey) return null;
+  const profile = await findProfile(row.id);
+  const adminRole = row.role === "admin" ? fromDbRole(assignment?.role) : null;
+  return {
+    id: row.id,
+    email: row.email,
+    role: row.role,
+    displayName: profile?.display_name ?? row.email,
+    roleKey,
+    adminRole,
+    assignedCourses: adminRole ? [...(assignment?.scope ?? [])] : [],
+    isMinor: row.role === "learner" && row.is_minor,
+  };
+}
+
+/**
+ * L6: the Account of the person who queued a batch job, checked now (role, second factor, active), so the overnight
+ * run acts with exactly their rights. Null when they can no longer act.
+ */
+export async function accountById(id: string): Promise<Account | null> {
+  const { data, error } = await getDb().from("accounts").select("*").eq("id", id).maybeSingle();
+  if (error) throw new Error(`accounts lookup failed: ${error.message}`);
+  return data ? accountOfRow(data as AccountRow) : null;
 }
 
 export async function getAccount(): Promise<Account | null> {

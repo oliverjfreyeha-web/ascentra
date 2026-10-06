@@ -14,6 +14,9 @@
  *     Haiku 4.5 (grounded question answering over given text; the system prompt and the thread are cached).
  *   - courses.refresh.report (L3): which lesson paragraphs are now doubtful, and cited replacement text → Sonnet 5.5,
  *     medium effort (it rewrites lesson text, which Haiku does noticeably worse).
+ *   - activities.draft (L6): a pool of practice items for one lesson, each from a numbered passage, with an answer key
+ *     for the code-graded types → Haiku 4.5 (short structured items from given text; the sources are a cached block).
+ *   - activities.feedback (L6): feedback on a practice answer (never a grade) → Haiku 4.5.
  *   - embeddings: Voyage AI voyage-3.5-lite (Anthropic has no embeddings endpoint; Voyage is the one its docs use).
  * Spend caps are a Owner decision: the values here are PLACEHOLDERS. AI_DAILY_CAP_USD / AI_MONTHLY_CAP_USD (plain
  * numbers, not secrets) override them without a code change.
@@ -28,6 +31,8 @@ export const AI_MODELS = {
   "courses.refresh.report": "claude-sonnet-5-5",
   "mentor.screen": "claude-haiku-4-5",
   "mentor.answer": "claude-haiku-4-5",
+  "activities.draft": "claude-haiku-4-5",
+  "activities.feedback": "claude-haiku-4-5",
 } as const;
 
 /** Effort for the steps on models that take it (Sonnet 5.5): medium holds cost down without losing structure. */
@@ -73,6 +78,8 @@ export const STEP_BUDGETS = {
   refreshReport: { purpose: "courses.refresh.report", input: 30_000, output: 10_000, webSearches: 0 },
   mentorScreen: { purpose: "mentor.screen", input: 2_000, output: 200, webSearches: 0 },
   mentorAnswer: { purpose: "mentor.answer", input: 8_000, output: 1_000, webSearches: 0 },
+  activityPool: { purpose: "activities.draft", input: 20_000, output: 8_000, webSearches: 0 },
+  activityFeedback: { purpose: "activities.feedback", input: 3_000, output: 500, webSearches: 0 },
 } as const;
 
 /** L4: one Mentor message, upper end: two safety screens (message and reply) and the answer, unrounded. */
@@ -81,6 +88,16 @@ export const mentorEstimate = () => {
   const answer = costUsd(AI_MODELS["mentor.answer"], { input: STEP_BUDGETS.mentorAnswer.input, output: STEP_BUDGETS.mentorAnswer.output });
   return Math.round((screen * 2 + answer) * 10_000) / 10_000;
 };
+
+/** L6: lessons assumed per course for a batch estimate, before its Blueprint exists (PLACEHOLDER, upper end). */
+export const CATALOG_LESSONS_ESTIMATE = 12;
+/** L6: one topic through the batch pipeline: research, a Blueprint, every lesson drafted once, and a pool per lesson. */
+export function topicEstimate(lessons = CATALOG_LESSONS_ESTIMATE) {
+  const c = courseEstimate(lessons);
+  return Math.round((c.total + estimateUsd("activityPool", Math.max(1, lessons))) * 100) / 100;
+}
+/** L6: one practice-feedback request, unrounded (counted against the Mentor allowance). */
+export const feedbackEstimate = () => costUsd(AI_MODELS["activities.feedback"], { input: STEP_BUDGETS.activityFeedback.input, output: STEP_BUDGETS.activityFeedback.output });
 
 /** L3: one course's refresh (a research pass and a change report). */
 export const refreshEstimate = () => Math.round((estimateUsd("refreshResearch") + estimateUsd("refreshReport")) * 100) / 100;

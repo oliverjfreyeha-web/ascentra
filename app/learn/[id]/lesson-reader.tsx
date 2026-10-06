@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import { call } from "../../call";
 import { LessonView } from "../../lesson-body";
 import { MentorPanel } from "./mentor-panel";
+import { Practice } from "./practice";
+import { lessonActivitiesFrom, type LearnerActivity } from "../../activities-api";
 import { learnerLessonFrom, type LearnerLesson } from "../../courses-api";
 
 /** L2: one published lesson, with its citations and "last verified" date. Progress records the version read. */
@@ -12,11 +14,13 @@ export function LessonReader({ id }: { id: string }) {
   const [data, setData] = useState<LearnerLesson | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [practice, setPractice] = useState<{ activities: LearnerActivity[]; score: { graded: number; correct: number } } | null>(null);
   const url = `/api/v1/learn/lessons/${encodeURIComponent(id)}`;
   const load = useCallback(async () => {
     const r = await call("GET", current ? `${url}?view=current` : url);
     const l = r._status === 200 ? learnerLessonFrom(r) : null;
     setData(l);
+    setPractice(r._status === 200 ? lessonActivitiesFrom(r) : null);
     setFailed(l ? null : r.reason ?? "Couldn't load this lesson.");
   }, [url, current]);
   useEffect(() => {
@@ -57,6 +61,7 @@ export function LessonReader({ id }: { id: string }) {
         ? <p className="muted">Done.</p>
         : <button type="button" onClick={() => void complete()}>Mark as done</button>}
       {message && <p role="status">{message}</p>}
+      {practice && <Practice items={practice.activities} score={practice.score} onScore={(score) => setPractice({ ...practice, score })} />}
       <MentorPanel lessonId={id} />
     </>
   );
