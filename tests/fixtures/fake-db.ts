@@ -349,7 +349,17 @@ export function createFakeDb(tables: Record<string, Row[]> = {}) {
     for (const i of items) if (i.status === "approved") { Object.assign(i, { status: "published", published_at: now, published_by_account_id: a.p_actor }); n++; }
     return { data: n, error: null };
   }
+  // L7: request_course (0018): one anonymous row per topic and level, counted.
+  function requestCourse(a: Record<string, unknown>) {
+    data.course_requests ??= [];
+    const now = new Date().toISOString();
+    let row = data.course_requests.find((r) => r.topic_key === a.p_key && r.level === a.p_level);
+    if (row) Object.assign(row, { request_count: Number(row.request_count) + 1, last_requested_at: now, ...(row.status === "dismissed" ? { status: "open", decided_at: null } : {}) });
+    else data.course_requests.push(row = { id: randomUUID(), topic: a.p_topic, topic_key: a.p_key, level: a.p_level, request_count: 1, status: "open", decided_at: null, decision_note: null, last_requested_at: now, created_at: now });
+    return { data: row.id, error: null };
+  }
   const rpc = async (fn: string, args: Record<string, unknown> = {}) =>
+    fn === "request_course" ? requestCourse(args) :
     fn === "publish_module_activities" ? publishModuleActivities(args) :
     fn === "count_mentor_message" ? countMentorMessage(args) :
     fn === "put_source_chunks" ? putSourceChunks(args) :

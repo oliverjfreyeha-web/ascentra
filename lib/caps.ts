@@ -149,6 +149,9 @@ export const CAPABILITIES = {
   // ---- Topic catalog (L6): the Owner, Course Admins and Reviewers see it; the Owner and Course Admins queue topics ----
   "catalog.view": { scope: "global", from: "L6: a topic catalog admin page (Owner, Course Admin, Reviewer)" },
   "catalog.queue": { scope: "global", from: "L6: batch generation: the Owner or Course Admin selects topics and the server queues them" },
+  // ---- Course requests (L7): anonymous requests for topics with no published course, in a Course Admin queue ----
+  "course_requests.view": { scope: "global", from: "L7: record an anonymous request (topic and level only) in a Course Admin queue" },
+  "course_requests.manage": { scope: "global", from: "L7: the Course Admin queue: mark a request planned or dismissed", reason: true },
   // ---- Mentor safety (L4): the review queue holds no conversation text ----
   "safety.view": { scope: "global", from: "L4: a review queue for the Owner and Super Admin (categories and actions, never conversation text)" },
   "safety.review": { scope: "global", from: "L4: safety checks with SafetyEvent records and a review queue for the Owner and Super Admin", reason: true },
@@ -221,7 +224,8 @@ export const ROLE_CAPS: Record<RoleKey, readonly Cap[]> = {
     "self.view", "learn",
     "courses.edit.assigned", "courses.publish.assigned", "courses.archive.assigned", "courses.restore.assigned",
     "sources.flag.assigned", "access.basic", "sources.library.view", "sources.search",
-    "sources.research", "courses.view", "courses.build", "courses.release", "courses.refresh.run", "catalog.view", "catalog.queue", ...SELF_SECURITY,
+    "sources.research", "courses.view", "courses.build", "courses.release", "courses.refresh.run", "catalog.view", "catalog.queue",
+    "course_requests.view", "course_requests.manage", ...SELF_SECURITY,
   ],
   reviewer: [
     "self.view", "learn",

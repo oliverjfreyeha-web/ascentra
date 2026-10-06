@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { useReverification } from "@clerk/nextjs";
 import { call, when } from "../call";
 
@@ -14,6 +15,8 @@ type Privacy = {
   teenHandledByGuardian: boolean; canRequestDeletion: boolean; dueDays: { export: number; deletion: number };
   /** L4: how many Mentor conversations this account has (they're in the download and covered by a deletion request). */
   mentorThreads: number;
+  /** L7: whether the learner has interview answers saved (in the download; covered by a deletion request). */
+  interview: boolean;
 };
 
 /**
@@ -141,6 +144,11 @@ export function PrivacyCenter() {
             }
           }}>Delete all my Mentor conversations</button>
         )}
+      </p>
+      <h3>Interview answers and your path</h3>
+      <p className="small muted">
+        Private to you and not used to train AI models. Included in your data download and in a deletion request.{" "}
+        {data.interview ? <>You have answers saved: <Link href="/learn/path">view, redo or delete them</Link>.</> : "You haven't answered the interview."}
       </p>
       <h3>Your requests</h3>
       {data.requests.length === 0 ? <p className="muted">None.</p> : (

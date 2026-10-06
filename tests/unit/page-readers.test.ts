@@ -38,6 +38,14 @@ const READERS: [RegExp, string][] = [
   [/\/api\/v1\/learn\/activities\/\$\{a\.id\}\/attempt/, "attemptFrom"],
   [/\/api\/v1\/learn\/activities\/\$\{a\.id\}\/feedback/, "feedbackFrom"],
   [/\/api\/v1\/learn\/lessons\/\$\{encodeURIComponent\(id\)\}/, "lessonActivitiesFrom"],
+  // L7: the interview, the path, the activity mode and the course requests.
+  [/call\("GET", "\/api\/v1\/learn\/interview"\)/, "interviewFrom"],
+  [/call\("PUT", "\/api\/v1\/learn\/interview"/, "interviewSavedFrom"],
+  [/call\("GET", "\/api\/v1\/learn\/path"\)/, "pathFrom"],
+  [/"\/api\/v1\/learn\/course-requests"/, "courseRequestFrom"],
+  [/call\("PUT", "\/api\/v1\/learn\/path\/activities", \{ mode \}/, "activityModeFrom"],
+  [/`\/api\/v1\/course-requests\?status=/, "requestsFrom"],
+  [/`\/api\/v1\/course-requests\/\$\{id\}\/decide`/, "requestDecidedFrom"],
 ];
 
 const pages = (function walk(dir: string): string[] {
