@@ -68,6 +68,12 @@
       "migrations": [
         "0014_freshness_cycle"
       ]
+    },
+    "L4": {
+      "requires": "0014_freshness_cycle",
+      "migrations": [
+        "0015_mentor_and_safety"
+      ]
     }
   }
 }

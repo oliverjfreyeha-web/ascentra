@@ -88,11 +88,16 @@ const EMAIL = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
  */
 export function assertPromptSafe(...parts: string[]) {
   const text = parts.join("\n");
+  assertNoSecrets(text);
+  if (EMAIL.test(text)) throw new AiUnavailable("failed", "Remove the email address: prompts carry course material only, never personal details.");
+}
+
+/** No configured secret's value ever goes into a prompt. */
+export function assertNoSecrets(text: string) {
   for (const name of secretEnv.names) {
     const v = process.env[name]?.trim();
     if (v && v.length >= 8 && text.includes(v)) throw new AiUnavailable("failed", "The prompt would contain a secret. Nothing was sent.");
   }
-  if (EMAIL.test(text)) throw new AiUnavailable("failed", "Remove the email address: prompts carry course material only, never personal details.");
 }
 
 /** Records Connected (with evidence) or Disconnected (with a reason) for a provider. */
@@ -118,14 +123,21 @@ function client(timeout = 60_000) {
 /** One structured-output call: the answer is validated against `schema` (Zod). */
 export async function structured<S extends z.ZodType>(
   purpose: AiPurpose,
-  args: { system: string; user: string; schema: S; maxTokens?: number; cachedContext?: string; estimateUsd?: number; timeoutMs?: number } & Who,
+  args: {
+    system: string; user: string; schema: S; maxTokens?: number; cachedContext?: string; estimateUsd?: number; timeoutMs?: number;
+    /** Earlier turns of a conversation (L4 Mentor): sent before `user`, so the cached prefix covers them. */
+    history?: { role: "user" | "assistant"; content: string }[];
+    /** L4: a learner's own words may contain an email (an adult's choice to share it); secrets are still refused. */
+    allowPersonal?: boolean;
+  } & Who,
 ): Promise<z.infer<S>> {
   const model = AI_MODELS[purpose];
   if (!aiConfigured()) {
     await logCall({ purpose, provider: "anthropic", model, status: "refused_off", account_id: args.accountId, request_id: args.requestId });
     throw new AiUnavailable("ai_off", AI_OFF);
   }
-  assertPromptSafe(args.system, args.user, args.cachedContext ?? "");
+  assertPromptSafe(args.system, args.cachedContext ?? "", ...(args.allowPersonal ? [] : [args.user]));
+  if (args.allowPersonal) assertNoSecrets([args.user, ...(args.history ?? []).map((h) => h.content)].join("\n"));
   await gate(purpose, "anthropic", model, args, args.estimateUsd ?? 0);
   const started = Date.now();
   const effort = AI_EFFORT[purpose];
@@ -136,7 +148,7 @@ export async function structured<S extends z.ZodType>(
       ...(args.cachedContext
         ? { system: [{ type: "text" as const, text: args.system }, { type: "text" as const, text: args.cachedContext, cache_control: { type: "ephemeral" as const } }] }
         : { cache_control: { type: "ephemeral" as const }, system: args.system }),
-      messages: [{ role: "user", content: args.user }],
+      messages: [...(args.history ?? []), { role: "user", content: args.user }],
       output_config: { format: zodOutputFormat(args.schema), ...(effort ? { effort } : {}) },
     });
     const u = res.usage;

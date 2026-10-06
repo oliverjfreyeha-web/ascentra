@@ -146,6 +146,9 @@ export const CAPABILITIES = {
   // ---- Freshness cycle (L3): the Owner sets the interval; builders and Reviewers queue a refresh (course scope applies) ----
   "courses.refresh.configure": { scope: "global", from: "L3: a refresh setting per course (30 to 60 days); the Owner can change it", reason: true },
   "courses.refresh.run": { scope: "global", from: "L3: queue a course's refresh for the next run, after seeing its cost estimate" },
+  // ---- Mentor safety (L4): the review queue holds no conversation text ----
+  "safety.view": { scope: "global", from: "L4: a review queue for the Owner and Super Admin (categories and actions, never conversation text)" },
+  "safety.review": { scope: "global", from: "L4: safety checks with SafetyEvent records and a review queue for the Owner and Super Admin", reason: true },
 
   // ---- Nobody: support "Never sees payment details, private notes, or Mentor conversations" ----
   "billing.payment_details.view": { scope: "global", from: "support: Never sees payment details (no role holds this)" },
@@ -190,6 +193,7 @@ const SUPER_ADMIN: Cap[] = [
   "support.appeal.decide", "security.suspend",
   "sources.library.view", "sources.search", "ai.status",
   "sources.research", "courses.view", "courses.build", "courses.release", "courses.refresh.run",
+  "safety.view", "safety.review",
 ];
 
 /** Every signed-in Account manages its own devices and can answer a safeguard step. */

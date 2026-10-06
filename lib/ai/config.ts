@@ -9,6 +9,9 @@
  *     course outline is planning, which Haiku does noticeably worse), at medium effort to hold cost down.
  *   - lessons.draft (L2): write a lesson in its own words with inline citations → Claude Sonnet 5.5, medium effort.
  *   - courses.refresh.research (L3): what changed in the field since the last verification, with web search → Haiku 4.5.
+ *   - mentor.screen (L4): safety and graded-work check of each message and each reply → Haiku 4.5 (a short classification).
+ *   - mentor.answer (L4): answer from numbered course passages, with citations, or say the sources don't cover it →
+ *     Haiku 4.5 (grounded question answering over given text; the system prompt and the thread are cached).
  *   - courses.refresh.report (L3): which lesson paragraphs are now doubtful, and cited replacement text → Sonnet 5.5,
  *     medium effort (it rewrites lesson text, which Haiku does noticeably worse).
  *   - embeddings: Voyage AI voyage-3.5-lite (Anthropic has no embeddings endpoint; Voyage is the one its docs use).
@@ -23,6 +26,8 @@ export const AI_MODELS = {
   "lessons.draft": "claude-sonnet-5-5",
   "courses.refresh.research": "claude-haiku-4-5",
   "courses.refresh.report": "claude-sonnet-5-5",
+  "mentor.screen": "claude-haiku-4-5",
+  "mentor.answer": "claude-haiku-4-5",
 } as const;
 
 /** Effort for the steps on models that take it (Sonnet 5.5): medium holds cost down without losing structure. */
@@ -66,7 +71,16 @@ export const STEP_BUDGETS = {
   lesson: { purpose: "lessons.draft", input: 20_000, output: 10_000, webSearches: 0 },
   refreshResearch: { purpose: "courses.refresh.research", input: 40_000, output: 4_000, webSearches: WEB_SEARCH.maxUses },
   refreshReport: { purpose: "courses.refresh.report", input: 30_000, output: 10_000, webSearches: 0 },
+  mentorScreen: { purpose: "mentor.screen", input: 2_000, output: 200, webSearches: 0 },
+  mentorAnswer: { purpose: "mentor.answer", input: 8_000, output: 1_000, webSearches: 0 },
 } as const;
+
+/** L4: one Mentor message, upper end: two safety screens (message and reply) and the answer, unrounded. */
+export const mentorEstimate = () => {
+  const screen = costUsd(AI_MODELS["mentor.screen"], { input: STEP_BUDGETS.mentorScreen.input, output: STEP_BUDGETS.mentorScreen.output });
+  const answer = costUsd(AI_MODELS["mentor.answer"], { input: STEP_BUDGETS.mentorAnswer.input, output: STEP_BUDGETS.mentorAnswer.output });
+  return Math.round((screen * 2 + answer) * 10_000) / 10_000;
+};
 
 /** L3: one course's refresh (a research pass and a change report). */
 export const refreshEstimate = () => Math.round((estimateUsd("refreshResearch") + estimateUsd("refreshReport")) * 100) / 100;
