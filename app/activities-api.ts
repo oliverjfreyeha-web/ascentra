@@ -63,12 +63,18 @@ export function missesFrom(body: unknown): MissItem[] | null {
 export type LearnerActivity = {
   id: string; type: string; typeLabel: string; graded: boolean; label: string; level: string; goal: string; prompt: string; content: Obj;
   result: { attempts: number; correct?: boolean } | null;
+  /** L7: why this item was picked for the learner (null in the default set). */
+  why: string[] | null;
 };
-/** GET /api/v1/learn/lessons/[id] → its practice items and the graded score (code-graded items only). */
-export function lessonActivitiesFrom(body: unknown): { activities: LearnerActivity[]; score: { graded: number; correct: number } } | null {
-  return obj(body) && arr(body.activities) && body.activities.every((a) => obj(a) && str(a.id) && typeof a.graded === "boolean" && str(a.label) && obj(a.content))
+/** L7: whether the items shown were picked for the learner, and whether they can switch. */
+export type Selection = { mode: "personal" | "default" | "all"; personalized: boolean; canPersonalize: boolean; note: string | null };
+export type LessonPractice = { activities: LearnerActivity[]; selection: Selection; score: { graded: number; correct: number } };
+/** GET /api/v1/learn/lessons/[id] → its practice items, how they were chosen, and the graded score (code-graded items only). */
+export function lessonActivitiesFrom(body: unknown): LessonPractice | null {
+  return obj(body) && arr(body.activities) && body.activities.every((a) => obj(a) && str(a.id) && typeof a.graded === "boolean" && str(a.label) && obj(a.content) && (a.why === null || arr(a.why)))
+    && obj(body.selection) && str(body.selection.mode) && typeof body.selection.personalized === "boolean"
     && obj(body.score) && num(body.score.graded) && num(body.score.correct)
-    ? (body as unknown as { activities: LearnerActivity[]; score: { graded: number; correct: number } }) : null;
+    ? (body as unknown as LessonPractice) : null;
 }
 export type Citation = { title: string; url: string | null; quote: string | null };
 export type AttemptResult =

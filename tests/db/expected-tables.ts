@@ -21,4 +21,6 @@ export const EXPECTED_TABLES = [
   "mentor_allowance_periods", "mentor_allowance_usage",
   // L6
   "catalog_topics", "catalog_jobs", "activity_items", "activity_attempts",
+  // L7
+  "learner_interviews", "learner_paths", "learner_path_items", "course_requests",
 ].sort();

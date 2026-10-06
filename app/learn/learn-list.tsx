@@ -4,23 +4,34 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { call } from "../call";
 import { learnerCoursesFrom, type LearnerCourse } from "../courses-api";
+import { pathFrom } from "../path-api";
 
 /** L2: published courses and lessons only (the API never returns a Draft or a version in Review). */
 export function LearnList() {
   const [courses, setCourses] = useState<LearnerCourse[] | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
+  // L7: after a plan or the trial starts, invite the learner to the interview (skippable; redoable from My path).
+  const [askInterview, setAskInterview] = useState(false);
   useEffect(() => {
+    void call("GET", "/api/v1/learn/path").then((r) => {
+      const p = r._status === 200 ? pathFrom(r) : null;
+      setAskInterview(!!p && !!p.plan && p.interviewNeeded);
+    });
     void call("GET", "/api/v1/learn/courses").then((r) => {
       const list = r._status === 200 ? learnerCoursesFrom(r) : null;
       setCourses(list);
       setFailed(list ? null : r.reason ?? "Couldn't load your courses.");
     });
   }, []);
-  if (failed) return <p role="status">{failed}</p>;
+  const prompt = askInterview ? (
+    <p className="notice">Get a path for you: <Link href="/learn/path">answer four quick questions</Link> (you can skip it).</p>
+  ) : <p className="small"><Link href="/learn/path">My path</Link></p>;
+  if (failed) return <>{prompt}<p role="status">{failed}</p></>;
   if (!courses) return <p className="muted">Loading…</p>;
-  if (!courses.length) return <p className="muted">No published lessons yet.</p>;
+  if (!courses.length) return <>{prompt}<p className="muted">No published lessons yet.</p></>;
   return (
     <>
+      {prompt}
       {courses.map((c) => (
         <section key={c.slug} aria-labelledby={`c-${c.slug}`}>
           <h2 id={`c-${c.slug}`}>{c.name}</h2>

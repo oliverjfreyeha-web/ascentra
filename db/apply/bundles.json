@@ -86,6 +86,12 @@
       "migrations": [
         "0017_activity_library"
       ]
+    },
+    "L7": {
+      "requires": "0017_activity_library",
+      "migrations": [
+        "0018_interview_and_path"
+      ]
     }
   }
 }

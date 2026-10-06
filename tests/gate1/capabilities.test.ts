@@ -93,6 +93,9 @@ const GLOBAL: Record<string, RoleKey[]> = {
   // L6: the topic catalog.
   "catalog.view": ["owner", "courseAdmin", "reviewer"],
   "catalog.queue": ["owner", "courseAdmin"],
+  // L7: the anonymous course-request queue.
+  "course_requests.view": ["owner", "courseAdmin"],
+  "course_requests.manage": ["owner", "courseAdmin"],
   // L4: the safety review queue.
   "safety.view": ["owner", "superAdmin"],
   "safety.review": ["owner", "superAdmin"],
@@ -155,6 +158,8 @@ const REASON = new Set([
   "courses.release", "courses.refresh.configure",
   // L4: reviewing a safety event.
   "safety.review",
+  // L7: deciding a course request.
+  "course_requests.manage",
 ]);
 
 function ctx(role: RoleKey, { verified = true, courses }: { verified?: boolean; courses?: string[] } = {}): AuthContext {

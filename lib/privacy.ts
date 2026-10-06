@@ -100,6 +100,8 @@ export async function privacyOverview(account: Account) {
     canRequestDeletion: account.roleKey !== "owner" && !account.isMinor,
     // L4: the learner's own Mentor conversations (count only here); covered by the download and the deletion request.
     mentorThreads: (await rows<{ id: string }>(db.from("mentor_threads").select("id").eq("account_id", account.id), "mentor threads")).length,
+    // L7: whether the learner has interview answers and a path (both in the download and covered by deletion).
+    interview: (await rows<{ id: string }>(db.from("learner_interviews").select("id").eq("account_id", account.id), "interview")).length > 0,
     dueDays: { export: PRIVACY_TIMINGS.exportDueDays, deletion: PRIVACY_TIMINGS.deletionDueDays },
   };
 }
@@ -145,6 +147,14 @@ export async function exportData(account: Account, body: Record<string, unknown>
     mentorThreads: subject === account.id
       ? await one("mentor_threads", "account_id", "title, status, messages, created_at, last_message_at")
       : { count: (await one("mentor_threads", "account_id", "id")).length, note: "Private to the teen; not included in a Guardian's download (counsel placeholder)." },
+    // L7: interview answers and the path are private to the learner: in full in their own download; a Guardian's download
+    // of a teen's data only says whether there are any (PLACEHOLDER, counsel item).
+    interview: subject === account.id
+      ? await one("learner_interviews", "account_id", "goal, level, minutes_per_week, topics, interests, completed_at, skipped_at")
+      : { answered: (await one("learner_interviews", "account_id", "id")).length > 0, note: "Private to the teen; not included in a Guardian's download (counsel placeholder)." },
+    path: subject === account.id
+      ? { path: await one("learner_paths", "account_id", "method, note, activity_mode, built_at"), courses: await one("learner_path_items", "account_id", "academy_id, position, reason") }
+      : { note: "Private to the teen; not included in a Guardian's download (counsel placeholder)." },
   };
   const { error } = await db.from("privacy_requests").insert({
     account_id: subject, requested_by_account_id: account.id, kind: "export", status: "completed",
@@ -178,7 +188,7 @@ export async function requestDeletion(account: Account, body: Record<string, unk
     ok: true, status: 201, body: { id: (data as { id: string }).id, dueAt },
     event: {
       action: A, result: "Completed", sensitive: true, target: { type: "account", id: subject },
-      context: `Requested deletion of ${subject === account.id ? "their own account" : "their teen's account"}, including Mentor conversations. Due by ${dueAt.slice(0, 10)}. Nothing is deleted until it's handled.`,
+      context: `Requested deletion of ${subject === account.id ? "their own account" : "their teen's account"}, including Mentor conversations and interview answers. Due by ${dueAt.slice(0, 10)}. Nothing is deleted until it's handled.`,
       next: "open",
     },
   };

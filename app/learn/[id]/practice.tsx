@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { call } from "../../call";
-import { attemptFrom, feedbackFrom, type AttemptResult, type LearnerActivity } from "../../activities-api";
+import { attemptFrom, feedbackFrom, type AttemptResult, type LearnerActivity, type Selection } from "../../activities-api";
+import { activityModeFrom } from "../../path-api";
 
 type Strs = string[];
 const list = (v: unknown): Strs => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : []);
@@ -13,11 +14,26 @@ const list = (v: unknown): Strs => (Array.isArray(v) ? v.filter((x): x is string
  * "Practice, not graded": the learner can see a sample or key points after trying, and ask for AI feedback (counted
  * against their Mentor allowance; never a grade). Native form controls, labels and a live region for results.
  */
-export function Practice({ items, score, onScore }: { items: LearnerActivity[]; score: { graded: number; correct: number }; onScore: (s: { graded: number; correct: number }) => void }) {
+export function Practice({ items, score, selection, onScore, onModeChanged }: {
+  items: LearnerActivity[]; score: { graded: number; correct: number }; selection: Selection;
+  onScore: (s: { graded: number; correct: number }) => void; onModeChanged: () => void;
+}) {
+  const [message, setMessage] = useState<string | null>(null);
   if (!items.length) return null;
+  // L7: practice picked for the learner's interview answers, or the default set (every reviewed item).
+  async function switchTo(mode: "personal" | "default") {
+    const r = await call("PUT", "/api/v1/learn/path/activities", { mode });
+    const m = r._status === 200 ? activityModeFrom(r) : null;
+    setMessage(m ? null : r.reason ?? "Couldn't switch.");
+    if (m) onModeChanged();
+  }
   return (
     <section aria-labelledby="practice-h">
       <h2 id="practice-h">Practice</h2>
+      {selection.note && <p className="small muted">{selection.note}</p>}
+      {selection.personalized && <p><button type="button" className="link" onClick={() => void switchTo("default")}>Show the default set</button></p>}
+      {selection.mode === "default" && selection.canPersonalize && <p><button type="button" className="link" onClick={() => void switchTo("personal")}>Pick practice for my answers again</button></p>}
+      {message && <p role="status">{message}</p>}
       {score.graded > 0 && <p className="small">Graded items right: {score.correct} of {score.graded}. Only graded items count toward your progress.</p>}
       {items.map((a) => <ItemView key={a.id} item={a} onScore={onScore} />)}
     </section>
@@ -64,6 +80,7 @@ function ItemView({ item: a, onScore }: { item: LearnerActivity; onScore: (s: { 
   return (
     <fieldset className="notice">
       <legend><strong>{a.typeLabel}</strong> · {a.graded ? "Graded" : a.label} · {a.level}</legend>
+      {a.why && <p className="small muted">Why this one: {a.why.join("; ")}.</p>}
       <p id={`${name}-prompt`}>{a.prompt}</p>
       {/* Graded types */}
       {(a.type === "multiple_choice") && options.map((o, i) => (

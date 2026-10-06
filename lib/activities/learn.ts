@@ -9,7 +9,9 @@ import { publishedVersion } from "@/lib/courses/learn";
 import { allowanceOf, recordMentorUsage } from "@/lib/mentor-allowance";
 import { allowancePause } from "@/lib/mentor/mentor";
 import { MAX_MESSAGE_CHARS, redactPersonalData, safetyResponse, safetySignal } from "@/lib/mentor/rules";
-import { PRACTICE_LABEL, TYPE_LABEL, grade, learnerContent, revealOf, type AnswerKey, type Content, type ItemType } from "./types";
+import { MIN_MODULE_TYPES, PRACTICE_LABEL, TYPE_LABEL, grade, learnerContent, revealOf, type AnswerKey, type Content, type ItemType } from "./types";
+import { activitySelection } from "@/lib/path/path";
+import { selectActivities } from "@/lib/path/rules";
 
 /**
  * L6: practice items inside a lesson, for learners. Only PUBLISHED items of a lesson that is published in a live course
@@ -26,27 +28,55 @@ type Item = {
 };
 const cite = (c: Item["citation"]) => ({ title: c.title, url: c.url ?? null, quote: c.quote ?? null });
 
-/** The lesson's published items as a learner sees them (never a key, never a reveal), with their own results. */
-export async function lessonActivities(actor: Account, lessonId: string) {
-  if (!(await publishedVersion(lessonId))) return [];
+/**
+ * L7: which of the lesson's published items this learner sees. With a completed interview and "personal" practice, the
+ * items picked for their level, goal and interests (one per idea, at least 3 kinds when the pool has them), each with
+ * why; otherwise, or after they switch to the default set, every published item. Never anything unpublished.
+ */
+export async function shownItems(actor: Account, lessonId: string) {
   const db = getDb();
-  const items = ((await db.from("activity_items").select("*").eq("lesson_id", lessonId).eq("status", "published").order("created_at", { ascending: true })).data ?? []) as Item[];
-  const mine = items.length ? (((await db.from("activity_attempts").select("item_id, correct, graded_by, created_at").eq("account_id", actor.id).in("item_id", items.map((i) => i.id))).data ?? []) as
-    { item_id: string; correct: boolean | null; graded_by: string; created_at: string }[]) : [];
-  return items.filter((i) => i.status === "published").map((i) => {
-    const tries = mine.filter((m) => m.item_id === i.id);
+  const all = (((await db.from("activity_items").select("*").eq("lesson_id", lessonId).eq("status", "published").order("created_at", { ascending: true })).data ?? []) as (Item & { idea_key: string })[])
+    .filter((i) => i.status === "published");
+  const sel = await activitySelection(actor.id);
+  if (!sel || sel.mode === "default" || all.length <= MIN_MODULE_TYPES) {
     return {
-      id: i.id, type: i.item_type, typeLabel: TYPE_LABEL[i.item_type], graded: i.grading === "code", label: i.grading === "code" ? "Graded" : PRACTICE_LABEL,
-      level: i.level, goal: i.goal, interests: i.interests, prompt: i.prompt, content: learnerContent(i.item_type, i.content),
-      result: i.grading === "code" ? (tries.length ? { attempts: tries.length, correct: tries.some((t) => t.correct) } : null) : (tries.length ? { attempts: tries.length } : null),
+      items: all, why: new Map<string, string[]>(),
+      selection: { mode: sel?.mode === "default" ? "default" : "all", personalized: false, canPersonalize: !!sel && all.length > MIN_MODULE_TYPES,
+        note: sel?.mode === "default" ? "Showing the default set: every reviewed practice item for this lesson." : null },
     };
-  });
+  }
+  const picks = selectActivities(all.map((i) => ({ id: i.id, item_type: i.item_type, level: i.level, goal: i.goal, interests: i.interests ?? [], idea_key: i.idea_key })), sel.answers);
+  const why = new Map(picks.map((p) => [p.id, p.why]));
+  return {
+    items: picks.map((p) => all.find((i) => i.id === p.id)!), why,
+    selection: { mode: "personal", personalized: true, canPersonalize: true, note: `Picked ${picks.length} of ${all.length} reviewed items for your goal, level and interests. You can switch to the default set.` },
+  };
 }
 
-/** Only code-graded attempts count: how many of a lesson's graded items the learner has got right. */
+/** The lesson's practice items as a learner sees them (never a key, never a reveal), with their own results and why. */
+export async function lessonActivities(actor: Account, lessonId: string) {
+  if (!(await publishedVersion(lessonId))) return { activities: [], selection: { mode: "all", personalized: false, canPersonalize: false, note: null } };
+  const db = getDb();
+  const { items, why, selection } = await shownItems(actor, lessonId);
+  const mine = items.length ? (((await db.from("activity_attempts").select("item_id, correct, graded_by, created_at").eq("account_id", actor.id).in("item_id", items.map((i) => i.id))).data ?? []) as
+    { item_id: string; correct: boolean | null; graded_by: string; created_at: string }[]) : [];
+  return {
+    selection,
+    activities: items.map((i) => {
+      const tries = mine.filter((m) => m.item_id === i.id);
+      return {
+        id: i.id, type: i.item_type, typeLabel: TYPE_LABEL[i.item_type], graded: i.grading === "code", label: i.grading === "code" ? "Graded" : PRACTICE_LABEL,
+        level: i.level, goal: i.goal, interests: i.interests, prompt: i.prompt, content: learnerContent(i.item_type, i.content), why: why.get(i.id) ?? null,
+        result: i.grading === "code" ? (tries.length ? { attempts: tries.length, correct: tries.some((t) => t.correct) } : null) : (tries.length ? { attempts: tries.length } : null),
+      };
+    }),
+  };
+}
+
+/** Only code-graded attempts count: how many of the graded items shown to the learner they have got right. */
 export async function lessonScore(actor: Account, lessonId: string) {
   const db = getDb();
-  const items = ((await db.from("activity_items").select("id").eq("lesson_id", lessonId).eq("status", "published").eq("grading", "code")).data ?? []) as { id: string }[];
+  const items = (await shownItems(actor, lessonId)).items.filter((i) => i.grading === "code");
   if (!items.length) return { graded: 0, correct: 0 };
   const right = ((await db.from("activity_attempts").select("item_id").eq("account_id", actor.id).eq("counted", true).eq("correct", true).in("item_id", items.map((i) => i.id))).data ?? []) as { item_id: string }[];
   return { graded: items.length, correct: new Set(right.map((r) => r.item_id)).size };
