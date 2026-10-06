@@ -11,7 +11,7 @@ type Terms = { title: string; version: string; body: string };
 export function AllowanceMeter({ a }: { a: AllowanceView }) {
   if (!a.line) return null;
   return (
-    <p aria-label="Mentor allowance meter">
+    <p aria-label="Mentor allowance meter" className="ui-meter-line">
       <meter min={0} max={a.usableUsd || 1} value={Math.min(a.usedUsd, a.usableUsd)} /> {a.line}
       {a.trial ? " (free trial allowance; the add-on is first charged when the trial converts)" : ""}
       {a.nextAddonCents !== a.addonCents ? `. From ${day(a.resetsAt)}: ${addonName(a.nextAddonCents)}.` : ""}
@@ -62,10 +62,10 @@ export function AddonChanger({ choices, current, terms, teenAccountId, onDone }:
     <div>
       {message && <p role="status">{message}</p>}
       {!quote && (
-        <fieldset>
+        <fieldset className="ui-group">
           <legend>Change the Mentor allowance</legend>
           {choices.map((c) => (
-            <label key={c} style={{ marginRight: "1em" }}>
+            <label key={c} className="ui-pill">
               <input type="radio" name={`addon-${teenAccountId ?? "me"}`} checked={amount === c} onChange={() => setAmount(c)} /> {addonName(c)}
               {c === current.nextAddonCents ? " (current)" : ""}
             </label>
@@ -75,7 +75,7 @@ export function AddonChanger({ choices, current, terms, teenAccountId, onDone }:
         </fieldset>
       )}
       {quote && (
-        <div className="notice">
+        <div className="ui-legal">
           <p><b>{addonName(quote.previousCents)} → {addonName(quote.amountCents)}</b></p>
           <p>
             {quote.effect === "now" && `Usable right away. Charged today: ${usd(quote.chargeTodayCents)}${quote.chargeTodayCents ? " (the prorated difference for the rest of this period)" : ""}.`}
@@ -87,7 +87,7 @@ export function AddonChanger({ choices, current, terms, teenAccountId, onDone }:
             <>
               <details><summary>{terms.title} {terms.version}</summary><p className="small">{terms.body}</p></details>
               <p>
-                <label>
+                <label className="ui-consent">
                   <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} /> <b>Mentor allowance.</b>{" "}
                   I agree to the {terms.title}. {quote.disclosure}
                 </label>
@@ -110,10 +110,10 @@ export function CheckoutAddon({ choices, value, onChange, agreed, onAgree, terms
   terms: Terms; name: string; trial: boolean;
 }) {
   return (
-    <fieldset>
+    <fieldset className="ui-group">
       <legend>Mentor allowance (optional, prepaid monthly add-on)</legend>
       {choices.map((c) => (
-        <label key={c} style={{ marginRight: "1em" }}>
+        <label key={c} className="ui-pill">
           <input type="radio" name={name} checked={value === c} onChange={() => onChange(c)} /> {addonName(c)}
         </label>
       ))}
@@ -122,7 +122,7 @@ export function CheckoutAddon({ choices, value, onChange, agreed, onAgree, terms
         <>
           <details><summary>{terms.title} {terms.version}</summary><p className="small">{terms.body}</p></details>
           <p>
-            <label>
+            <label className="ui-consent">
               <input type="checkbox" checked={agreed} onChange={(e) => onAgree(e.target.checked)} /> <b>Mentor allowance.</b>{" "}
               I agree to the {terms.title}: {usd(value)} per month, renewing automatically with the plan until I remove it
               {trial ? ", first charged when the free trial ends" : ""}.

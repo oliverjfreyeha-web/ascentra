@@ -4,11 +4,15 @@ import Link from "next/link";
 export default function NotAvailablePage() {
   return (
     <main>
-      <h1>We can&apos;t create an account</h1>
-      <p>ASCENTRA isn&apos;t available for this account. Nothing you entered was saved.</p>
-      <p>
-        <Link href="/">Return home</Link>
-      </p>
+      <div className="ui-auth">
+        <div className="ui-auth__card">
+          <h1>We can&apos;t create an account</h1>
+          <p>ASCENTRA isn&apos;t available for this account. Nothing you entered was saved.</p>
+          <p>
+            <Link href="/">Return home</Link>
+          </p>
+        </div>
+      </div>
     </main>
   );
 }

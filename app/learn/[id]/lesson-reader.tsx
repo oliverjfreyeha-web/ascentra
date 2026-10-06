@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { call } from "../../call";
 import { LessonView } from "../../lesson-body";
 import { MentorPanel } from "./mentor-panel";
+import { ReadLine } from "./read-line";
 import { Practice } from "./practice";
 import { lessonActivitiesFrom, type LessonPractice } from "../../activities-api";
 import { learnerLessonFrom, type LearnerLesson } from "../../courses-api";
@@ -46,21 +47,30 @@ export function LessonReader({ id }: { id: string }) {
   }
   return (
     <>
+      <ReadLine />
       {update && (
-        <div className="notice" role="status">
+        <div className="notice ui-lesson-update" role="status">
           <strong>Updated.</strong> A newer version of this lesson (v{update.number}, published {new Date(update.publishedAt).toLocaleDateString()}) is available.
           {update.summary ? ` ${update.summary}` : ""} You&apos;re reading the version you studied.{" "}
           <button type="button" onClick={() => void switchToUpdated()}>Switch to the updated version</button>
         </div>
       )}
-      <p className="muted">{data.lesson.course.name}</p>
-      <h1>{data.lesson.title}</h1>
-      <p className="muted small">Version {v.number}, published {new Date(v.publishedAt).toLocaleDateString()} · Last verified {v.lastVerifiedOn ?? "unknown"}</p>
+      <header className="ui-lesson-head">
+        <p className="ui-eyebrow">{data.lesson.course.name}</p>
+        <h1>{data.lesson.title}</h1>
+        <p className="ui-lesson-meta">
+          <span>Version {v.number}, published {new Date(v.publishedAt).toLocaleDateString()}</span>
+          <span aria-hidden="true">·</span>
+          <span className="ui-verified">Last verified {v.lastVerifiedOn ?? "unknown"}</span>
+        </p>
+      </header>
       <LessonView body={v.body} citations={v.citations} lastVerifiedOn={v.lastVerifiedOn} uncited={v.uncited} />
-      {data.progress?.status === "complete"
-        ? <p className="muted">Done.</p>
-        : <button type="button" onClick={() => void complete()}>Mark as done</button>}
-      {message && <p role="status">{message}</p>}
+      <div className="ui-lesson-end">
+        {data.progress?.status === "complete"
+          ? <p className="ui-done">Done.</p>
+          : <button type="button" className="primary" onClick={() => void complete()}>Mark as done</button>}
+        {message && <p role="status">{message}</p>}
+      </div>
       {practice && <Practice items={practice.activities} score={practice.score} selection={practice.selection} onScore={(score) => setPractice({ ...practice, score })} onModeChanged={() => void load()} />}
       <MentorPanel lessonId={id} />
     </>

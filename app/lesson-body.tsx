@@ -6,7 +6,7 @@ import type { Citation, LessonBody, Para } from "./courses-api";
  * the lesson's "Last verified" date (the oldest of those).
  */
 function Refs({ p }: { p: Para }) {
-  if (!p.refs.length) return <span className="muted small"> [No source]</span>;
+  if (!p.refs.length) return <> <span className="ui-nosource">[No source]</span></>;
   return (
     <sup>
       {p.refs.map((r, i) => (
@@ -18,8 +18,8 @@ function Refs({ p }: { p: Para }) {
 
 export function LessonView({ body, citations, lastVerifiedOn, uncited }: { body: LessonBody; citations: Citation[]; lastVerifiedOn: string | null; uncited: number }) {
   return (
-    <article>
-      {body.summary && <p><em>{body.summary}</em></p>}
+    <article className="ui-prose">
+      {body.summary && <p className="ui-summary">{body.summary}</p>}
       {body.sections.map((s, i) => (
         <section key={i}>
           <h3>{s.heading}</h3>
@@ -27,11 +27,12 @@ export function LessonView({ body, citations, lastVerifiedOn, uncited }: { body:
         </section>
       ))}
       {body.takeaways.length > 0 && (
-        <>
+        <div className="ui-takeaways">
           <h3>Key takeaways</h3>
           <ul>{body.takeaways.map((t, i) => <li key={i}>{t.text}<Refs p={t} /></li>)}</ul>
-        </>
+        </div>
       )}
+      <div className="ui-sources">
       <h3>Sources</h3>
       <p className="muted small">
         Last verified: {lastVerifiedOn ?? "unknown"} (the oldest date any of its sources was last checked).
@@ -47,6 +48,7 @@ export function LessonView({ body, citations, lastVerifiedOn, uncited }: { body:
           ))}
         </ol>
       )}
+      </div>
     </article>
   );
 }

@@ -71,3 +71,22 @@ describe("the style guide page", () => {
     expect(panel).toMatch(/me\?\.roleKey === "owner" \|\| me\?\.roleKey === "superAdmin"\) && \(\s*<>\s*<Link href="\/admin\/audit">Audit log<\/Link> · <Link href="\/admin\/safety">Safety review<\/Link> · <Link href="\/admin\/style-guide">Style guide<\/Link>/);
   });
 });
+
+describe("D2 depth", () => {
+  it("text, muted text and the accent keep 4.5:1 on every depth surface", async () => {
+    const { DEPTH_SURFACES } = await import("@/app/ui/palette");
+    for (const [name, bg] of Object.entries(DEPTH_SURFACES)) {
+      for (const f of ["color-text", "color-text-muted", "color-accent", "color-warning"] as const) {
+        expect(contrast(PALETTE[f], bg), `${f} on ${name}`).toBeGreaterThanOrEqual(4.5);
+      }
+    }
+  });
+
+  it("depth is tokenized (3 elevation levels, glows, grain, highlights) and the ambient motion stops with reduced motion", () => {
+    for (const t of ["--elev-1", "--elev-2", "--elev-3", "--edge-highlight", "--inner-highlight", "--gradient-page", "--glow-accent", "--grain", "--duration-ambient"]) {
+      expect(main, t).toContain(`${t}:`);
+    }
+    expect(reduced).toMatch(/--duration-ambient:\s*0ms/);
+    expect(components).toMatch(/prefers-reduced-motion: reduce\)\s*\{\s*\.ui-scene::before, \.ui-scene::after \{ animation: none; \}/);
+  });
+});

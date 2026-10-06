@@ -83,7 +83,7 @@ export function GuardianCenter() {
   return (
     <>
       {message && <p role="status">{message}</p>}
-      <section>
+      <section className="ui-block">
         <h2>1. Confirm you&apos;re an adult</h2>
         <p>
           Stripe Identity checks a photo ID and a selfie. ASCENTRA keeps only the result and the date, never the images.
@@ -104,7 +104,7 @@ export function GuardianCenter() {
         <TeenCard key={t.id} teen={t} data={data} billing={billing} idOk={idOk} busy={busy} act={act} verified={verified}
           addonInfo={addonInfo} allowance={allowances[t.id] ?? null} onAddonDone={(m) => { setMessage(m); void load(); }} />
       ))}
-      <section>
+      <section className="ui-block">
         <h2>Billing</h2>
         <p>You&apos;re the customer of record for your teens&apos; plans.</p>
         <button type="button" disabled={busy} onClick={() => void act(() => verified("POST", "/api/v1/billing/portal"), (r) => window.location.assign(r.url as string))}>
@@ -150,7 +150,7 @@ function TeenCard({ teen: t, data, billing, idOk, busy, act, verified, addonInfo
   }
 
   return (
-    <section>
+    <section className="ui-block">
       <h2>{t.name}</h2>
       {t.link === "withdrawn" && <p>You withdrew consent on {when(t.withdrawnAt)}. {t.name}&apos;s account is paused, not deleted.</p>}
       {t.link === "verified" && t.status === "active" && (
@@ -180,17 +180,17 @@ function TeenCard({ teen: t, data, billing, idOk, busy, act, verified, addonInfo
       )}
       {t.link === "pending" && !idOk && <p>Confirm you&apos;re an adult first (above).</p>}
       {t.link === "pending" && idOk && !consented && (
-        <form onSubmit={agree}>
+        <form onSubmit={agree} className="ui-form">
           <h3>2. Review {t.name}&apos;s account</h3>
           <p>
             You&apos;ll see {t.name}&apos;s progress, milestones, completed work, schedule, billing, devices and safety alerts. Not
             {" "}{t.name}&apos;s notes or Mentor conversations. Every teen account has these protections:
           </p>
-          <ul>{DEFAULTS.map((d) => <li key={d}>{d}</li>)}</ul>
+          <ul className="ui-checks">{DEFAULTS.map((d) => <li key={d}>{d}</li>)}</ul>
           {data.documents.map((d) => (
-            <div key={d.key}>
+            <div key={d.key} className="ui-legal">
               <details><summary>{d.title} {d.version}</summary><p>{d.body}</p></details>
-              <label>
+              <label className="ui-consent">
                 <input type="checkbox" checked={!!agreed[d.key]} onChange={(e) => setAgreed({ ...agreed, [d.key]: e.target.checked })} />{" "}
                 I agree to the {d.title} ({d.version}) for {t.name}.
               </label>
@@ -200,33 +200,35 @@ function TeenCard({ teen: t, data, billing, idOk, busy, act, verified, addonInfo
         </form>
       )}
       {t.link === "pending" && idOk && consented && billing && (
-        <form onSubmit={checkout}>
+        <form onSubmit={checkout} className="ui-form">
           <h3>3. Choose {t.name}&apos;s plan</h3>
           <fieldset>
             <legend>Plan</legend>
+            <div className="ui-choices">
             {billing.plans.map((p) => (
-              <label key={p.key}>
+              <label key={p.key} className="ui-choice">
                 <input type="radio" name={`plan-${t.id}`} checked={plan === p.key} onChange={() => { setPlan(p.key); setAddon(0); setAddonAgreed(false); }} /> {p.name}, {usd(p.cents)}/month
                 {p.key === "basic" && billing.trialEligible && ` (${billing.trialDays}-day free trial first)`}{" "}
               </label>
             ))}
+            </div>
           </fieldset>
           {plan && addonInfo?.available && (
             <CheckoutAddon choices={addonInfo.choices[plan]} value={addon} onChange={(c) => { setAddon(c); setAddonAgreed(false); }} agreed={addonAgreed}
               onAgree={setAddonAgreed} terms={addonInfo.terms} name={`addon-${t.id}`} trial={plan === "basic" && billing.trialEligible} />
           )}
-          <details><summary>{billing.terms.title} {billing.terms.version}</summary><p>{billing.terms.body}</p></details>
+          <div className="ui-legal"><details><summary>{billing.terms.title} {billing.terms.version}</summary><p>{billing.terms.body}</p></details></div>
           <p>
-            <label><input type="checkbox" checked={renewal} onChange={(e) => setRenewal(e.target.checked)} /> I agree to the {billing.terms.title} and to be charged
+            <label className="ui-consent"><input type="checkbox" checked={renewal} onChange={(e) => setRenewal(e.target.checked)} /> I agree to the {billing.terms.title} and to be charged
               {" "}for {t.name}&apos;s plan{addon > 0 ? ` and the ${usd(addon)} Mentor allowance` : ""} every month until I cancel. I&apos;m the customer of record.</label>
           </p>
-          <p><label><input type="checkbox" checked={us} onChange={(e) => setUs(e.target.checked)} /> I live in the United States</label></p>
+          <p><label className="ui-consent"><input type="checkbox" checked={us} onChange={(e) => setUs(e.target.checked)} /> I live in the United States</label></p>
           <p><button type="submit" className="primary" disabled={busy || !plan || (addon > 0 && !addonAgreed)}>Continue to payment</button></p>
         </form>
       )}
       {(t.link === "pending" || t.link === "verified") && (
         withdrawing ? (
-          <form onSubmit={withdraw}>
+          <form onSubmit={withdraw} className="ui-legal">
             <p>
               {t.name}&apos;s account pauses right away. Nothing is deleted; progress is kept. The plan ends at the end of the
               current period, with no further charges.

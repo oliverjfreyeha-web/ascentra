@@ -4,6 +4,7 @@ import { SignOutButton } from "@clerk/nextjs";
 export default function NotOpenPage() {
   return (
     <main>
+      <div className="ui-auth ui-auth--wide"><div className="ui-auth__card">
       <h1>ASCENTRA isn&apos;t open yet</h1>
       <p>This account doesn&apos;t have access.</p>
       <p className="muted">
@@ -14,6 +15,7 @@ export default function NotOpenPage() {
       <SignOutButton>
         <button type="button">Sign out</button>
       </SignOutButton>
+      </div></div>
     </main>
   );
 }

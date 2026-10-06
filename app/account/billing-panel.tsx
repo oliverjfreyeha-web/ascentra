@@ -115,24 +115,24 @@ export function BillingPanel() {
   const withAddon = addon > 0 ? ` (${fmt(chosen?.cents ?? 0)} plan + ${fmt(addon)} Mentor allowance)` : "";
 
   return (
-    <section aria-labelledby="billing-h">
+    <section aria-labelledby="billing-h" className="ui-block">
       <h2 id="billing-h">Billing</h2>
       {message && <p role="status">{message}</p>}
-      <dl className="kv">
-        <dt>Access</dt><dd>{TIER_LABEL[data.tier]}{data.source === "role" ? " (from your role)" : ""}</dd>
+      <dl className="ui-facts">
+        <div><dt>Access</dt><dd>{TIER_LABEL[data.tier]}{data.source === "role" ? " (from your role)" : ""}</dd></div>
         {s && (
           <>
-            <dt>Plan</dt><dd>{PLAN_LABEL[s.plan]}</dd>
-            <dt>Status</dt><dd>{STATUS_LABEL[s.status]}</dd>
-            {s.trialEndsAt && (<><dt>Trial ends</dt><dd>{day(s.trialEndsAt)}</dd></>)}
-            {s.nextChargeAt && (<><dt>Next charge</dt><dd>{s.nextChargeCents != null ? `${usd(s.nextChargeCents)} on ` : ""}{day(s.nextChargeAt)}</dd></>)}
-            {s.accessUntil && (<><dt>Access until</dt><dd>{day(s.accessUntil)}. You won&apos;t be charged again.</dd></>)}
+            <div><dt>Plan</dt><dd>{PLAN_LABEL[s.plan]}</dd></div>
+            <div><dt>Status</dt><dd>{STATUS_LABEL[s.status]}</dd></div>
+            {s.trialEndsAt && (<div><dt>Trial ends</dt><dd>{day(s.trialEndsAt)}</dd></div>)}
+            {s.nextChargeAt && (<div><dt>Next charge</dt><dd>{s.nextChargeCents != null ? `${usd(s.nextChargeCents)} on ` : ""}{day(s.nextChargeAt)}</dd></div>)}
+            {s.accessUntil && (<div><dt>Access until</dt><dd>{day(s.accessUntil)}. You won&apos;t be charged again.</dd></div>)}
           </>
         )}
       </dl>
 
       {s && data.canManage && (
-        <p>
+        <p className="ui-actions">
           <button type="button" onClick={manage} disabled={busy}>Manage billing</button>{" "}
           {s.status !== "canceled" && (
             <>
@@ -165,30 +165,33 @@ export function BillingPanel() {
 
       {!s && data.canSubscribe && !data.configured && <p className="muted">Plans aren&apos;t available yet.</p>}
       {!s && data.canSubscribe && data.configured && (
-        <form onSubmit={checkout} aria-label="Choose a plan">
+        <form onSubmit={checkout} aria-label="Choose a plan" className="ui-form">
           <fieldset>
             <legend>Choose a plan</legend>
+            <div className="ui-choices">
             {data.plans.map((p) => (
-              <p key={p.key}>
-                <label>
-                  <input type="radio" name="plan" value={p.key} checked={plan === p.key} onChange={() => { setPlan(p.key); setAddon(0); setAddonAgreed(false); }} />{" "}
-                  <b>{p.name}</b> · {usd(p.cents)} per month
-                  {p.key === "basic" && data.trialEligible ? ` · starts with a free ${data.trialDays}-day trial` : ""}
-                </label>
-              </p>
+              <label key={p.key} className="ui-choice">
+                <input type="radio" name="plan" value={p.key} checked={plan === p.key} onChange={() => { setPlan(p.key); setAddon(0); setAddonAgreed(false); }} />{" "}
+                <span>
+                  <b className="ui-choice__title">{p.name}</b> <span className="ui-choice__price"><span className="sr-only">· </span>{usd(p.cents)}</span>{" "}
+                  <span className="ui-choice__note">per month
+                  {p.key === "basic" && data.trialEligible ? ` · starts with a free ${data.trialDays}-day trial` : ""}</span>
+                </span>
+              </label>
             ))}
+            </div>
           </fieldset>
           {addonChoices && addonInfo && (
             <CheckoutAddon choices={addonChoices} value={addon} onChange={(c) => { setAddon(c); setAddonAgreed(false); }} agreed={addonAgreed}
               onAgree={setAddonAgreed} terms={addonInfo.terms} name="addon" trial={trial} />
           )}
-          <div className="notice">
+          <div className="ui-legal">
             <p><b>{data.terms.title}</b> <span className="muted">{data.terms.version}</span></p>
             <p className="small">{data.terms.body}</p>
           </div>
           {chosen && (
             <p>
-              <label>
+              <label className="ui-consent">
                 <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />{" "}
                 <b>Recurring billing.</b>{" "}
                 {trial
@@ -199,14 +202,16 @@ export function BillingPanel() {
             </p>
           )}
           <p>
-            <label>
+            <label className="ui-consent">
               <input type="checkbox" checked={us} onChange={(e) => setUs(e.target.checked)} /> I live in the United States.
             </label>
           </p>
+          <p className="ui-actions">
           <button type="submit" className="primary" disabled={busy}>
             {trial ? `Start my ${data.trialDays}-day trial` : chosen ? `Continue to checkout · ${usd(monthly)} today` : "Continue to checkout"}
           </button>{" "}
           <span className="muted">You&apos;ll enter your card on Stripe&apos;s secure page. ASCENTRA never sees it.</span>
+          </p>
         </form>
       )}
     </section>

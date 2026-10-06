@@ -3,9 +3,11 @@ import { PathPage } from "./path-page";
 
 export default function MyPathPage() {
   return (
-    <main>
-      <p className="muted"><Link href="/">Home</Link> · <Link href="/learn">Learn</Link></p>
-      <h1>My path</h1>
+    <main className="ui-main-wide">
+      <nav className="ui-crumbs" aria-label="Breadcrumb"><Link href="/">Home</Link> · <Link href="/learn">Learn</Link></nav>
+      <header className="ui-page-head">
+        <h1>My path</h1>
+      </header>
       <PathPage />
     </main>
   );

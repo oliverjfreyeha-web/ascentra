@@ -50,7 +50,7 @@ export function AccountPanel() {
   if (!isSignedIn) {
     return (
       <p>
-        <Link href="/sign-in">Sign in</Link>
+        <Link href="/sign-in" className="ui-btn ui-btn--primary">Sign in</Link>
       </p>
     );
   }

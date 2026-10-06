@@ -36,3 +36,15 @@ export function contrast(a: string, b: string) {
   const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
   return (hi + 0.05) / (lo + 0.05);
 }
+
+/**
+ * D2: the lighter tops of the depth surfaces (gradients and tints blended over the page), where text sits. Text, muted
+ * text and the accent must still reach 4.5:1 on each (tests/unit/design-tokens.test.ts).
+ */
+export const DEPTH_SURFACES: Record<string, string> = {
+  "gradient-raised (top)": "#1d1f3b",
+  "gradient-surface (top)": "#161830",
+  "choice card, selected": "#292f48",
+  "legal / consent box": "#262329",
+  "AI notice": "#202436",
+};
