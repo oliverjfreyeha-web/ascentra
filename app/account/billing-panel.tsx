@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useReverification } from "@clerk/nextjs";
 import { call } from "../call";
+import { mentorAddonFrom, usd as fmt, type AddonCents, type MentorAddonInfo } from "../billing-api";
+import { AddonChanger, AllowanceMeter, CheckoutAddon } from "./mentor-addon";
 
 type Plan = { key: "basic" | "pro"; name: string; cents: number };
 type Billing = {
@@ -31,6 +33,9 @@ const TIER_LABEL = { none: "No plan", trial: "Trial (Basic features)", basic: "B
 /** Account → Billing: current plan, trial end, next charge, checkout for a new plan, and Stripe's portal. */
 export function BillingPanel() {
   const [data, setData] = useState<Billing | null>(null);
+  const [addonInfo, setAddonInfo] = useState<MentorAddonInfo | null>(null);
+  const [addon, setAddon] = useState<AddonCents>(0);
+  const [addonAgreed, setAddonAgreed] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [plan, setPlan] = useState<"basic" | "pro" | "">("");
   const [agreed, setAgreed] = useState(false);
@@ -40,7 +45,10 @@ export function BillingPanel() {
 
   const load = useCallback(async () => {
     const r = await call("GET", "/api/v1/billing");
-    if (r._status === 200) setData(r as unknown as Billing);
+    if (r._status === 200) {
+      setData(r as unknown as Billing);
+      setAddonInfo(mentorAddonFrom(r));
+    }
     else setMessage(r.reason ?? "Couldn't load your plan.");
   }, []);
 
@@ -63,8 +71,12 @@ export function BillingPanel() {
     if (!data || !plan) return setMessage("Choose Basic or Pro.");
     if (!agreed) return setMessage("Agree to the recurring billing terms to continue.");
     if (!us) return setMessage("ASCENTRA is available in the United States only.");
+    if (addon > 0 && !addonAgreed) return setMessage("Agree to the Mentor Allowance Terms, or choose no Mentor allowance.");
     setBusy(true);
-    const r = await call("POST", "/api/v1/billing/checkout", { plan, agreed, termsVersion: data.terms.version, usResident: us });
+    const r = await call("POST", "/api/v1/billing/checkout", {
+      plan, agreed, termsVersion: data.terms.version, usResident: us,
+      mentorAddonCents: addon, addonAgreed, addonTermsVersion: addonInfo?.terms.version,
+    });
     if (r._status === 200 && typeof r.url === "string") {
       window.location.assign(r.url);
       return;
@@ -98,6 +110,9 @@ export function BillingPanel() {
   const chosen = data.plans.find((p) => p.key === plan);
   const trial = plan === "basic" && data.trialEligible;
   const trialEnd = data.trialWouldEndAt;
+  const addonChoices = chosen && addonInfo?.available ? addonInfo.choices[chosen.key] : null;
+  const monthly = (chosen?.cents ?? 0) + addon;
+  const withAddon = addon > 0 ? ` (${fmt(chosen?.cents ?? 0)} plan + ${fmt(addon)} Mentor allowance)` : "";
 
   return (
     <section aria-labelledby="billing-h">
@@ -132,6 +147,22 @@ export function BillingPanel() {
       )}
       {s && !data.canManage && <p className="muted">Your Guardian manages this plan.</p>}
 
+      {s && addonInfo && addonInfo.allowance.status !== "exempt" && (
+        <div id="mentor-allowance">
+          <h3>Mentor allowance</h3>
+          <AllowanceMeter a={addonInfo.allowance} />
+          {addonInfo.allowance.status === "used_up" && <p>The Mentor is paused until the allowance resets{addonInfo.canChange ? ", or until you raise it" : ""}.</p>}
+          {addonInfo.canChange && addonInfo.available && (
+            <AddonChanger choices={addonInfo.choices[s.plan === "pro" ? "pro" : "basic"]} current={addonInfo.allowance} terms={addonInfo.terms}
+              onDone={(m) => { setMessage(m); void load(); }} />
+          )}
+          {!addonInfo.canChange && !data.canManage && <p className="muted">Only your Guardian can choose, change or remove your Mentor allowance.</p>}
+          <p className="small muted">
+            Usable allowance is the add-on minus {addonInfo.reservePercent}% for running costs. It resets each billing period; unused allowance doesn&apos;t carry over.
+          </p>
+        </div>
+      )}
+
       {!s && data.canSubscribe && !data.configured && <p className="muted">Plans aren&apos;t available yet.</p>}
       {!s && data.canSubscribe && data.configured && (
         <form onSubmit={checkout} aria-label="Choose a plan">
@@ -140,13 +171,17 @@ export function BillingPanel() {
             {data.plans.map((p) => (
               <p key={p.key}>
                 <label>
-                  <input type="radio" name="plan" value={p.key} checked={plan === p.key} onChange={() => setPlan(p.key)} />{" "}
+                  <input type="radio" name="plan" value={p.key} checked={plan === p.key} onChange={() => { setPlan(p.key); setAddon(0); setAddonAgreed(false); }} />{" "}
                   <b>{p.name}</b> · {usd(p.cents)} per month
                   {p.key === "basic" && data.trialEligible ? ` · starts with a free ${data.trialDays}-day trial` : ""}
                 </label>
               </p>
             ))}
           </fieldset>
+          {addonChoices && addonInfo && (
+            <CheckoutAddon choices={addonChoices} value={addon} onChange={(c) => { setAddon(c); setAddonAgreed(false); }} agreed={addonAgreed}
+              onAgree={setAddonAgreed} terms={addonInfo.terms} name="addon" trial={trial} />
+          )}
           <div className="notice">
             <p><b>{data.terms.title}</b> <span className="muted">{data.terms.version}</span></p>
             <p className="small">{data.terms.body}</p>
@@ -157,8 +192,8 @@ export function BillingPanel() {
                 <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />{" "}
                 <b>Recurring billing.</b>{" "}
                 {trial
-                  ? `I agree that after my free trial ends on ${day(trialEnd)}, I'll be charged ${usd(data.plans.find((p) => p.key === "basic")!.cents)} every month until I cancel.`
-                  : `I agree that I'll be charged ${usd(chosen.cents)} today and every month after until I cancel.`}{" "}
+                  ? `I agree that after my free trial ends on ${day(trialEnd)}, I'll be charged ${usd(monthly)}${withAddon} every month until I cancel.`
+                  : `I agree that I'll be charged ${usd(monthly)}${withAddon} today and every month after until I cancel.`}{" "}
                 I can cancel any time from Manage billing.
               </label>
             </p>
@@ -169,7 +204,7 @@ export function BillingPanel() {
             </label>
           </p>
           <button type="submit" className="primary" disabled={busy}>
-            {trial ? `Start my ${data.trialDays}-day trial` : chosen ? `Continue to checkout · ${usd(chosen.cents)} today` : "Continue to checkout"}
+            {trial ? `Start my ${data.trialDays}-day trial` : chosen ? `Continue to checkout · ${usd(monthly)} today` : "Continue to checkout"}
           </button>{" "}
           <span className="muted">You&apos;ll enter your card on Stripe&apos;s secure page. ASCENTRA never sees it.</span>
         </form>

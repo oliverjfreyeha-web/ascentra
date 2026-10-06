@@ -6,8 +6,11 @@
  *   - the products "ASCENTRA Basic" and "ASCENTRA Pro";
  *   - their monthly prices: $20.00 and $50.00 (USD), with lookup keys ascentra_basic_monthly / ascentra_pro_monthly;
  *   - a customer-portal configuration: cancel at period end, switch Basic ⇄ Pro (downgrades at renewal),
- *     update the payment method, see invoices.
- * and prints the three ids to paste into Vercel. Safe to run again: nothing is duplicated.
+ *     update the payment method, see invoices;
+ *   - L5: the product "ASCENTRA Mentor allowance" and its three monthly add-on prices, $5.00, $10.00 and $20.00 (USD),
+ *     with lookup keys ascentra_mentor_5_monthly / _10_ / _20_. The add-on is a second item on the plan's subscription,
+ *     changed from ASCENTRA's Billing panel (not the portal).
+ * and prints the six ids to paste into Vercel. Safe to run again: nothing is duplicated.
  */
 import { createInterface } from "node:readline";
 import Stripe from "stripe";
@@ -17,6 +20,12 @@ const PLANS = [
   { key: "pro", name: "ASCENTRA Pro", cents: 5000, lookup: "ascentra_pro_monthly" },
 ] as const;
 const PORTAL_TAG = "ascentra_b1";
+const ADDON_PRODUCT = { name: "ASCENTRA Mentor allowance", tag: "mentor_allowance" } as const;
+const ADDONS = [
+  { cents: 500, lookup: "ascentra_mentor_5_monthly", env: "STRIPE_PRICE_MENTOR_5" },
+  { cents: 1000, lookup: "ascentra_mentor_10_monthly", env: "STRIPE_PRICE_MENTOR_10" },
+  { cents: 2000, lookup: "ascentra_mentor_20_monthly", env: "STRIPE_PRICE_MENTOR_20" },
+] as const;
 
 function fail(msg: string): never {
   console.error(`\n✖ ${msg}\n`);
@@ -103,10 +112,35 @@ async function main() {
     console.log(`✓ Created the customer-portal configuration (${portal.id})`);
   }
 
-  console.log("\nPaste these three into Vercel → Settings → Environment Variables (Production), then redeploy:\n");
-  console.log(`  STRIPE_PRICE_BASIC   = ${ids.basic.price}`);
-  console.log(`  STRIPE_PRICE_PRO     = ${ids.pro.price}`);
-  console.log(`  STRIPE_PORTAL_CONFIG = ${portal.id}`);
+  // L5: the Mentor allowance add-on: one product, three monthly prices.
+  const addonFound = await stripe.prices.list({ lookup_keys: ADDONS.map((a) => a.lookup), active: true, expand: ["data.product"], limit: 10 });
+  let addonProduct: string | null = null;
+  for (const f of addonFound.data) addonProduct ??= typeof f.product === "string" ? f.product : f.product.id;
+  const addonIds: Record<string, string> = {};
+  for (const a of ADDONS) {
+    let price = addonFound.data.find((p) => p.lookup_key === a.lookup);
+    const label = `Mentor allowance $${(a.cents / 100).toFixed(2)}/month`;
+    if (price) {
+      const ok = price.unit_amount === a.cents && price.currency === "usd" && price.recurring?.interval === "month" && price.recurring.interval_count === 1;
+      if (!ok) fail(`The existing price "${a.lookup}" isn't $${(a.cents / 100).toFixed(2)}/month in USD. Archive it in the Stripe dashboard and run this again.`);
+      console.log(`✓ Found ${label} (${price.id})`);
+    } else {
+      addonProduct ??= (await stripe.products.create({ name: ADDON_PRODUCT.name, metadata: { ascentra_addon: ADDON_PRODUCT.tag } })).id;
+      price = await stripe.prices.create({
+        product: addonProduct, unit_amount: a.cents, currency: "usd", recurring: { interval: "month", interval_count: 1 },
+        lookup_key: a.lookup, nickname: label, metadata: { ascentra_addon: ADDON_PRODUCT.tag, cents: String(a.cents) },
+      });
+      console.log(`✓ Created ${label} (${price.id})`);
+    }
+    if (price.livemode) fail("Stripe created a live-mode price. Stop and check the key.");
+    addonIds[a.env] = price.id;
+  }
+
+  console.log("\nPaste these six into Vercel → Settings → Environment Variables (Production and Preview), then redeploy:\n");
+  console.log(`  STRIPE_PRICE_BASIC     = ${ids.basic.price}`);
+  console.log(`  STRIPE_PRICE_PRO       = ${ids.pro.price}`);
+  console.log(`  STRIPE_PORTAL_CONFIG   = ${portal.id}`);
+  for (const a of ADDONS) console.log(`  ${a.env.padEnd(22)} = ${addonIds[a.env]}`);
   console.log("\nThese are ids, not secrets. The secret key was not saved or printed.\n");
 }
 

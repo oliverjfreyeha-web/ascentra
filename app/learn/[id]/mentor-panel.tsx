@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
+import Link from "next/link";
 import { call } from "../../call";
 import { mentorReplyFrom, mentorThreadFrom, mentorThreadsFrom, type MentorInfo, type MentorMessage } from "../../mentor-api";
 
@@ -24,6 +25,8 @@ export function MentorPanel({ lessonId }: { lessonId: string }) {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // L5: the Mentor paused because the allowance is used up (or there isn't one): 402 from the API.
+  const [paused, setPaused] = useState(false);
 
   const load = useCallback(async () => {
     const r = await call("GET", `/api/v1/mentor/threads?lessonId=${encodeURIComponent(lessonId)}`);
@@ -47,6 +50,8 @@ export function MentorPanel({ lessonId }: { lessonId: string }) {
     setError(null);
     const r = await call("POST", "/api/v1/mentor", { lessonId, message: text, ...(threadId && status === "open" ? { threadId } : {}) });
     setBusy(false);
+    setPaused(r._status === 402);
+    if (r._status === 402) void load();
     const reply = r._status === 200 ? mentorReplyFrom(r) : null;
     if (!reply) return setError(r.reason ?? "The Mentor couldn't answer just now.");
     setInfo(reply.mentor);
@@ -85,7 +90,20 @@ export function MentorPanel({ lessonId }: { lessonId: string }) {
         </div>
       ))}
       {status === "paused" && <p className="muted small">This conversation is paused. Start a new one to keep going with your lesson.</p>}
+      {info?.allowance.line && (
+        <p className="small" aria-label="Mentor allowance meter">
+          <meter min={0} max={info.allowance.usableUsd || 1} value={Math.min(info.allowance.usedUsd, info.allowance.usableUsd)} />{" "}
+          {info.allowance.line}{info.allowance.trial ? " (free trial allowance)" : ""}
+        </p>
+      )}
       {error && <p role="status">{error}</p>}
+      {(paused || info?.allowance.status === "used_up" || info?.allowance.status === "none") && (
+        <p className="small">
+          {info?.allowance.canChange
+            ? <Link href="/account#mentor-allowance">{info.allowance.status === "none" ? "Add a Mentor allowance" : "Raise my Mentor allowance"}</Link>
+            : "Only your Guardian can add or raise your Mentor allowance."}
+        </p>
+      )}
       {info?.aiOn && (
         <form onSubmit={ask}>
           <p>

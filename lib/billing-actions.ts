@@ -3,7 +3,9 @@ import type Stripe from "stripe";
 import { getDb } from "@/lib/db";
 import type { Account } from "@/lib/auth";
 import type { AuditInput } from "@/lib/audit";
-import type { BillingEnv } from "@/lib/billing-env";
+import { readAddonPrices, type BillingEnv } from "@/lib/billing-env";
+import { addonPriceMatches, addonTerms, recordAddonConsent } from "@/lib/mentor-addon";
+import { MENTOR_ALLOWANCE_TERMS_VERSION, addonRenewalLine, isAllowedChoice } from "@/lib/mentor-allowance-terms";
 import { LIVE_STATUSES, customerOf, latestSubscription, priceMatches, trialEligible } from "@/lib/billing";
 import { teenCheckoutRefusal, teenFirstName } from "@/lib/guardians";
 import {
@@ -11,7 +13,7 @@ import {
   renewalSummary, usd, type PaidPlan,
 } from "@/lib/billing-terms";
 
-type Event = Omit<AuditInput, "actor" | "requestId" | "reason" | "deviceId">;
+type Event = Omit<AuditInput, "actor" | "requestId" | "deviceId">;
 export type ActionResult =
   | { ok: true; body: Record<string, unknown>; event: Event }
   | { ok: false; status: number; reason: string; event: Event };
@@ -52,6 +54,14 @@ export async function startCheckout(args: {
     return blocked(400, "Agree to the Automatic Renewal Terms before checkout.", A, account.id);
   }
   if (body.usResident !== true) return blocked(400, "ASCENTRA is available in the United States only. Confirm that you're in the US.", A, account.id);
+  // L5: the optional Mentor allowance add-on, a second item on the same subscription, with its own agreement.
+  const addon = body.mentorAddonCents ?? 0;
+  if (!isAllowedChoice(plan, addon)) {
+    return blocked(400, plan === "pro" ? "Choose no Mentor allowance, $10.00 or $20.00 per month for Pro." : "Choose no Mentor allowance, $5.00 or $10.00 per month for Basic.", A, account.id);
+  }
+  if (addon > 0 && (body.addonAgreed !== true || body.addonTermsVersion !== MENTOR_ALLOWANCE_TERMS_VERSION)) {
+    return blocked(400, "Agree to the Mentor Allowance Terms, or choose no Mentor allowance.", A, account.id);
+  }
 
   const current = await latestSubscription(beneficiary);
   if (current && LIVE_STATUSES.includes(current.status)) {
@@ -72,6 +82,18 @@ export async function startCheckout(args: {
   if (!priceMatches(price, plan)) {
     console.error(`[billing] Stripe price for ${plan} isn't ${usd(PLANS[plan].cents)}/month in USD.`);
     return blocked(503, "Checkout isn't available right now. Nothing was charged.", A, account.id);
+  }
+
+  let addonPrice: string | null = null;
+  let addonDoc: { id: string } | null = null;
+  if (addon > 0) {
+    const prices = readAddonPrices();
+    addonDoc = prices.ok ? await addonTerms() : null;
+    addonPrice = prices.ok ? prices.byCents[addon as 500 | 1000 | 2000] : null;
+    if (!prices.ok || !addonDoc || !addonPrice || !addonPriceMatches(await stripe.prices.retrieve(addonPrice), addon)) {
+      if (!prices.ok) console.error("[billing] Mentor allowance not configured:", prices.problems.join("; "));
+      return blocked(503, "The Mentor allowance isn't available right now. Choose no Mentor allowance, or try later. Nothing was charged.", A, account.id);
+    }
   }
 
   let customer = await customerOf(account.id);
@@ -95,14 +117,17 @@ export async function startCheckout(args: {
   }).select("id").single();
   if (consentErr || !consent) throw new Error(`consent insert failed: ${consentErr?.message}`);
   const consentId = (consent as { id: string }).id;
+  // The add-on's agreement is its own consent record, separate from the plan's.
+  const addonConsentId = addon > 0 ? await recordAddonConsent(beneficiary, account.id, addonDoc!.id) : null;
+  const addonMeta: Record<string, string> = addon > 0 ? { mentor_addon_cents: String(addon), mentor_addon_consent_record_id: addonConsentId! } : {};
 
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
     customer,
     client_reference_id: account.id,
-    line_items: [{ price: priceId, quantity: 1 }],
+    line_items: [{ price: priceId, quantity: 1 }, ...(addonPrice ? [{ price: addonPrice, quantity: 1 }] : [])],
     subscription_data: {
-      metadata: { account_id: account.id, beneficiary_account_id: beneficiary, plan, consent_record_id: consentId },
+      metadata: { account_id: account.id, beneficiary_account_id: beneficiary, plan, consent_record_id: consentId, ...addonMeta },
       ...(trial ? { trial_period_days: TRIAL_DAYS, trial_settings: { end_behavior: { missing_payment_method: "cancel" } } } : {}),
     },
     payment_method_collection: "always",
@@ -110,8 +135,8 @@ export async function startCheckout(args: {
     // Explicit, never the account default: Managed Payments refuses custom_text, which carries the renewal terms.
     managed_payments: { enabled: false },
     customer_update: { address: "auto", name: "auto" },
-    custom_text: { submit: { message: renewalSummary(plan, trial) } },
-    metadata: { account_id: account.id, beneficiary_account_id: beneficiary, plan, consent_record_id: consentId, allowed_country: ALLOWED_COUNTRY },
+    custom_text: { submit: { message: addon > 0 ? `${renewalSummary(plan, trial)} ${addonRenewalLine(addon)}${trial ? " It is first charged when the trial ends." : ""}` : renewalSummary(plan, trial) } },
+    metadata: { account_id: account.id, beneficiary_account_id: beneficiary, plan, consent_record_id: consentId, allowed_country: ALLOWED_COUNTRY, ...addonMeta },
     success_url: `${origin}${forTeen ? "/guardian" : "/account"}?billing=success`,
     cancel_url: `${origin}${forTeen ? "/guardian" : "/account"}?billing=canceled`,
   });
@@ -121,8 +146,8 @@ export async function startCheckout(args: {
     body: { url: session.url, trial },
     event: {
       action: A, result: "Completed", sensitive: true,
-      context: `Agreed to the Automatic Renewal Terms ${RENEWAL_TERMS_VERSION} (${CONSENT_METHOD}) and opened checkout for ${PLANS[plan].name}${trial ? ` with a ${TRIAL_DAYS}-day trial` : ""}${forTeen ? ` for ${await teenFirstName(beneficiary)}, as the Guardian and customer of record` : ""}.`,
-      target: { type: "account", id: beneficiary }, next: `${plan}${trial ? " (trial)" : ""}`,
+      context: `Agreed to the Automatic Renewal Terms ${RENEWAL_TERMS_VERSION} (${CONSENT_METHOD})${addon > 0 ? ` and the Mentor Allowance Terms ${MENTOR_ALLOWANCE_TERMS_VERSION}` : ""} and opened checkout for ${PLANS[plan].name}${trial ? ` with a ${TRIAL_DAYS}-day trial` : ""}${addon > 0 ? ` with a ${usd(addon)}/month Mentor allowance` : ""}${forTeen ? ` for ${await teenFirstName(beneficiary)}, as the Guardian and customer of record` : ""}.`,
+      target: { type: "account", id: beneficiary }, next: `${plan}${trial ? " (trial)" : ""}${addon > 0 ? ` + Mentor allowance ${usd(addon)}/month` : ""}`,
     },
   };
 }

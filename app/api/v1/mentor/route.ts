@@ -8,5 +8,5 @@ export const maxDuration = 60;
 
 export const POST = withCap("learn", async (_req, _ctx, account, x) => {
   const r = await askMentor(account, x.body, x.requestId);
-  return r.ok ? ok({ ...r.body, mentor: mentorInfo() }, r.status) : refuse(r.status, r.reason);
+  return r.ok ? ok({ ...r.body, mentor: await mentorInfo(account) }, r.status) : refuse(r.status, r.reason);
 });

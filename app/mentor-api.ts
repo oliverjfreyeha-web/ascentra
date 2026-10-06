@@ -8,7 +8,12 @@ export type MentorMessage = {
   role: "learner" | "mentor"; text: string; at: string;
   kind?: "answer" | "not_in_sources" | "graded_refusal" | "off_topic" | "safety" | "paused"; citations?: MentorCitation[]; note?: string | null;
 };
-export type MentorInfo = { aiOn: boolean; dailyCap: number };
+/** L5: the allowance meter. line is "Mentor allowance: used X of Y, resets on DATE" (null for staff, who are exempt). */
+export type MentorAllowance = {
+  status: "exempt" | "none" | "active" | "used_up"; usedUsd: number; usableUsd: number; resetsAt: string | null; trial: boolean;
+  line: string | null; canChange: boolean;
+};
+export type MentorInfo = { aiOn: boolean; dailyCap: number; allowance: MentorAllowance };
 export type MentorReply = { thread: { id: string; status: string; title?: string | null }; reply: MentorMessage; mentor: MentorInfo };
 export type MentorThreadSummary = { id: string; lessonId: string | null; title: string | null; status: string; messages: number; lastMessageAt: string | null; createdAt: string };
 export type MentorThread = { id: string; lessonId: string | null; title: string | null; status: string; messages: MentorMessage[]; createdAt: string };
@@ -22,7 +27,9 @@ type Obj = Record<string, unknown>;
 const obj = (v: unknown): v is Obj => !!v && typeof v === "object" && !Array.isArray(v);
 const arr = (v: unknown): v is unknown[] => Array.isArray(v);
 const str = (v: unknown): v is string => typeof v === "string";
-const isInfo = (m: unknown): m is MentorInfo => obj(m) && typeof m.aiOn === "boolean" && typeof m.dailyCap === "number";
+const isAllowance = (a: unknown): a is MentorAllowance =>
+  obj(a) && str(a.status) && typeof a.usedUsd === "number" && typeof a.usableUsd === "number" && typeof a.canChange === "boolean" && (a.line === null || str(a.line));
+const isInfo = (m: unknown): m is MentorInfo => obj(m) && typeof m.aiOn === "boolean" && typeof m.dailyCap === "number" && isAllowance(m.allowance);
 const isMessage = (m: unknown): m is MentorMessage => obj(m) && (m.role === "learner" || m.role === "mentor") && str(m.text);
 
 export function mentorReplyFrom(body: unknown): MentorReply | null {

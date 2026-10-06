@@ -19,8 +19,8 @@ describe("the L4 bundle on the live L3 database", () => {
   });
   afterAll(() => db.drop());
 
-  it("applies in one go; verify.sql is OK with 56 tables", async () => {
-    expect((await q(readSql("db/verify.sql"))).rows[0].table_name).toMatch(/^OK: all 56 tables.*L4 Mentor and safety checks are in place$/);
+  it("applies in one go; verify.sql says L4 is applied (L5 not yet)", async () => {
+    expect((await q(readSql("db/verify.sql"))).rows[0].table_name).toMatch(/^PROBLEM: 2 missing.*L4 applied, L5 NOT applied$/);
   });
 
   it("counts Mentor messages per account per day, atomically", async () => {

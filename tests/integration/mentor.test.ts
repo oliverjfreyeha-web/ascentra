@@ -57,6 +57,11 @@ beforeAll(async () => {
 
   // A published lesson citing one approved source; the learner is on Pro.
   await q(`insert into public.entitlements (account_id, source, tier, valid_from) values ($1, 'admin_designated', 'pro', now() - interval '1 day')`, [ROLE_ID.learner]);
+  // L5: the learner's plan carries a $20 Mentor allowance for the current period.
+  const sub = (await q(`insert into public.subscriptions (payer_account_id, beneficiary_account_id, plan, status, started_at, renews_at, mentor_addon_cents, mentor_addon_item_id)
+    values ($1, $1, 'pro', 'active', now() - interval '1 day', now() + interval '29 days', 2000, 'si_test') returning id`, [ROLE_ID.learner])).rows[0].id;
+  await q(`insert into public.mentor_allowance_periods (subscription_id, account_id, period_start, period_end, addon_cents)
+    values ($1, $2, now() - interval '1 day', now() + interval '29 days', 2000)`, [sub, ROLE_ID.learner]);
   const academy = (await q("insert into public.academies (slug, name) values ('mkt', 'Lead response') returning id")).rows[0].id;
   const course = (await q("insert into public.courses (academy_id, version, status) values ($1, 1, 'draft') returning id", [academy])).rows[0].id;
   const mod = (await q("insert into public.modules (course_id, position, code, title) values ($1, 1, 'm1', 'Speed') returning id", [course])).rows[0].id;
@@ -89,7 +94,7 @@ describe("L4 on the real database", () => {
     answer = { kind: "answer", text: "Reply within five minutes [P1].", passages: [1] };
     const r = mentorReplyFrom((await ask("How fast should I reply to a new lead?")).body)!;
     expect(r.reply).toMatchObject({ kind: "answer", citations: [{ ref: 1, title: "Speed to lead study", url: "https://example.org/speed" }] });
-    expect(r.mentor).toEqual({ aiOn: true, dailyCap: 40 });
+    expect(r.mentor).toMatchObject({ aiOn: true, dailyCap: 40, allowance: { status: "active", usableUsd: 14, canChange: true } });
     expect(promptText(ai.requests.filter((x) => x.kind === "parse")[1].params)).toMatch(/Respond to new leads within five minutes|Reply to new leads within five minutes/);
     threadId = r.thread.id;
     expect((await q("select messages from public.mentor_daily_usage where account_id = $1", [ROLE_ID.learner])).rows[0].messages).toBe(1);

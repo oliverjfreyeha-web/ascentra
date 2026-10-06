@@ -7,6 +7,7 @@ import { actorOf } from "@/lib/auth/require-cap";
 import { AiUnavailable, aiConfigured, embed, structured } from "@/lib/ai";
 import { mentorEstimate } from "@/lib/ai/config";
 import { tierOf } from "@/lib/billing";
+import { allowanceOf, meterLine, recordMentorUsage, type Allowance } from "@/lib/mentor-allowance";
 import { OWNER_ACADEMY_SLUG } from "@/lib/caps";
 import { isUuid, refused, type Result } from "@/lib/courses/common";
 import type { Citation, LessonBody } from "@/lib/courses/lessons";
@@ -114,11 +115,11 @@ async function passagesFor(ctx: LessonCtx, question: string, who: { accountId: s
   return out;
 }
 
-async function screen(text: string, ctx: LessonCtx, isMinor: boolean, kind: "message" | "reply", who: { accountId: string; requestId?: string }): Promise<Screen> {
+async function screen(text: string, ctx: LessonCtx, isMinor: boolean, kind: "message" | "reply", who: { accountId: string; requestId?: string; meter?: { usd: number } }): Promise<Screen> {
   return structured("mentor.screen", {
     system: SCREEN_SYSTEM,
     user: `Course: ${ctx.academy.name}\nLesson: ${ctx.title}\nLearner: ${isMinor ? "a teen" : "an adult"}\nThis is the learner's ${kind === "message" ? "message to" : "reply from"} the Mentor:\n"""\n${text}\n"""`,
-    schema: ScreenSchema, maxTokens: 300, allowPersonal: true, estimateUsd: kind === "message" ? mentorEstimate() : 0, accountId: who.accountId, requestId: who.requestId,
+    schema: ScreenSchema, maxTokens: 300, allowPersonal: true, estimateUsd: kind === "message" ? mentorEstimate() : 0, accountId: who.accountId, requestId: who.requestId, meter: who.meter,
   });
 }
 
@@ -171,6 +172,10 @@ export async function askMentor(actor: Account, body: Record<string, unknown>, r
   if (!ctx) return refused(404, "The Mentor works on a published lesson. Open one and ask there.", A);
   const blocked = await planAllows(actor, ctx);
   if (blocked) return refused(403, blocked, A);
+  // L5: the Mentor allowance (read from the database now). Staff are exempt; the L1 spend caps still apply.
+  const allowance = await allowanceOf(actor);
+  const pauseReason = allowancePause(allowance, actor.isMinor);
+  if (pauseReason) return refused(402, pauseReason, A);
   const db = getDb();
   const cap = mentorDailyCap();
   const used = (((await db.from("mentor_daily_usage").select("messages").eq("account_id", actor.id).eq("day", today()).limit(1)).data ?? []) as { messages: number }[])[0]?.messages ?? 0;
@@ -185,7 +190,8 @@ export async function askMentor(actor: Account, body: Record<string, unknown>, r
   // Teens: personal details never leave this function.
   const red = actor.isMinor ? redactPersonalData(raw) : { text: raw, removed: false };
   const message = red.text;
-  const who = { accountId: actor.id, requestId };
+  const meter = { usd: 0 };
+  const who = { accountId: actor.id, requestId, meter };
   const now = () => new Date().toISOString();
   let reply: MentorMessage | null = null;
   let safety: { category: SafetyCategory; stage: "input" | "output" } | null = null;
@@ -213,7 +219,7 @@ export async function askMentor(actor: Account, body: Record<string, unknown>, r
           system: actor.isMinor ? `${MENTOR_SYSTEM}\n${TEEN_RULES}` : MENTOR_SYSTEM,
           history: alternate(history),
           user: [`Course: ${ctx.academy.name}. Lesson: ${ctx.title}.`, "Passages:", ...passages.map((p) => `P${p.n} [${p.title}]: ${p.text}`), "", `Question: ${message}`].join("\n"),
-          schema: AnswerSchema, maxTokens: 1200, allowPersonal: true, accountId: actor.id, requestId,
+          schema: AnswerSchema, maxTokens: 1200, allowPersonal: true, accountId: actor.id, requestId, meter,
         });
         const used = [...new Set(a.passages)].map((n) => passages.find((p) => p.n === n)).filter((p): p is Passage => !!p);
         const sources = [...new Map(used.map((p) => [p.sourceId, p])).values()];
@@ -240,6 +246,8 @@ export async function askMentor(actor: Account, body: Record<string, unknown>, r
       }
     }
   } catch (err) {
+    // What was spent before the failure still counts.
+    if (meter.usd > 0) await recordMentorUsage(allowance, { accountId: actor.id, isMinor: actor.isMinor, requestId }, meter.usd);
     if (!(err instanceof AiUnavailable)) throw err;
     if (err.code === "cap_reached") return refused(429, "The Mentor is resting for today: the platform's AI spending limit is reached. Your lessons work as usual.", A);
     if (err.code === "ai_off") return refused(503, "The Mentor is off right now (AI isn't set up). Your lessons work as usual.", A);
@@ -266,6 +274,7 @@ export async function askMentor(actor: Account, body: Record<string, unknown>, r
     thread = ins.data as Thread;
   }
   await db.rpc("count_mentor_message", { p_account: actor.id, p_day: today() });
+  await recordMentorUsage(allowance, { accountId: actor.id, isMinor: actor.isMinor, requestId }, meter.usd);
   if (safety) await recordSafety(actor, safety.category, safety.stage, thread.id, requestId);
   return { ok: true, body: { thread: { id: thread.id, status: thread.status, title: thread.title }, reply: reply! }, event: noAudit() };
 }
@@ -321,4 +330,26 @@ export async function deleteThreads(actor: Account, id: string | null): Promise<
   return { ok: true, body: { deleted: mine.length }, event: { action: A2, result: "Completed", target: { type: "account", id: actor.id }, context: `Deleted all of their Mentor conversations (${mine.length}).` } };
 }
 
-export const mentorInfo = () => ({ aiOn: aiConfigured(), dailyCap: mentorDailyCap() });
+/** What the Mentor panel shows besides the conversation: AI on or off, the daily cap, and the allowance meter (L5). */
+export async function mentorInfo(actor: Account) {
+  const a = await allowanceOf(actor);
+  return {
+    aiOn: aiConfigured(), dailyCap: mentorDailyCap(),
+    allowance: {
+      status: a.status, usedUsd: a.usedUsd, usableUsd: a.usableUsd, resetsAt: a.resetsAt, trial: a.trial,
+      line: a.status === "exempt" ? null : a.status === "none" ? "Mentor allowance: none" : meterLine(a),
+      // Only the payer changes it: a teen sees the meter, their Guardian changes it.
+      canChange: a.payerAccountId === actor.id,
+    },
+  };
+}
+
+/** L5: why the Mentor is paused for this learner now, in plain words, or null. */
+export function allowancePause(a: Allowance, isMinor: boolean): string | null {
+  const who = isMinor ? "Only your Guardian can add or raise it, from the Guardian Center." : "You can add or raise it in Plan and billing on your Account page.";
+  if (a.status === "none") return `The Mentor needs a Mentor allowance, a small prepaid monthly add-on to your plan. ${who}`;
+  if (a.status === "used_up") {
+    return `Your Mentor allowance for this period is used up (${meterLine(a).replace(/^Mentor allowance: /, "")}). The Mentor is paused until then. ${who} Your lessons work as usual.`;
+  }
+  return null;
+}

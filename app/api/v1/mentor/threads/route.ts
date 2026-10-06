@@ -4,7 +4,7 @@ import { deleteThreads, listThreads, mentorInfo } from "@/lib/mentor/mentor";
 
 /** The learner's own Mentor conversations (?lessonId= to narrow). Nobody else's, whatever the role. */
 export const GET = withCap("learn", async (req, _ctx, account) =>
-  ok({ threads: await listThreads(account, new URL(req.url).searchParams.get("lessonId")), mentor: mentorInfo() }));
+  ok({ threads: await listThreads(account, new URL(req.url).searchParams.get("lessonId")), mentor: await mentorInfo(account) }));
 
 /** Deletes all of the learner's own Mentor conversations (Privacy Center). */
 export const DELETE = withCap("learn", async (_req, _ctx, account, x) => {

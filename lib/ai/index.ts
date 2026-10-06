@@ -61,7 +61,8 @@ export async function spendSoFar(now = new Date()): Promise<{ day: number; month
   return { day, month };
 }
 
-type Who = { accountId?: string | null; requestId?: string | null };
+/** meter (L5): when given, each call's real cost is added to it (the Mentor allowance ledger). */
+type Who = { accountId?: string | null; requestId?: string | null; meter?: { usd: number } };
 
 /**
  * Refuses a call once the day's or the month's spend has reached its cap, or when this run's estimate would take it
@@ -154,6 +155,7 @@ export async function structured<S extends z.ZodType>(
     const u = res.usage;
     const usage = { input: u.input_tokens, output: u.output_tokens, cacheRead: u.cache_read_input_tokens ?? 0, cacheWrite: u.cache_creation_input_tokens ?? 0 };
     const refused = res.stop_reason === "refusal" || res.parsed_output == null;
+    if (args.meter) args.meter.usd += costUsd(model, usage);
     await logCall({
       purpose, provider: "anthropic", model, status: refused ? "error" : "ok", input_tokens: usage.input, output_tokens: usage.output,
       cache_read_tokens: usage.cacheRead, cache_write_tokens: usage.cacheWrite, cost_usd: costUsd(model, usage),
@@ -267,6 +269,7 @@ export async function embed(texts: string[], inputType: "document" | "query", wh
     }
     const body = (await res.json().catch(() => ({}))) as { data?: { embedding: number[]; index: number }[]; usage?: { total_tokens?: number } };
     const tokens = body.usage?.total_tokens ?? 0;
+    if (who.meter) who.meter.usd += costUsd(EMBEDDING.model, { input: tokens });
     const ok = res.ok && Array.isArray(body.data) && body.data.length === batch.length;
     await logCall({
       purpose, provider: "voyage", model: EMBEDDING.model, status: ok ? "ok" : "error", input_tokens: tokens,
