@@ -3,7 +3,7 @@ import { AuditLog } from "./audit-log";
 
 export default function AuditPage() {
   return (
-    <main className="wide">
+    <main className="wide ui-admin">
       <p className="muted">
         <Link href="/">Home</Link> · <Link href="/admin">Administrators</Link>
       </p>

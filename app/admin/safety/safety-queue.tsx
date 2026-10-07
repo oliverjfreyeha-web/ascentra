@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { call, when } from "../../call";
 import { meFrom } from "../../me";
 import { safetyEventsFrom, type SafetyEvent } from "../../mentor-api";
+import { Loading } from "../../ui/loading";
 
 /** L4: the Owner's and Super Admins' safety review queue. */
 export function SafetyQueue() {
@@ -36,7 +37,7 @@ export function SafetyQueue() {
     <>
       <p><label>Show <select value={status} onChange={(e) => setStatus(e.target.value)}><option value="open">Open</option><option value="reviewed">Reviewed</option><option value="">All</option></select></label></p>
       {message && <p role="status">{message}</p>}
-      {events === null ? <p className="muted">Loading…</p> : events.length === 0 ? <p className="muted">Nothing here.</p> : events.map((e) => (
+      {events === null ? <Loading shape="table" /> : events.length === 0 ? <p className="muted ui-empty ui-empty--inline">Nothing here.</p> : events.map((e) => (
         <div key={e.id} className="notice">
           <p>
             <strong>{e.teen ? "Teen · " : ""}{e.categoryLabel}</strong> · {e.severity}{e.priority === 0 ? " · first in queue" : ""} · {e.stage === "output" ? "in a Mentor reply" : "in a learner's message"} · {when(e.createdAt)}

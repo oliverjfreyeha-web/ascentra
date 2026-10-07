@@ -3,7 +3,7 @@ import { CourseList } from "./course-list";
 
 export default function CoursesPage() {
   return (
-    <main className="wide">
+    <main className="wide ui-admin">
       <p className="muted">
         <Link href="/">Home</Link> · <Link href="/admin/sources">Source library</Link> · <Link href="/admin/audit">Audit log</Link>
       </p>

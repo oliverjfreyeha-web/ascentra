@@ -5,6 +5,7 @@ import { call, when, type ApiResult } from "../../call";
 import { meFrom } from "../../me";
 import { can } from "../../courses-api";
 import { ResearchPanel } from "./research-panel";
+import { Loading } from "../../ui/loading";
 
 type Source = {
   id: string; title: string; url: string | null; kind: string; licenseClass: string; licenseName: string | null; status: string;
@@ -119,7 +120,7 @@ export function SourceLibrary() {
             </select>
           </label>
         </div>
-        {sources === null ? <p className="muted">Loading…</p> : sources.length === 0 ? <p className="muted">No sources.</p> : (
+        {sources === null ? <Loading shape="table" /> : sources.length === 0 ? <p className="muted ui-empty ui-empty--inline">No sources.</p> : (
           <div className="table-wrap">
             <table>
               <thead><tr><th>Source</th><th>License</th><th>Status</th><th>Found</th><th>Approved</th><th>Last checked</th><th>Passages</th>{canEdit && <th />}</tr></thead>
@@ -139,7 +140,7 @@ export function SourceLibrary() {
                           <button type="button" disabled={busy} onClick={() => { const reason = ask(`approving "${s.title}"`); if (reason) void act(() => call("POST", `/api/v1/sources/${s.id}/approve`, { reason }), () => "Approved. Search returns it and lessons can cite it."); }}>Approve</button>
                         )}{" "}
                         {s.status !== "rejected" && (
-                          <button type="button" disabled={busy} onClick={() => { const reason = ask(`rejecting "${s.title}"`); if (reason) void act(() => call("POST", `/api/v1/sources/${s.id}/reject`, { reason }), () => "Rejected."); }}>Reject</button>
+                          <button type="button" className="danger" disabled={busy} onClick={() => { const reason = ask(`rejecting "${s.title}"`); if (reason) void act(() => call("POST", `/api/v1/sources/${s.id}/reject`, { reason }), () => "Rejected."); }}>Reject</button>
                         )}{" "}
                         {s.status === "approved" && (
                           <button type="button" disabled={busy} onClick={() => void act(() => call("POST", `/api/v1/sources/${s.id}/claims`, {}),
@@ -175,7 +176,7 @@ export function SourceLibrary() {
               <li key={o.id}>
                 <a href={o.url} target="_blank" rel="noreferrer noopener">{o.title}</a> · {o.license_name}{o.notes ? ` · ${o.notes}` : ""}{" "}
                 {role === "owner" && (
-                  <button type="button" className="link" disabled={busy} onClick={() => { const reason = ask(`removing "${o.title}"`); if (reason) void act(() => call("DELETE", `/api/v1/sources/open-list/${o.id}`, { reason }), () => "Removed from the list."); }}>Remove</button>
+                  <button type="button" className="link danger" disabled={busy} onClick={() => { const reason = ask(`removing "${o.title}"`); if (reason) void act(() => call("DELETE", `/api/v1/sources/open-list/${o.id}`, { reason }), () => "Removed from the list."); }}>Remove</button>
                 )}
               </li>
             ))}

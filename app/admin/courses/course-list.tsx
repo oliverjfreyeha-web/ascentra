@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { call } from "../../call";
 import { meFrom } from "../../me";
+import { Loading } from "../../ui/loading";
 import {
   can, coursesFrom, estimateFrom, librarySourcesFrom, researchRunsFrom, usd,
   type CourseSummary, type Estimate, type LibrarySource, type ResearchRun,
@@ -64,7 +65,7 @@ export function CourseList() {
       {message && <p role="status" className="notice">{message}</p>}
       <section aria-labelledby="courses-h">
         <h2 id="courses-h">Courses</h2>
-        {courses === null ? <p className="muted">Loading…</p> : courses.length === 0 ? <p className="muted">No courses yet.</p> : (
+        {courses === null ? <Loading shape="table" /> : courses.length === 0 ? <p className="muted ui-empty ui-empty--inline">No courses yet.</p> : (
           <ul>
             {courses.map((c) => (
               <li key={c.slug}>

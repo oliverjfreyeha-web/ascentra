@@ -3,7 +3,7 @@ import { RequestQueue } from "./request-queue";
 
 export default function CourseRequestsPage() {
   return (
-    <main className="wide">
+    <main className="wide ui-admin">
       <p className="muted"><Link href="/">Home</Link> · <Link href="/admin/catalog">Topic catalog</Link> · <Link href="/admin/courses">Course builder</Link></p>
       <h1>Course requests</h1>
       <p className="muted">

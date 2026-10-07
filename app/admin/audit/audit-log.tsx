@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useReverification } from "@clerk/nextjs";
 import { meFrom } from "../../me";
+import { Loading } from "../../ui/loading";
 
 type Event = {
   seq: number; at: string; actor: string; action: string; context: string | null; target: string | null;
@@ -120,7 +121,7 @@ export function AuditLog() {
       <section aria-labelledby="events-h">
         <h2 id="events-h">Events</h2>
         {!events ? (
-          <p className="muted">Loading…</p>
+          <Loading shape="table" />
         ) : events.length === 0 ? (
           <p className="muted">No events match.</p>
         ) : (
@@ -136,14 +137,14 @@ export function AuditLog() {
                     <td>{new Date(e.at).toLocaleString()}</td>
                     <td>{e.actor}</td>
                     <td>
-                      {e.action}{e.sensitive && <strong> · Sensitive</strong>}
+                      {e.action}{e.sensitive && <> · <strong className="ui-flag ui-flag--warn">Sensitive</strong></>}
                       {e.context && <div className="muted">{e.context}</div>}
                     </td>
                     <td>{e.target ?? "—"}</td>
                     <td>{e.previous ?? "—"}</td>
                     <td>{e.next ?? "—"}</td>
                     <td>{e.reason ?? "—"}</td>
-                    <td>{e.result === "Blocked" ? <strong>Blocked</strong> : "Completed"}</td>
+                    <td>{e.result === "Blocked" ? <strong className="ui-flag ui-flag--danger">Blocked</strong> : "Completed"}</td>
                     <td>{e.status}</td>
                   </tr>
                 ))}

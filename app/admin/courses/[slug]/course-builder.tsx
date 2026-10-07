@@ -7,6 +7,7 @@ import { meFrom } from "../../../me";
 import { LessonView } from "../../../lesson-body";
 import { FreshnessPanel } from "./freshness-panel";
 import { can, courseDetailFrom, estimateFrom, usd, type CourseDetail, type Estimate, type LessonVersion, type OutdatedNote, type Plan } from "../../../courses-api";
+import { Loading } from "../../../ui/loading";
 
 type Bp = CourseDetail["blueprints"][number];
 type Lesson = CourseDetail["modules"][number]["lessons"][number];
@@ -47,7 +48,7 @@ export function CourseBuilder({ slug }: { slug: string }) {
   }
 
   if (failed) return <p role="status">{failed}</p>;
-  if (!detail) return <p className="muted">Loading…</p>;
+  if (!detail) return <Loading />;
   const draftBp = detail.blueprints.find((b) => b.status === "draft");
   const approvedBp = detail.blueprints.find((b) => b.status === "approved");
   const aiOn = !!estimate?.aiOn;

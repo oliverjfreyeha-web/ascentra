@@ -3,7 +3,7 @@ import { SourceLibrary } from "./source-library";
 
 export default function SourcesPage() {
   return (
-    <main className="wide">
+    <main className="wide ui-admin">
       <p className="muted">
         <Link href="/">Home</Link> · <Link href="/admin/courses">Course builder</Link> · <Link href="/admin/audit">Audit log</Link>
       </p>

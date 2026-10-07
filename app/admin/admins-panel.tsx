@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useReverification } from "@clerk/nextjs";
 import { ADMIN_ROLES, ROLE_LABEL, type AdminRole } from "@/lib/caps";
+import { Loading } from "../ui/loading";
 
 type Admin = { accountId: string; email: string; displayName: string; role: AdminRole; courses: string[]; state: "active" | "awaiting_second_factor" };
 type Invite = { id: string; email: string; role: AdminRole; courses: string[]; expiresAt: string; expired: boolean };
@@ -138,7 +139,7 @@ export function AdminsPanel() {
   };
 
   const status = message && <p role="status">{message}</p>;
-  if (!data) return blocked ? <>{status}<p role="alert">{blocked}</p></> : <p className="muted">Loading…</p>;
+  if (!data) return blocked ? <>{status}<p role="alert">{blocked}</p></> : <Loading shape="table" />;
 
   const pendingForm = (key: string) =>
     pending && key === (pending.kind === "revoke" ? pending.inviteId : pending.accountId) ? (
@@ -164,7 +165,7 @@ export function AdminsPanel() {
 
       <section aria-labelledby="admins-h">
         <h2 id="admins-h">Admins</h2>
-        {data.admins.length === 0 && <p className="muted">No admins yet.</p>}
+        {data.admins.length === 0 && <p className="muted ui-empty ui-empty--inline">No admins yet.</p>}
         <ul className="services">
           {data.admins.map((a) => (
             <li key={a.accountId}>
@@ -176,7 +177,7 @@ export function AdminsPanel() {
               {pendingForm(a.accountId) ?? (
                 <div>
                   <button type="button" className="link" onClick={() => start({ kind: "role", accountId: a.accountId, email: a.email, role: a.role, courses: a.courses.join(", ") })}>Change role</button>{" · "}
-                  <button type="button" className="link" onClick={() => start({ kind: "remove", accountId: a.accountId, email: a.email })}>Remove</button>
+                  <button type="button" className="link danger" onClick={() => start({ kind: "remove", accountId: a.accountId, email: a.email })}>Remove</button>
                 </div>
               )}
             </li>
@@ -186,7 +187,7 @@ export function AdminsPanel() {
 
       <section aria-labelledby="invites-h">
         <h2 id="invites-h">Open invites</h2>
-        {data.invites.length === 0 && <p className="muted">No open invites.</p>}
+        {data.invites.length === 0 && <p className="muted ui-empty ui-empty--inline">No open invites.</p>}
         <ul className="services">
           {data.invites.map((i) => (
             <li key={i.id}>
@@ -197,7 +198,7 @@ export function AdminsPanel() {
               {pendingForm(i.id) ?? (
                 <div className="muted">
                   {i.expired ? "Expired" : `Expires ${new Date(i.expiresAt).toLocaleString()}`} ·{" "}
-                  <button type="button" className="link" onClick={() => start({ kind: "revoke", inviteId: i.id, email: i.email })}>Revoke</button>
+                  <button type="button" className="link danger" onClick={() => start({ kind: "revoke", inviteId: i.id, email: i.email })}>Revoke</button>
                 </div>
               )}
             </li>

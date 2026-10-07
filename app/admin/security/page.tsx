@@ -3,7 +3,7 @@ import { SecurityConsole } from "./security-console";
 
 export default function SecurityPage() {
   return (
-    <main className="wide">
+    <main className="wide ui-admin">
       <p className="muted">
         <Link href="/">Home</Link> · <Link href="/account">Account and devices</Link>
       </p>
