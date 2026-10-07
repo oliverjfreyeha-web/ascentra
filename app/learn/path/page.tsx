@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { PathPage } from "./path-page";
+import { SiteFooter } from "../../ui/site-footer";
 
 export default function MyPathPage() {
   return (
@@ -9,6 +10,7 @@ export default function MyPathPage() {
         <h1>My path</h1>
       </header>
       <PathPage />
+      <SiteFooter />
     </main>
   );
 }

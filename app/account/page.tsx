@@ -4,6 +4,7 @@ import { SignOut } from "../sign-out";
 import { BillingPanel } from "./billing-panel";
 import { DevicesPanel } from "./devices-panel";
 import { PrivacyCenter } from "./privacy-center";
+import { SiteFooter } from "../ui/site-footer";
 
 // Passkeys, password and second factor are managed by Clerk. ASCENTRA stores none of them.
 export default function AccountPage() {
@@ -22,6 +23,7 @@ export default function AccountPage() {
         <h2>Sign-in methods</h2>
         <UserProfile routing="hash" />
       </section>
+      <SiteFooter />
     </main>
   );
 }

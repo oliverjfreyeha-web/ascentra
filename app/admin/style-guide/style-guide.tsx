@@ -63,11 +63,27 @@ export function StyleGuide() {
           Every token and base component in one place. All names, numbers and states on this page are sample data; nothing here is live.
         </p>
         <nav aria-label="Sections" className="ui-row">
-          {["Color", "Contrast", "Type", "Space", "Shape", "Motion", "Buttons", "Forms", "Surfaces", "Overlays", "Status", "Data", "Feedback", "Depth", "Learner"].map((s) => (
+          {["Fonts", "Color", "Contrast", "Type", "Space", "Shape", "Motion", "Buttons", "Forms", "Surfaces", "Overlays", "Status", "Data", "Feedback", "Depth", "Learner"].map((s) => (
             <a key={s} href={`#sg-${s.toLowerCase()}`} className="ui-badge">{s}</a>
           ))}
         </nav>
       </header>
+
+      <Section id="sg-fonts" title="Font comparison (D2c)"
+        note="Three headline pairings, set with real ASCENTRA text. The default is still A. To switch, change the one token --font-headline in app/styles/tokens.css (the comment there lists the values).">
+        <div className="font-compare">
+          {([["A", "Current: Instrument Serif headlines + Geist"], ["B", "Sora headings + Geist"], ["C", "Bricolage Grotesque headings, Instrument Serif italic accents + Geist"]] as const).map(([k, name]) => (
+            <article key={k} className="ui-tile font-compare__card" data-pair={k}>
+              <p className="ui-label"><span className="ui-num">{k}</span> / {name}</p>
+              <p className="font-compare__hero">ASCENTRA · <em>Foundations</em> in progress</p>
+              <p className="font-compare__section">Learning you can <em>check</em>.</p>
+              <p className="muted">Courses written from reviewed sources. Each lesson cites them, marks anything without one, and shows when it was last verified.</p>
+              <p className="ui-row"><button type="button" className="ui-btn ui-btn--primary">Create an account</button></p>
+              <p className="ui-label"><span className="ui-num">01</span> / Lessons</p>
+            </article>
+          ))}
+        </div>
+      </Section>
 
       <Section id="sg-color" title="Color" note="Dark first. Black Iris is the page, Frozen is the accent; the shades between were derived from them.">
         <div className="ui-grid">
