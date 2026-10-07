@@ -30,6 +30,7 @@ html {
 
 body {
   position: relative;
+  overflow-x: clip;
   margin: 0;
   min-height: 100vh;
   color: var(--color-text);
@@ -153,9 +154,7 @@ button:not(.link):not(.primary):not([class*="ui-"]) {
   border: var(--border-control);
   border-radius: var(--radius-sm);
   background-color: var(--color-surface);
-  background-image: var(--inner-highlight);
   color: var(--color-text);
-  box-shadow: var(--elev-1);
   transition: background-color var(--duration-quick) var(--ease-out), border-color var(--duration-quick) var(--ease-out),
     transform var(--duration-fast) var(--ease-smooth-out), box-shadow var(--duration-fast) var(--ease-smooth-out);
 }
@@ -164,7 +163,6 @@ button:not(.link):not(.primary):not([class*="ui-"]):hover:not(:disabled) {
   background-color: var(--color-raised);
   border-color: var(--color-accent);
   transform: translateY(-1px);
-  box-shadow: var(--elev-2);
 }
 
 button:not(.link):not([class*="ui-"]):active:not(:disabled) {
@@ -178,15 +176,13 @@ button.primary {
   border-radius: var(--radius-sm);
   color: var(--color-on-accent);
   background-color: var(--color-accent);
-  background-image: linear-gradient(180deg, rgb(255 255 255 / 0.22), rgb(255 255 255 / 0) 60%), var(--gradient-accent);
-  font-weight: var(--weight-medium);
-  box-shadow: var(--elev-1), var(--glow-button);
+  font-weight: var(--weight-semibold);
   transition: transform var(--duration-fast) var(--ease-smooth-out), box-shadow var(--duration-fast) var(--ease-smooth-out);
 }
 
 button.primary:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: var(--elev-2), 0 0 0 1px rgb(160 189 219 / 0.35), 0 8px 28px -6px rgb(160 189 219 / 0.42);
+  background-color: var(--color-accent-strong);
 }
 
 button.link {
@@ -267,7 +263,7 @@ input[type="radio"]::after {
   transition: transform var(--duration-quick) var(--ease-smooth-out);
 }
 input[type="checkbox"]:checked,
-input[type="radio"]:checked { background: var(--gradient-accent); border-color: var(--color-accent-strong); }
+input[type="radio"]:checked { background: var(--color-accent); border-color: var(--color-accent-strong); }
 input[type="checkbox"]:checked::after,
 input[type="radio"]:checked::after { transform: scale(1); }
 input[type="checkbox"]:hover:not(:disabled),

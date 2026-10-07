@@ -1,4 +1,5 @@
 import { SignInFlow } from "./sign-in-flow";
+import { SiteFooter } from "../ui/site-footer";
 
 export default function SignInPage() {
   return (
@@ -10,6 +11,7 @@ export default function SignInPage() {
           <SignInFlow />
         </div>
       </div>
+      <SiteFooter />
     </main>
   );
 }

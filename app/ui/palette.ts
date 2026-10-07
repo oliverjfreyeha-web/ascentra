@@ -42,9 +42,10 @@ export function contrast(a: string, b: string) {
  * text and the accent must still reach 4.5:1 on each (tests/unit/design-tokens.test.ts).
  */
 export const DEPTH_SURFACES: Record<string, string> = {
-  "gradient-raised (top)": "#1d1f3b",
-  "gradient-surface (top)": "#161830",
-  "choice card, selected": "#292f48",
-  "legal / consent box": "#262329",
-  "AI notice": "#202436",
+  "raised surface (D2b)": "#14162c",
+  "surface with noise (D2b)": "#12132a",
+  "choice card, selected": "#161b30",
+  "legal / consent box": "#18161e",
+  "AI notice": "#131728",
+  "hero still (lightest area)": "#2a3352",
 };

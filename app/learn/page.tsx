@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { LearnList } from "./learn-list";
+import { SiteFooter } from "../ui/site-footer";
 
 export default function LearnPage() {
   return (
@@ -9,6 +10,7 @@ export default function LearnPage() {
         <h1>Learn</h1>
       </header>
       <LearnList />
+      <SiteFooter />
     </main>
   );
 }

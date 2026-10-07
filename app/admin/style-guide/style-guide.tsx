@@ -8,6 +8,8 @@ import { Tabs } from "../../ui/tabs";
 import { Menu } from "../../ui/menu";
 import { Modal } from "../../ui/modal";
 import { Toasts, useToasts } from "../../ui/toasts";
+import { ICON_NAMES, Icon } from "../../ui/icons";
+import { ArtSlot } from "../../ui/art-slot";
 
 // Everything on this page is sample data: no request other than the role check, nothing is saved.
 const TYPE_SCALE = [
@@ -61,11 +63,27 @@ export function StyleGuide() {
           Every token and base component in one place. All names, numbers and states on this page are sample data; nothing here is live.
         </p>
         <nav aria-label="Sections" className="ui-row">
-          {["Color", "Contrast", "Type", "Space", "Shape", "Motion", "Buttons", "Forms", "Surfaces", "Overlays", "Status", "Data", "Feedback", "Depth", "Learner"].map((s) => (
+          {["Fonts", "Color", "Contrast", "Type", "Space", "Shape", "Motion", "Buttons", "Forms", "Surfaces", "Overlays", "Status", "Data", "Feedback", "Depth", "Learner"].map((s) => (
             <a key={s} href={`#sg-${s.toLowerCase()}`} className="ui-badge">{s}</a>
           ))}
         </nav>
       </header>
+
+      <Section id="sg-fonts" title="Font comparison (D2c)"
+        note="Three headline pairings, set with real ASCENTRA text. The default is still A. To switch, change the one token --font-headline in app/styles/tokens.css (the comment there lists the values).">
+        <div className="font-compare">
+          {([["A", "Current: Instrument Serif headlines + Geist"], ["B", "Sora headings + Geist"], ["C", "Bricolage Grotesque headings, Instrument Serif italic accents + Geist"]] as const).map(([k, name]) => (
+            <article key={k} className="ui-tile font-compare__card" data-pair={k}>
+              <p className="ui-label"><span className="ui-num">{k}</span> / {name}</p>
+              <p className="font-compare__hero">ASCENTRA · <em>Foundations</em> in progress</p>
+              <p className="font-compare__section">Learning you can <em>check</em>.</p>
+              <p className="muted">Courses written from reviewed sources. Each lesson cites them, marks anything without one, and shows when it was last verified.</p>
+              <p className="ui-row"><button type="button" className="ui-btn ui-btn--primary">Create an account</button></p>
+              <p className="ui-label"><span className="ui-num">01</span> / Lessons</p>
+            </article>
+          ))}
+        </div>
+      </Section>
 
       <Section id="sg-color" title="Color" note="Dark first. Black Iris is the page, Frozen is the accent; the shades between were derived from them.">
         <div className="ui-grid">
@@ -336,6 +354,17 @@ export function StyleGuide() {
             </tbody>
           </table>
         </div>
+      </Section>
+
+      <Section id="sg-texture" title="Texture, icons, tiles and art (D2b)" note="Depth from light and texture: near-solid fills, a thin gradient edge, faint noise, a cursor spotlight on desktop. No gloss, no bevels, no blob glows.">
+        <p className="ui-row">{ICON_NAMES.map((n) => <span key={n} className="ui-tile__icon" title={n}><Icon name={n} /></span>)}</p>
+        <div className="ui-grid">
+          <article className="ui-tile"><p className="ui-label"><span className="ui-num">01</span> Label</p><h3>Sample tile</h3><p className="muted">Hover on a desktop to see the spotlight follow the cursor.</p></article>
+          <div className="ui-tile" style={{ background: "var(--texture-grid), var(--color-surface)" }}><p className="ui-label">--texture-grid</p></div>
+          <div className="ui-tile" style={{ background: "var(--texture-lines), var(--color-surface)" }}><p className="ui-label">--texture-lines</p></div>
+          <ArtSlot src="/art/placeholder-lesson.svg" alt="Sample placeholder art" placeholder ratio="16 / 9" sizes="20rem" />
+        </div>
+        <h2 className="ui-display-2">Display <em>italic</em> emphasis</h2>
       </Section>
 
       <Section id="sg-learner" title="Learner patterns" note="Used by the public and learner screens (D2). Sample data only.">
