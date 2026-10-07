@@ -8,6 +8,8 @@ import { Tabs } from "../../ui/tabs";
 import { Menu } from "../../ui/menu";
 import { Modal } from "../../ui/modal";
 import { Toasts, useToasts } from "../../ui/toasts";
+import { ICON_NAMES, Icon } from "../../ui/icons";
+import { ArtSlot } from "../../ui/art-slot";
 
 // Everything on this page is sample data: no request other than the role check, nothing is saved.
 const TYPE_SCALE = [
@@ -336,6 +338,17 @@ export function StyleGuide() {
             </tbody>
           </table>
         </div>
+      </Section>
+
+      <Section id="sg-texture" title="Texture, icons, tiles and art (D2b)" note="Depth from light and texture: near-solid fills, a thin gradient edge, faint noise, a cursor spotlight on desktop. No gloss, no bevels, no blob glows.">
+        <p className="ui-row">{ICON_NAMES.map((n) => <span key={n} className="ui-tile__icon" title={n}><Icon name={n} /></span>)}</p>
+        <div className="ui-grid">
+          <article className="ui-tile"><p className="ui-label"><span className="ui-num">01</span> Label</p><h3>Sample tile</h3><p className="muted">Hover on a desktop to see the spotlight follow the cursor.</p></article>
+          <div className="ui-tile" style={{ background: "var(--texture-grid), var(--color-surface)" }}><p className="ui-label">--texture-grid</p></div>
+          <div className="ui-tile" style={{ background: "var(--texture-lines), var(--color-surface)" }}><p className="ui-label">--texture-lines</p></div>
+          <ArtSlot src="/art/placeholder-lesson.svg" alt="Sample placeholder art" placeholder ratio="16 / 9" sizes="20rem" />
+        </div>
+        <h2 className="ui-display-2">Display <em>italic</em> emphasis</h2>
       </Section>
 
       <Section id="sg-learner" title="Learner patterns" note="Used by the public and learner screens (D2). Sample data only.">

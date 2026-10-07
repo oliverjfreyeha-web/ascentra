@@ -82,11 +82,25 @@ describe("D2 depth", () => {
     }
   });
 
-  it("depth is tokenized (3 elevation levels, glows, grain, highlights) and the ambient motion stops with reduced motion", () => {
-    for (const t of ["--elev-1", "--elev-2", "--elev-3", "--edge-highlight", "--inner-highlight", "--gradient-page", "--glow-accent", "--grain", "--duration-ambient"]) {
+  it("D2b: depth from light and texture: tokens exist, and there is no gloss, bevel or blob glow", () => {
+    for (const t of ["--elev-1", "--elev-2", "--elev-3", "--edge-light", "--noise-panel", "--texture-grid", "--texture-lines", "--spotlight", "--gradient-page", "--grain", "--duration-ambient"]) {
       expect(main, t).toContain(`${t}:`);
     }
     expect(reduced).toMatch(/--duration-ambient:\s*0ms/);
-    expect(components).toMatch(/prefers-reduced-motion: reduce\)\s*\{\s*\.ui-scene::before, \.ui-scene::after \{ animation: none; \}/);
+    const css = tokens + components + globals;
+    expect(css).not.toMatch(/rgb\(255 255 255 \/ 0\.22\)/); // the glossy button sheen
+    expect(css).not.toMatch(/filter: blur\(64px\)/); // blob glows
+    expect(main).toMatch(/--inner-highlight: none;/);
+    expect(main).not.toMatch(/--elev-\d:[^;]*inset/); // no bevelled top light in the shadows
+  });
+
+  it("D2b motion respects reduced motion: the hero shows a still image, reveals and the spotlight are off", () => {
+    const hero = readFileSync("app/landing/hero-canvas.tsx", "utf8");
+    expect(hero).toMatch(/prefers-reduced-motion: reduce\)"\)\.matches \|\| lowPower\(\)\) return;/);
+    expect(hero).toMatch(/visibilitychange/);
+    expect(hero).toMatch(/IntersectionObserver/);
+    expect(readFileSync("app/ui/reveal.tsx", "utf8")).toMatch(/prefers-reduced-motion: reduce\)"\)\.matches/);
+    expect(readFileSync("app/ui/spotlight.tsx", "utf8")).toMatch(/prefers-reduced-motion: reduce\)"\)\.matches/);
+    expect(components).toMatch(/@media \(prefers-reduced-motion: reduce\) \{ \[data-reveal="wait"\] \{ opacity: 1; transform: none; \}/);
   });
 });

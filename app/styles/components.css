@@ -26,8 +26,7 @@
   line-height: 1;
   white-space: nowrap;
   cursor: pointer;
-  background-image: var(--inner-highlight);
-  box-shadow: var(--elev-1);
+  box-shadow: none;
   transition:
     background-color var(--duration-quick) var(--ease-out),
     border-color var(--duration-quick) var(--ease-out),
@@ -35,9 +34,9 @@
     box-shadow var(--duration-fast) var(--ease-smooth-out),
     transform var(--duration-fast) var(--ease-smooth-out);
 }
-.ui-btn:hover:not(:disabled) { background-color: var(--btn-bg-hover); border-color: var(--btn-border-hover); transform: translateY(-1px); box-shadow: var(--elev-2); }
-.ui-btn:active:not(:disabled) { transform: translateY(0) scale(0.99); box-shadow: var(--elev-1); transition-duration: var(--duration-micro); }
-.ui-btn:focus-visible { outline: none; box-shadow: var(--focus-ring), var(--elev-1); }
+.ui-btn:hover:not(:disabled) { background-color: var(--btn-bg-hover); border-color: var(--btn-border-hover); transform: translateY(-1px); }
+.ui-btn:active:not(:disabled) { transform: translateY(0) scale(0.985); transition-duration: var(--duration-micro); }
+.ui-btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 .ui-btn:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
 .ui-btn.is-error { --btn-border: var(--color-danger); --btn-border-hover: var(--color-danger); color: var(--color-danger); }
 .ui-btn--sm { min-height: 2rem; padding: 0 var(--space-3); font-size: var(--text-xs); }
@@ -48,14 +47,10 @@
   --btn-border: var(--color-accent-strong);
   --btn-bg-hover: var(--color-accent-strong);
   --btn-border-hover: var(--color-accent-strong);
-  background-image: linear-gradient(180deg, rgb(255 255 255 / 0.22), rgb(255 255 255 / 0) 60%), var(--gradient-accent);
-  box-shadow: var(--elev-1), var(--glow-button);
+  font-weight: var(--weight-semibold);
 }
-.ui-btn--primary:hover:not(:disabled) { box-shadow: var(--elev-2), 0 0 0 1px rgb(160 189 219 / 0.35), 0 8px 28px -6px rgb(160 189 219 / 0.42); }
 .ui-btn--secondary { /* the defaults above */ }
 .ui-btn--quiet {
-  background-image: none;
-  box-shadow: none;
   --btn-bg: transparent;
   --btn-border: transparent;
   --btn-fg: var(--color-accent);
@@ -213,17 +208,6 @@ textarea.ui-input { min-height: 6rem; padding: var(--space-2) var(--space-3); li
   backdrop-filter: blur(var(--blur-lg)) saturate(1.25);
   box-shadow: var(--elev-2);
   padding: var(--space-5);
-}
-/* The 1px light along the top edge (glass catching the light), on panels and raised cards. */
-.ui-panel::before,
-.ui-card--raised::before {
-  content: "";
-  position: absolute;
-  inset: 0 var(--space-5) auto;
-  height: 1px;
-  background: var(--edge-highlight);
-  opacity: 0.7;
-  pointer-events: none;
 }
 .ui-panel--raised { background: var(--gradient-raised); box-shadow: var(--elev-3); }
 
@@ -597,57 +581,26 @@ textarea.ui-input { min-height: 6rem; padding: var(--space-2) var(--space-3); li
 
 /* A block: a floating card that holds one area of a page (Billing, Privacy, a teen, …). */
 .ui-block { position: relative; margin: 0 0 var(--space-6); padding: var(--space-6); border: 1px solid rgb(160 189 219 / 0.1); border-radius: var(--radius-lg); background: var(--gradient-surface); box-shadow: var(--elev-2); }
-.ui-block::before { content: ""; position: absolute; inset: 0 var(--space-6) auto; height: 1px; background: var(--edge-highlight); opacity: 0.55; pointer-events: none; }
 .ui-block > h2:first-child, .ui-block > header:first-child h2 { margin-top: 0; }
 .ui-block h3 { margin-top: var(--space-6); }
 @media (max-width: 40rem) { .ui-block { padding: var(--space-5) var(--space-4); } }
 
-/* The scene: a layered gradient backdrop with large, blurred Frozen glows (decorative, aria-hidden). */
+/* The scene: the hero's backdrop (a fine grid fading out; the WebGL canvas or its still image sits above it). */
 .ui-scene { position: absolute; inset: 0; overflow: hidden; pointer-events: none; border-radius: inherit; }
-.ui-scene::before,
-.ui-scene::after,
-.ui-scene__glow { content: ""; position: absolute; border-radius: 50%; filter: blur(64px); will-change: transform; }
-.ui-scene::before { width: 42rem; height: 42rem; left: -12rem; top: -18rem; background: radial-gradient(circle, rgb(160 189 219 / 0.28), transparent 65%); animation: ui-drift var(--duration-ambient) var(--ease-in-out) infinite alternate; }
-.ui-scene::after { width: 34rem; height: 34rem; right: -10rem; top: -6rem; background: radial-gradient(circle, rgb(201 184 242 / 0.14), transparent 65%); animation: ui-drift var(--duration-ambient) var(--ease-in-out) infinite alternate-reverse; }
-.ui-scene__glow { width: 46rem; height: 22rem; left: 50%; bottom: -14rem; margin-left: -23rem; background: radial-gradient(ellipse, rgb(160 189 219 / 0.16), transparent 70%); }
-.ui-scene__grid {
-  position: absolute; inset: 0;
-  background-image: linear-gradient(rgb(160 189 219 / 0.05) 1px, transparent 1px), linear-gradient(90deg, rgb(160 189 219 / 0.05) 1px, transparent 1px);
-  background-size: 56px 56px;
-  mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, #000 20%, transparent 75%);
-  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, #000 20%, transparent 75%);
-}
-@keyframes ui-drift {
-  from { transform: translate3d(0, 0, 0) scale(1); }
-  to { transform: translate3d(6rem, 3rem, 0) scale(1.12); }
-}
-@media (prefers-reduced-motion: reduce) { .ui-scene::before, .ui-scene::after { animation: none; } }
+.ui-scene__grid { position: absolute; inset: 0; background: var(--texture-grid); mask-image: radial-gradient(ellipse 80% 70% at 70% 30%, #000 10%, transparent 75%); -webkit-mask-image: radial-gradient(ellipse 80% 70% at 70% 30%, #000 10%, transparent 75%); }
 
 /* The landing hero. */
 .ui-hero { position: relative; isolation: isolate; margin: 0 0 var(--space-7); padding: var(--space-9) var(--space-6) var(--space-8); border: var(--border-glass); border-radius: calc(var(--radius-lg) + 6px); background: linear-gradient(180deg, rgb(22 24 48 / 0.55), rgb(8 8 19 / 0.35)); box-shadow: var(--elev-3); overflow: hidden; }
-.ui-hero::before { content: ""; position: absolute; inset: 0 10% auto; height: 1px; background: var(--edge-highlight); z-index: 1; }
 .ui-hero > *:not(.ui-scene) { position: relative; z-index: 1; }
 .ui-hero h1 { margin: var(--space-4) 0 var(--space-6); font-family: var(--font-display); font-weight: var(--weight-regular); font-size: var(--text-display); line-height: 1.02; letter-spacing: -0.015em; max-width: 11.5em; text-wrap: balance; }
-/* The orb: layered rings of frosted light on the right of the hero (static; the glows behind it drift). */
-.ui-scene__orb { position: absolute; right: -6rem; top: 50%; width: 30rem; height: 30rem; margin-top: -15rem; border-radius: 50%;
-  background:
-    radial-gradient(circle at 35% 30%, rgb(232 237 245 / 0.22), transparent 28%),
-    radial-gradient(circle at 50% 50%, rgb(160 189 219 / 0.22), rgb(160 189 219 / 0.06) 55%, transparent 70%);
-  box-shadow: inset 0 1px 0 rgb(232 237 245 / 0.18), inset 0 -40px 80px rgb(8 8 19 / 0.6), 0 40px 120px -20px rgb(160 189 219 / 0.18);
-  border: 1px solid rgb(160 189 219 / 0.18); }
-.ui-scene__orb::before, .ui-scene__orb::after { content: ""; position: absolute; border-radius: 50%; border: 1px solid rgb(160 189 219 / 0.12); }
-.ui-scene__orb::before { inset: -3.5rem; }
-.ui-scene__orb::after { inset: -8rem; border-color: rgb(160 189 219 / 0.06); }
-@media (max-width: 52rem) { .ui-scene__orb { right: -14rem; top: 2rem; margin-top: 0; width: 22rem; height: 22rem; opacity: 0.6; } }
 .ui-hero__lede { max-width: 34rem; color: var(--color-text-muted); font-size: var(--text-md); }
 @media (max-width: 40rem) { .ui-hero { padding: var(--space-8) var(--space-4) var(--space-7); } }
 
 /* A centered, frosted card for sign-in, sign-up, the welcome steps and the age screens. */
 .ui-auth { position: relative; isolation: isolate; max-width: 30rem; margin: var(--space-6) auto 0; }
 .ui-auth__card { position: relative; padding: var(--space-7) var(--space-6); border: var(--border-glass); border-radius: calc(var(--radius-lg) + 4px); background: var(--gradient-surface); -webkit-backdrop-filter: blur(var(--blur-lg)) saturate(1.25); backdrop-filter: blur(var(--blur-lg)) saturate(1.25); box-shadow: var(--elev-3); }
-.ui-auth__card::before { content: ""; position: absolute; inset: 0 var(--space-6) auto; height: 1px; background: var(--edge-highlight); }
 .ui-auth__card h1 { font-size: var(--text-xl); margin-top: 0; }
-.ui-auth__halo { position: absolute; inset: -6rem -8rem auto; height: 22rem; z-index: -1; border-radius: 50%; background: radial-gradient(ellipse, var(--glow-accent), transparent 70%); filter: blur(40px); pointer-events: none; }
+.ui-auth__halo { position: absolute; inset: -5rem 0; z-index: -1; background: var(--texture-grid); mask-image: radial-gradient(ellipse 60% 55% at 50% 40%, #000 15%, transparent 72%); -webkit-mask-image: radial-gradient(ellipse 60% 55% at 50% 40%, #000 15%, transparent 72%); pointer-events: none; }
 .ui-auth--wide { max-width: 40rem; }
 @media (max-width: 40rem) { .ui-auth__card { padding: var(--space-6) var(--space-4); } }
 
@@ -819,3 +772,142 @@ fieldset.dob label { display: grid; gap: var(--space-1); font-size: var(--text-s
 .ui-checks li::before { content: ""; flex: none; width: 0.7rem; height: 0.7rem; background: var(--color-success); clip-path: polygon(14% 52%, 0 66%, 38% 100%, 100% 22%, 86% 8%, 38% 72%); }
 .home-status h2 { margin-top: 0; }
 .ui-hero .ui-hero__lede p { margin: 0; }
+
+
+/*
+ * ── D2b · Surfaces: near-solid fill, faint noise, a thin gradient edge that catches light, and the cursor spotlight ──
+ * Done with layered backgrounds (padding-box fill, border-box edge), so no pseudo-elements are needed and nothing bevels.
+ */
+.ui-card, .ui-panel, .ui-block, .ui-auth__card, .ui-choice, .ui-rows, .ui-path > li, .ui-practice, .ui-lesson-end, .ui-takeaways,
+.ui-hero, .ui-tile, .ui-legal, .ui-ai-notice, .ui-msg--mentor, .ui-facts > div, .ui-consent, .ui-answers, .ui-steps > li {
+  --surface: rgb(14 15 31 / 0.94);
+  --edge: var(--edge-light);
+  border: 1px solid transparent;
+  background:
+    var(--spotlight) padding-box,
+    var(--noise-panel) padding-box,
+    linear-gradient(var(--surface), var(--surface)) padding-box,
+    var(--edge) border-box;
+}
+.ui-card--raised, .ui-panel--raised, .ui-auth__card, .ui-msg--mentor { --surface: rgb(20 22 44 / 0.96); }
+.ui-facts > div, .ui-consent, .ui-answers, .ui-steps > li { --surface: rgb(10 11 24 / 0.92); --edge: linear-gradient(rgb(42 45 74 / 0.9), rgb(42 45 74 / 0.9)); }
+.ui-legal { --surface: rgb(24 22 30 / 0.96); --edge: linear-gradient(155deg, rgb(232 195 126 / 0.6), rgb(232 195 126 / 0.22) 40%, rgb(232 195 126 / 0.32)); }
+.ui-ai-notice { --surface: rgb(19 23 40 / 0.97); --edge: linear-gradient(155deg, rgb(160 189 219 / 0.75), rgb(160 189 219 / 0.3) 40%, rgb(160 189 219 / 0.4)); }
+.ui-choice:has(input:checked), .ui-consent:has(input:checked), .ui-steps > li[data-state="now"] { --surface: rgb(22 27 48 / 0.97); --edge: var(--edge-light-strong); }
+.ui-card--interactive:hover, .ui-choice:hover, .ui-tile:hover { --edge: var(--edge-light-strong); }
+.ui-panel { -webkit-backdrop-filter: blur(var(--blur-md)); backdrop-filter: blur(var(--blur-md)); }
+.ui-panel, .ui-auth__card { --surface: rgb(16 17 35 / 0.82); }
+/* The lesson stays quiet: no spotlight, the faintest edge. */
+.ui-lesson .ui-takeaways, .ui-lesson .ui-lesson-end, .ui-lesson .ui-practice { --edge: linear-gradient(rgb(42 45 74 / 0.9), rgb(42 45 74 / 0.9)); background: linear-gradient(var(--surface), var(--surface)) padding-box, var(--edge) border-box; box-shadow: none; }
+@media (hover: none), (pointer: coarse), (prefers-reduced-motion: reduce) { :root { --spotlight: linear-gradient(transparent, transparent); } }
+
+/* ── D2b · Type helpers ───────────────────────────────────────────── */
+.ui-label { margin: 0; font-family: var(--font-mono); font-size: 0.75rem; font-weight: var(--weight-medium); letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--color-text-muted); }
+.ui-num { font-family: var(--font-mono); font-feature-settings: "tnum"; color: var(--color-accent); letter-spacing: 0.04em; }
+.ui-display-2 { margin: var(--space-3) 0 0; font-family: var(--font-display); font-weight: var(--weight-regular); font-size: clamp(2.5rem, 5.6vw, 4.75rem); line-height: 0.98; letter-spacing: var(--tracking-display); text-wrap: balance; }
+.ui-display-2 em, .hero__title em, .closing__title em { font-style: italic; color: var(--color-accent-strong); letter-spacing: -0.02em; }
+.ui-icon { flex: none; }
+.ui-btn--lg { min-height: 3rem; padding: 0 var(--space-5); font-size: var(--text-base); }
+
+/* ── D2b · Art slots ──────────────────────────────────────────────── */
+.ui-art { position: relative; margin: var(--space-5) 0 0; overflow: hidden; border: 1px solid var(--color-line); border-radius: var(--radius-md); background: var(--texture-grid), var(--color-surface); }
+.ui-art__img { object-fit: cover; }
+.ui-art__tag { position: absolute; left: var(--space-3); top: var(--space-3); padding: 0.2rem 0.5rem; border: 1px dashed rgb(201 184 242 / 0.6); border-radius: var(--radius-xs); background: rgb(8 8 19 / 0.8); color: var(--color-demo); font-family: var(--font-mono); font-size: 0.6875rem; letter-spacing: 0.08em; text-transform: uppercase; }
+
+/* ── D2b · Tiles (bento and steps) ────────────────────────────────── */
+.ui-tile { position: relative; display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-6); border-radius: var(--radius-lg); box-shadow: var(--elev-1); transition: transform var(--duration-fast) var(--ease-smooth-out); }
+.ui-tile:hover { transform: translateY(-2px); }
+.ui-tile h3 { margin: var(--space-2) 0 0; font-size: var(--text-lg); letter-spacing: var(--tracking-tight); }
+.ui-tile p { margin: 0; }
+.ui-tile p.muted { font-size: 0.9375rem; line-height: 1.6; }
+.ui-tile__label { display: flex; gap: var(--space-2); }
+.ui-tile__icon { display: inline-grid; place-items: center; width: 2.75rem; height: 2.75rem; border-radius: var(--radius-md); color: var(--color-accent); background: linear-gradient(rgb(160 189 219 / 0.08), rgb(160 189 219 / 0.08)) padding-box, var(--edge-light-strong) border-box; border: 1px solid transparent; }
+.ui-tile__icon .ui-icon { width: 1.375rem; height: 1.375rem; }
+
+/* ── D2b · Landing ────────────────────────────────────────────────── */
+main.landing { max-width: none; padding: 0; }
+.hero { position: relative; isolation: isolate; display: grid; align-content: end; min-height: min(92vh, 56rem); padding: 9rem var(--space-5) var(--space-8); overflow: hidden; border-bottom: 1px solid var(--color-line); }
+.hero-bg { position: absolute; inset: 0; z-index: -1; }
+.hero-bg__still, .hero-bg__canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.hero-bg__still { background: url("/art/hero-still.jpg") center / cover no-repeat, radial-gradient(90% 70% at 70% 30%, #1c2440, #080813 70%); }
+.hero-bg__canvas { opacity: 0; transition: opacity 1.4s var(--ease-out); }
+.hero-bg__canvas[data-live] { opacity: 1; }
+.hero-bg::after { content: ""; position: absolute; inset: 0; background: var(--texture-grid); mask-image: linear-gradient(180deg, transparent 10%, #000 55%, transparent 95%); -webkit-mask-image: linear-gradient(180deg, transparent 10%, #000 55%, transparent 95%); opacity: 0.8; }
+.hero::after { content: ""; position: absolute; inset: auto 0 0; height: 40%; z-index: -1; background: linear-gradient(180deg, transparent, var(--color-base)); pointer-events: none; }
+.hero__inner { width: 100%; max-width: 76rem; margin: 0 auto; }
+.hero { grid-template-columns: minmax(0, 1fr); }
+.hero__art { display: none; }
+@media (min-width: 64rem) {
+  .hero { grid-template-columns: minmax(0, 1fr) minmax(0, 76rem) minmax(0, 1fr); }
+  .hero__inner { grid-column: 2; grid-row: 1; max-width: none; }
+  .hero__art { display: block; grid-column: 2; grid-row: 1; justify-self: end; align-self: center; width: min(28rem, 34vw); margin-top: -2rem; }
+  .hero__art .ui-art { margin: 0; border: 0; background: transparent; overflow: visible; }
+  .hero__art .ui-art__tag { left: auto; right: var(--space-3); }
+}
+.hero__title { margin: var(--space-4) 0 var(--space-6); max-width: 12ch; font-family: var(--font-display); font-weight: var(--weight-regular); font-size: var(--text-mega); line-height: 0.9; letter-spacing: var(--tracking-display); }
+.hero__lede { max-width: 36rem; margin: 0 0 var(--space-6); color: var(--color-text); font-size: clamp(1.0625rem, 1.6vw, 1.25rem); line-height: 1.5; opacity: 0.86; }
+.hero__account p { margin: 0; }
+.hero__account .ui-btn { min-height: 3rem; padding: 0 var(--space-6); font-size: var(--text-base); }
+.hero__scroll { position: absolute; left: 50%; bottom: var(--space-5); width: 1px; height: 3rem; background: linear-gradient(var(--color-line-strong), transparent); }
+.landing__section { max-width: calc(76rem + 2 * var(--space-5)); margin: 0 auto; padding: var(--space-9) var(--space-5) 0; }
+.landing__head { margin-bottom: var(--space-7); max-width: 44rem; }
+.bento { display: grid; gap: var(--space-4); grid-template-columns: repeat(6, minmax(0, 1fr)); grid-auto-flow: dense; }
+.bento__wide { grid-column: span 4; }
+.bento__tall { grid-column: span 2; grid-row: span 2; }
+.bento__small { grid-column: span 2; }
+.bento__wide .ui-art, .bento__tall .ui-art { margin-top: auto; }
+.bento__tall .ui-art { aspect-ratio: 3 / 4 !important; }
+.how { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: var(--space-8); }
+.how__sticky { position: sticky; top: var(--space-8); }
+.how__steps { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-4); }
+.how__steps .ui-tile { padding: var(--space-6) var(--space-6) var(--space-6) 5.5rem; }
+.how__n { position: absolute; left: var(--space-6); top: calc(var(--space-6) + 0.35rem); font-size: 0.875rem; }
+.how__steps h3 { margin: 0; }
+.landing__status { padding-top: var(--space-8); }
+.closing { position: relative; margin: var(--space-9) 0 0; padding: var(--space-9) var(--space-5) var(--space-8); text-align: center; border-top: 1px solid var(--color-line); background: var(--texture-lines); }
+.closing::before { content: ""; position: absolute; inset: 0; background: radial-gradient(60% 80% at 50% 0%, rgb(160 189 219 / 0.07), transparent 70%); pointer-events: none; }
+.closing > * { position: relative; }
+.closing__title { margin: 0 auto var(--space-6); max-width: 14ch; font-family: var(--font-display); font-weight: var(--weight-regular); font-size: clamp(3rem, 8vw, 6.5rem); line-height: 0.95; letter-spacing: var(--tracking-display); }
+.closing__actions { justify-content: center; }
+.closing__foot { margin-top: var(--space-8); }
+@media (max-width: 60rem) {
+  .bento { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .bento__wide { grid-column: span 2; }
+  .bento__tall { grid-column: span 2; grid-row: auto; }
+  .bento__small { grid-column: span 1; }
+  .how { grid-template-columns: 1fr; gap: var(--space-6); }
+  .how__sticky { position: static; }
+}
+@media (max-width: 40rem) {
+  .hero { min-height: 0; padding: 7rem var(--space-4) var(--space-7); }
+  .landing__section { padding: var(--space-8) var(--space-4) 0; }
+  .bento { grid-template-columns: minmax(0, 1fr); }
+  .bento > * { grid-column: auto; grid-row: auto; }
+  .ui-tile { padding: var(--space-5); }
+  .how__steps .ui-tile { padding: var(--space-5) var(--space-5) var(--space-5) 4.25rem; }
+  .how__n { left: var(--space-5); top: calc(var(--space-5) + 0.35rem); }
+  .closing { padding: var(--space-8) var(--space-4) var(--space-7); }
+}
+
+/* ── D2b · Motion: scroll reveals and page entrances (transitions.dev "texts reveal": rise + fade, ease out) ── */
+[data-reveal] { transition: opacity var(--duration-slow) var(--ease-out), transform var(--duration-slow) var(--ease-smooth-out); transition-delay: calc(var(--i, 0) * 80ms); }
+[data-reveal="wait"] { opacity: 0; transform: translateY(14px); }
+main:not(.landing) { animation: ui-page-in var(--duration-slow) var(--ease-smooth-out) both; }
+@keyframes ui-page-in { from { opacity: 0.001; transform: translateY(6px); } }
+@media (prefers-reduced-motion: reduce) { [data-reveal="wait"] { opacity: 1; transform: none; } main:not(.landing) { animation: none; } }
+@media print { [data-reveal="wait"] { opacity: 1; transform: none; } }
+
+
+/* ── D2b · Inner pages: serif titles, mono breadcrumbs, a faint grid behind the header ── */
+main.ui-main-wide, main.ui-lesson { position: relative; }
+main.ui-main-wide::before { content: ""; position: absolute; inset: 0 0 auto; height: 22rem; z-index: -1; background: var(--texture-grid); mask-image: radial-gradient(ellipse 60% 80% at 30% 0%, #000 10%, transparent 70%); -webkit-mask-image: radial-gradient(ellipse 60% 80% at 30% 0%, #000 10%, transparent 70%); pointer-events: none; }
+.ui-crumbs { font-family: var(--font-mono); font-size: 0.75rem; letter-spacing: var(--tracking-label); text-transform: uppercase; }
+.ui-crumbs button.link { font-family: inherit; letter-spacing: inherit; text-transform: inherit; }
+.ui-page-head h1, .ui-auth__card h1 { font-family: var(--font-display); font-weight: var(--weight-regular); letter-spacing: var(--tracking-display); line-height: 0.98; }
+.ui-page-head h1 { font-size: clamp(2.75rem, 6vw, 4.25rem); }
+.ui-auth__card h1 { font-size: clamp(2.25rem, 5vw, 3rem); }
+.ui-path > li::before { content: counter(step, decimal-leading-zero); font-size: 0.75rem; }
+.ui-block > h2:first-child, .ui-block > header h2, .ui-course__head h2 { letter-spacing: var(--tracking-tight); }
+/* Labelled fields in an action row shrink and wrap on narrow screens (360 px). */
+.ui-actions > label { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); max-width: 100%; }
+.ui-actions > label > input:not([type="checkbox"]):not([type="radio"]), .ui-actions > label > select { flex: 1 1 10rem; min-width: 0; width: auto; }
