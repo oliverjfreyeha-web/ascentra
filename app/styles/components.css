@@ -1070,3 +1070,31 @@ main:not(.landing) > .site-footer { padding-inline: 0; }
   .frost { animation: none; transition: none; }
   [data-tilt][data-tilting] { transform: none; }
 }
+
+/* ── D2e · Ambient sound: the control, its panel (opened from it) and the dock shown where a page has no control ── */
+.sound { position: relative; display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); }
+.sound-more { color: var(--color-text-muted); font-family: var(--font-mono); letter-spacing: 0.06em; }
+.sound-more svg { transition: transform var(--duration-fast) var(--ease-smooth-out); }
+.sound-more[aria-expanded="true"] svg { transform: rotate(180deg); }
+.sound-panel { position: absolute; left: 0; bottom: calc(100% + var(--space-2)); z-index: var(--z-dropdown); width: min(22rem, calc(100vw - 2 * var(--space-4)));
+  display: grid; gap: var(--space-3); padding: var(--space-4); border: 1px solid transparent; border-radius: var(--radius-lg);
+  background: linear-gradient(rgb(22 24 48 / 0.97), rgb(22 24 48 / 0.97)) padding-box, var(--edge-light-strong) border-box; box-shadow: var(--elev-3);
+  -webkit-backdrop-filter: blur(var(--blur-md)); backdrop-filter: blur(var(--blur-md));
+  animation: sound-panel-in var(--duration-fast) var(--ease-smooth-out); }
+@keyframes sound-panel-in { from { opacity: 0; transform: translateY(var(--distance-base)) scale(var(--scale-menu)); } }
+.sound-panel__head { margin: 0; }
+.sound-panel__list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-1); }
+.sound-panel__track { display: grid; gap: 2px; width: 100%; padding: var(--space-2) var(--space-3); text-align: left; border: 1px solid transparent; border-radius: var(--radius-sm); background: none; color: var(--color-text); transition: background-color var(--duration-quick) var(--ease-out), border-color var(--duration-quick) var(--ease-out); }
+.sound-panel__track:hover { background: var(--tint-neutral); }
+.sound-panel__track[aria-current="true"] { border-color: rgb(160 189 219 / 0.35); background: var(--tint-accent); }
+.sound-panel__title { display: flex; align-items: center; gap: var(--space-2); font-weight: var(--weight-medium); }
+.sound-panel__now { font-family: var(--font-mono); font-size: 0.6875rem; letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--color-accent); }
+.sound-panel__mood { font-size: var(--text-xs); color: var(--color-text-muted); }
+.sound-panel__row { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.sound-panel__opt[aria-pressed="true"] { color: var(--color-accent); border-color: rgb(160 189 219 / 0.45); }
+.sound-panel__volume { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: var(--space-3); font-size: var(--text-sm); }
+.sound-panel__volume input { width: 100%; accent-color: var(--color-accent); }
+.sound-panel__note { margin: 0; font-size: var(--text-xs); line-height: 1.5; }
+.sound-dock { position: fixed; right: var(--space-4); bottom: var(--space-4); z-index: var(--z-sticky); border: 1px solid transparent; border-radius: var(--radius-pill);
+  background: linear-gradient(rgb(22 24 48 / 0.96), rgb(22 24 48 / 0.96)) padding-box, var(--edge-light) border-box; box-shadow: var(--elev-2); }
+@media print { .sound-dock, .sound-panel { display: none; } }

@@ -90,7 +90,7 @@ export function PrivacyCenter() {
                         Withdraw
                       </button>
                     )}
-                    {c.withdraw === "guardian_center" && <a href="/guardian">Withdraw in the Guardian Center</a>}
+                    {c.withdraw === "guardian_center" && <Link href="/guardian">Withdraw in the Guardian Center</Link>}
                   </td>
                 </tr>
               ))}

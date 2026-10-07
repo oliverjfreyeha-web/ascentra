@@ -105,14 +105,11 @@ describe("D2 depth", () => {
 });
 
 describe("D2c: art, HUD, fonts, sound and credits", () => {
-  it("the ambient sound is opt-in: off by default, never autoplays, loaded only after a press, pauses when hidden", () => {
+  it("the ambient sound control is opt-in and never in lessons (D2e moved the player to the root layout)", () => {
     const src = readFileSync("app/ui/ambient-sound.tsx", "utf8");
-    expect(src).not.toMatch(/autoPlay|autoplay\s*=|\.autoplay\s*=\s*true/);
-    expect(src).toMatch(/useState\(false\)/);
-    expect(src).toMatch(/aria-pressed=\{on\}/);
-    expect(src.indexOf("new Audio(")).toBeGreaterThan(src.indexOf("async function start()")); // created only when starting
-    expect(src).toMatch(/visibilityState === "hidden"/);
-    expect(src).toMatch(/localStorage/);
+    expect(src).not.toMatch(/autoPlay|autoplay/);
+    expect(src).toMatch(/aria-pressed=\{state\.on\}/);
+    expect(src).not.toMatch(/new Audio\(/); // the control holds no audio; the persistent player does
     expect(readFileSync("app/learn/[id]/page.tsx", "utf8")).not.toMatch(/SiteFooter|AmbientSound/); // not in lessons
   });
 

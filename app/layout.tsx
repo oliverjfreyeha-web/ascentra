@@ -5,6 +5,7 @@ import { DeviceGate } from "./device-gate";
 import { clerkAppearance } from "./clerk-appearance";
 import { fontVariables } from "./fonts";
 import { Spotlight } from "./ui/spotlight";
+import { SoundProvider } from "./ui/sound/sound-provider";
 import "./styles/tokens.css";
 import "./styles/components.css";
 import "./globals.css";
@@ -20,8 +21,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <html lang="en" className={fontVariables}>
         <body>
           <Spotlight />
-          <BillingBanner />
-          <DeviceGate>{children}</DeviceGate>
+          {/* D2e: the ambient player lives here, outside every page and route segment, so navigation never stops it. */}
+          <SoundProvider>
+            <BillingBanner />
+            <DeviceGate>{children}</DeviceGate>
+          </SoundProvider>
         </body>
       </html>
     </ClerkProvider>
