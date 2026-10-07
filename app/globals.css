@@ -409,7 +409,7 @@ dl.kv dd {
   *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    transition: none !important; /* D3: state changes are instant (no 1-frame lag on focus rings) */
     scroll-behavior: auto !important;
   }
 }
