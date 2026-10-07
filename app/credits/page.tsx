@@ -21,6 +21,7 @@ export default function CreditsPage() {
           <li>Topographic line texture: made with DaVinci AI</li>
           <li>Glass panels card art (recolored to our palette): made with DaVinci AI</li>
           <li>Ambient music loop (off unless you turn it on): made with DaVinci AI</li>
+          <li>Frost texture and the 3D hero scene: made in code for ASCENTRA, without AI (3D drawn with three.js, MIT License)</li>
         </ul>
         <p className="muted">Icons and interface patterns are drawn for ASCENTRA. Fonts: Geist, Geist Mono and Instrument Serif, under the SIL Open Font License.</p>
       </div>
