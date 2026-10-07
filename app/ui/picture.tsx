@@ -6,8 +6,8 @@ export type ArtSet = { base: string; widths: readonly number[]; width: number; h
 
 export const ART = {
   heroSculpture: { base: "/art/hero-sculpture", widths: [480, 720, 960, 1060], width: 1060, height: 1060 },
-  textureTopo: { base: "/art/texture-topo", widths: [800, 1280, 2000], width: 2000, height: 1116 },
-  cardGlass: { base: "/art/card-glass", widths: [640, 960, 1280], width: 1280, height: 714 },
+  textureTopo: { base: "/art/texture-topo", widths: [800, 1280, 1600, 2000], width: 2000, height: 1116 },
+  cardGlass: { base: "/art/card-glass", widths: [640, 960, 1280, 1600, 2000], width: 2000, height: 1116 },
 } as const satisfies Record<string, ArtSet>;
 
 export const srcSet = (a: ArtSet, ext: "avif" | "webp") => a.widths.map((w) => `${a.base}-${w}.${ext} ${w}w`).join(", ");

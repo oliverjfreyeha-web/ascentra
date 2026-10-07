@@ -98,18 +98,19 @@ export function StyleGuide() {
       </Section>
 
       <Section id="sg-contrast" title="Contrast" note="Every text color on every background (at least 4.5:1), and control borders (at least 3:1).">
-        <div className="ui-table-wrap">
+        <div className="ui-table-wrap" tabIndex={0} role="region" aria-label="Contrast table (scrolls sideways)">
           <table className="ui-table">
             <caption>WCAG 2 contrast ratios, computed from the token values.</caption>
             <thead><tr><th scope="col">Foreground</th>{BACKGROUNDS.map((b) => <th key={b} scope="col">on {b.replace("color-", "")}</th>)}</tr></thead>
             <tbody>
               {[...TEXT_COLORS, ...CONTROL_BORDERS].map((f) => (
                 <tr key={f}>
-                  <th scope="row" style={{ color: `var(--${f})` }}>{f.replace("color-", "")}</th>
+                  {/* D3: border colors (3:1 is their bar) are shown as a border sample, not as text in that color. */}
+                  <th scope="row" style={CONTROL_BORDERS.includes(f) ? undefined : { color: `var(--${f})` }}>{CONTROL_BORDERS.includes(f) && <span aria-hidden="true" style={{ display: "inline-block", width: "0.9em", height: "0.9em", marginRight: "0.4em", verticalAlign: "-0.1em", border: `2px solid var(--${f})`, borderRadius: 3 }} />}{f.replace("color-", "")}</th>
                   {BACKGROUNDS.map((b) => {
                     const r = contrast(PALETTE[f], PALETTE[b]);
                     const min = CONTROL_BORDERS.includes(f) ? 3 : 4.5;
-                    return <td key={b} className="num" style={{ background: `var(--${b})`, color: `var(--${f})` }}>{r.toFixed(2)}:1 {r >= min ? "✓" : "✕"}</td>;
+                    return <td key={b} className="num" style={{ background: `var(--${b})`, color: CONTROL_BORDERS.includes(f) ? "var(--color-text)" : `var(--${f})`, boxShadow: CONTROL_BORDERS.includes(f) ? `inset 0 0 0 2px var(--${f})` : undefined }}>{r.toFixed(2)}:1 {r >= min ? "✓" : "✕"}</td>;
                   })}
                 </tr>
               ))}
@@ -288,7 +289,7 @@ export function StyleGuide() {
       </Section>
 
       <Section id="sg-data" title="Table">
-        <div className="ui-table-wrap">
+        <div className="ui-table-wrap" tabIndex={0} role="region" aria-label="Sample data table (scrolls sideways)">
           <table className="ui-table">
             <caption>Sample data.</caption>
             <thead><tr><th scope="col">Course</th><th scope="col" className="num">Lessons</th><th scope="col">Updated</th><th scope="col">State</th></tr></thead>
@@ -317,7 +318,7 @@ export function StyleGuide() {
             <p>A sample empty state. Say what would appear here and the one next step.</p>
             <button type="button" className="ui-btn ui-btn--secondary ui-btn--sm">Next step</button>
           </div>
-          <div className="ui-card ui-stack" aria-busy="true" aria-label="Loading sample">
+          <div className="ui-card ui-stack" role="status" aria-busy="true" aria-label="Loading sample">
             <span className="ui-skeleton ui-skeleton--title" />
             <span className="ui-skeleton" />
             <span className="ui-skeleton" style={{ width: "80%" }} />
@@ -341,7 +342,7 @@ export function StyleGuide() {
           <p className="ui-eyebrow">.ui-hero with .ui-scene (the glows drift slowly; still with reduced motion)</p>
           <h1 style={{ fontSize: "var(--text-3xl)" }}>Sample headline</h1>
         </div>
-        <div className="ui-table-wrap">
+        <div className="ui-table-wrap" tabIndex={0} role="region" aria-label="Depth surfaces table (scrolls sideways)">
           <table className="ui-table">
             <caption>Contrast on the lighter tops of the depth surfaces.</caption>
             <thead><tr><th scope="col">Surface</th><th scope="col">text</th><th scope="col">muted</th><th scope="col">accent</th></tr></thead>

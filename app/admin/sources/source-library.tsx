@@ -121,9 +121,9 @@ export function SourceLibrary() {
           </label>
         </div>
         {sources === null ? <Loading shape="table" /> : sources.length === 0 ? <p className="muted ui-empty ui-empty--inline">No sources.</p> : (
-          <div className="table-wrap">
+          <div className="table-wrap" tabIndex={0} role="region" aria-label="Sources (scrolls sideways)">
             <table>
-              <thead><tr><th>Source</th><th>License</th><th>Status</th><th>Found</th><th>Approved</th><th>Last checked</th><th>Passages</th>{canEdit && <th />}</tr></thead>
+              <thead><tr><th>Source</th><th>License</th><th>Status</th><th>Found</th><th>Approved</th><th>Last checked</th><th>Passages</th>{canEdit && <th><span className="sr-only">Actions</span></th>}</tr></thead>
               <tbody>
                 {sources.map((s) => (
                   <tr key={s.id}>

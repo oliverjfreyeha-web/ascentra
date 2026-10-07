@@ -38,7 +38,7 @@ const STEPS = [
   { title: "Read, practice, ask", body: "Lessons with their sources, practice items, and the Mentor beside each lesson (it needs a Mentor allowance)." },
 ];
 
-const HERO_SIZES = "(min-width: 64rem) 34vw, 86vw";
+const HERO_SIZES = "(min-width: 64rem) 40rem, 86vw";
 
 export default function Home() {
   // The hero sculpture is the largest image on this page: fetch it early, at the size this screen needs.

@@ -125,7 +125,7 @@ export function AuditLog() {
         ) : events.length === 0 ? (
           <p className="muted">No events match.</p>
         ) : (
-          <div className="table-wrap">
+          <div className="table-wrap" tabIndex={0} role="region" aria-label="Audit events (scrolls sideways)">
             <table>
               <thead>
                 <tr><th>#</th><th>When</th><th>Actor</th><th>Action</th><th>Target</th><th>Previous</th><th>New</th><th>Reason</th><th>Result</th><th>Status</th></tr>

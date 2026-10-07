@@ -72,9 +72,9 @@ export function PathPage() {
                 <div className="small">Why: {c.why}</div>
                 <div className="small muted">About {Math.round(c.minutes / 60 * 10) / 10} hours (<CountUp value={c.lessons} /> lesson{c.lessons === 1 ? "" : "s"}): about <CountUp value={c.weeks} /> week{c.weeks === 1 ? "" : "s"} at your pace · last verified {c.lastVerifiedOn ?? "unknown"}</div>
                 <div className="small ui-path__actions">
-                  <button type="button" className="link" disabled={busy || i === 0} aria-label={`Move ${c.name} up`}
+                  <button type="button" className="link" disabled={busy || i === 0} aria-label={`Move up: ${c.name}`}
                     onClick={() => { const o = path.courses.map((x) => x.slug); [o[i - 1], o[i]] = [o[i], o[i - 1]]; void change("PATCH", "/api/v1/learn/path", { order: o }); }}>Move up</button>{" · "}
-                  <button type="button" className="link" disabled={busy || i === path.courses.length - 1} aria-label={`Move ${c.name} down`}
+                  <button type="button" className="link" disabled={busy || i === path.courses.length - 1} aria-label={`Move down: ${c.name}`}
                     onClick={() => { const o = path.courses.map((x) => x.slug); [o[i + 1], o[i]] = [o[i], o[i + 1]]; void change("PATCH", "/api/v1/learn/path", { order: o }); }}>Move down</button>{" · "}
                   <button type="button" className="link" disabled={busy} onClick={() => void change("DELETE", `/api/v1/learn/path/courses/${encodeURIComponent(c.slug)}`)}>Remove</button>
                 </div>

@@ -13,6 +13,8 @@ Originals live in `/art-source` (not served). `node scripts/build-art.mjs` build
 | Soundtrack "Night" (59 s, D2e) | `art-source/night.mp3` (from `davinci_3__night__dark_calm_ambient_instrumental_loop__60_….mp3`) | `public/audio/night.mp3` (96 kbps MP3, 697 KB) | DaVinci AI (AI-generated music) |
 | Frost texture (D2d) | — | `public/art/frost.webp` (768 px, grayscale) | Generated in code by `scripts/build-frost.mjs` (branching crystals, fractal noise, hairline cracks); no AI |
 | 3D hero scene (D2d) | — | `app/landing/hero-3d.ts` (glass blocks, metal ring, particles, light panels) | Modeled in code with three.js (MIT License); no model files, no AI |
+| Brand mark, favicon and app icons (D3) | — | `app/icon.svg`, `app/favicon.ico`, `app/apple-icon.png`, `public/icons/icon-{192,512}.png`, `public/icons/maskable-512.png` | Drawn in code from the palette by `scripts/build-brand.mjs`; no AI, no borrowed art |
+| Social preview image (D3) | — | `app/opengraph-image.jpg` (1200×630) | Composed in code from the palette, set in Instrument Serif and Geist (`scripts/build-brand.mjs`); no AI |
 | Placeholder lesson art (style guide only) | — | `public/art/placeholder-lesson.svg` | Drawn by hand in SVG |
 
 Soundtracks load only after the Ambient sound button is pressed, one at a time (the next is fetched after 30 s of the current one). The list lives in `app/ui/sound/tracks.ts`. All AI-generated assets are used under DaVinci AI's terms. The public credits page is `/credits`.

@@ -101,7 +101,7 @@ export function SecurityConsole() {
         <h2 id="queue-h">Appeals under review</h2>
         {!queue ? <Loading shape="table" /> : queue.length === 0 ? <p className="muted ui-empty ui-empty--inline">No open appeals.</p> : (
           <table className="plain">
-            <thead><tr><th>Reference</th><th>Account</th><th>Step</th><th>Submitted</th><th>Appeal</th><th /></tr></thead>
+            <thead><tr><th>Reference</th><th>Account</th><th>Step</th><th>Submitted</th><th>Appeal</th><th><span className="sr-only">Actions</span></th></tr></thead>
             <tbody>
               {queue.map((a) => (
                 <tr key={a.id}>
@@ -153,7 +153,7 @@ export function SecurityConsole() {
 
           <h3>Devices <span className="muted">{view.devices.filter((d) => d.state === "trusted").length} of {view.deviceLimit} trusted</span></h3>
           <table className="plain">
-            <thead><tr><th>Device</th><th>State</th><th>Trusted</th><th>Last active</th><th /></tr></thead>
+            <thead><tr><th>Device</th><th>State</th><th>Trusted</th><th>Last active</th><th><span className="sr-only">Actions</span></th></tr></thead>
             <tbody>
               {view.devices.map((d) => (
                 <tr key={d.id}>

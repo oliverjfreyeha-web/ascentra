@@ -264,3 +264,23 @@ button.link.danger:hover:not(:disabled) { color: #f7c4c4; text-decoration-color:
   main.ui-admin :is(input, select, textarea) { max-width: 100%; }
   main.ui-admin input[size] { width: min(100%, 20rem); }
 }
+
+/* ── D3 pass 3 · 4K, ultra-wide and phones ── */
+/* Fluid base size: 16px up to 1920 px wide, growing gently to about 21px at 3840 px wide (rem-based layout scales with it). */
+html { font-size: clamp(100%, calc(100% + (100vw - 1920px) * 0.0026), 131.25%); }
+/* The admin Style guide: its grid never grows wider than the screen (it showed a 60 px sideways scroll on phones). */
+.sg { grid-template-columns: minmax(0, 1fr); }
+.sg > *, .sg-section > * { min-width: 0; }
+.sg .ui-table-wrap, .sg pre { max-width: 100%; overflow-x: auto; }
+/* Comfortable touch targets on touch screens. */
+@media (pointer: coarse) {
+  .ui-btn, button:not(.link), select, .ui-select, input:not([type="checkbox"]):not([type="radio"]), .ui-tab, .ui-pill, .ui-choice { min-height: 44px; }
+  button.link, .ui-crumbs a, .site-footer__link { display: inline-block; padding-block: 0.6rem; }
+}
+/* Lesson section headings are h2 (heading order); they keep the quiet D2 size. */
+.ui-prose h2 { margin: var(--space-7) 0 var(--space-3); font-size: var(--text-lg); letter-spacing: var(--tracking-tight); }
+.ui-takeaways h2, .ui-sources h2 { margin-top: 0; }
+/* The selected tab keeps a visible focus ring over the sliding indicator. */
+.ui-tabs.has-indicator .ui-tab[aria-selected="true"]:focus-visible { box-shadow: var(--focus-ring); }
+/* Scroll boxes contain their own screen-reader-only labels (so nothing pokes out sideways on phones). */
+.table-wrap, .ui-table-wrap { position: relative; }

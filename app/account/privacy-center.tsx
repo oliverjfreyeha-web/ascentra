@@ -75,9 +75,9 @@ export function PrivacyCenter() {
       {message && <p role="status">{message}</p>}
       <h3>What you agreed to</h3>
       {data.consents.length === 0 ? <p className="muted">Nothing yet.</p> : (
-        <div className="table-wrap">
+        <div className="table-wrap" tabIndex={0} role="region" aria-label="What you agreed to (scrolls sideways)">
           <table className="plain">
-            <thead><tr><th>Document</th><th>Version</th><th>For</th><th>Status</th><th>When</th><th></th></tr></thead>
+            <thead><tr><th>Document</th><th>Version</th><th>For</th><th>Status</th><th>When</th><th><span className="sr-only">Actions</span></th></tr></thead>
             <tbody>
               {data.consents.map((c) => (
                 <tr key={c.id}>

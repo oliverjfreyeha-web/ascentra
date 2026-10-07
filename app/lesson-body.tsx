@@ -22,18 +22,18 @@ export function LessonView({ body, citations, lastVerifiedOn, uncited }: { body:
       {body.summary && <p className="ui-summary">{body.summary}</p>}
       {body.sections.map((s, i) => (
         <section key={i}>
-          <h3>{s.heading}</h3>
+          <h2>{s.heading}</h2>
           {s.paragraphs.map((p, j) => <p key={j}>{p.text}<Refs p={p} /></p>)}
         </section>
       ))}
       {body.takeaways.length > 0 && (
         <div className="ui-takeaways">
-          <h3>Key takeaways</h3>
+          <h2>Key takeaways</h2>
           <ul>{body.takeaways.map((t, i) => <li key={i}>{t.text}<Refs p={t} /></li>)}</ul>
         </div>
       )}
       <div className="ui-sources">
-      <h3>Sources</h3>
+      <h2>Sources</h2>
       <p className="muted small">
         Last verified: {lastVerifiedOn ?? "unknown"} (the oldest date any of its sources was last checked).
         {uncited ? ` ${uncited} passage(s) have no source and are marked.` : ""}
