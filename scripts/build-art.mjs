@@ -36,9 +36,13 @@ for (const j of jobs) {
   }
 }
 
+// The soundtracks (app/ui/sound/tracks.ts lists them): each re-encoded to 96 kbps stereo MP3, metadata stripped.
+const TRACKS = [["ambient-loop.mp3", "ambient-loop.mp3"], ["focus.mp3", "focus.mp3"], ["deep-study.mp3", "deep-study.mp3"], ["night.mp3", "night.mp3"]];
 try {
-  execFileSync("ffmpeg", ["-y", "-loglevel", "error", "-i", `${SRC}/ambient-loop.mp3`, "-codec:a", "libmp3lame", "-b:a", "96k", "-ac", "2", "-ar", "44100", "-map_metadata", "-1", "public/audio/ambient-loop.mp3"]);
-  console.log(`ambient-loop.mp3: ${(statSync("public/audio/ambient-loop.mp3").size / 1024).toFixed(0)} KB`);
+  for (const [from, to] of TRACKS) {
+    execFileSync("ffmpeg", ["-y", "-loglevel", "error", "-i", `${SRC}/${from}`, "-codec:a", "libmp3lame", "-b:a", "96k", "-ac", "2", "-ar", "44100", "-map_metadata", "-1", `public/audio/${to}`]);
+    console.log(`${to}: ${(statSync(`public/audio/${to}`).size / 1024).toFixed(0)} KB`);
+  }
 } catch {
   console.log("ffmpeg not found: audio not rebuilt");
 }
