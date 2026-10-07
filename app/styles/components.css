@@ -980,3 +980,93 @@ main:not(.landing) > .site-footer { padding-inline: 0; }
 .font-compare__card[data-pair="B"] em { font-style: normal; font-weight: var(--weight-semibold); letter-spacing: -0.035em; }
 .font-compare__card[data-pair="C"] { --font-headline: var(--font-bricolage), var(--font-sans); }
 .font-compare__card[data-pair="C"] .font-compare__hero, .font-compare__card[data-pair="C"] .font-compare__section { font-weight: var(--weight-semibold); letter-spacing: -0.04em; }
+
+/* ── D2d · Live 3D hero stage (app/landing/hero-3d.ts): fades in over the still sculpture once its first frame is drawn ── */
+.hero__stage { position: absolute; inset: -24%; z-index: 1; pointer-events: none; }
+.hero__stage canvas { display: block; width: 100%; height: 100%; opacity: 0; transition: opacity 900ms var(--ease-out); -webkit-mask-image: radial-gradient(closest-side, #000 52%, transparent 98%); mask-image: radial-gradient(closest-side, #000 52%, transparent 98%); }
+.hero[data-scene="on"] .hero__stage canvas { opacity: 1; }
+.hero__sculpture img { transition: opacity 900ms var(--ease-out); }
+.hero[data-scene="on"] .hero__sculpture img { opacity: 0; }
+
+/* D2d · The hero's one accent word: Frozen, with a soft gradient (still Instrument Serif italic). */
+.hero__title em { padding-inline-end: 0.06em; background: linear-gradient(100deg, #dde8f4 0%, var(--color-accent) 48%, #c7d9ec 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+@media (forced-colors: active) { .hero__title em { background: none; color: CanvasText; } }
+
+/* ── D2d · Frost: ice creeping in from the edges and one corner, the middle left clear (app/ui/frost.tsx) ── */
+@property --frost-reach { syntax: "<length>"; inherits: false; initial-value: 8rem; }
+.has-frost { isolation: isolate; }
+.frost { position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none; --frost-reach: 8rem;
+  background: linear-gradient(#dbe8f5, #dbe8f5), none 0 0 / 30rem 30rem repeat;
+  background-blend-mode: multiply;
+  background-position: 0 0, calc(var(--mx, 0px) * -0.035) calc(var(--my, 0px) * -0.035);
+  mix-blend-mode: screen; filter: contrast(1.35) brightness(0.92); opacity: var(--frost-strength);
+  -webkit-mask-image:
+    radial-gradient(var(--frost-reach) calc(var(--frost-reach) * 0.85) at 100% 0, #000 10%, transparent 100%),
+    radial-gradient(calc(var(--frost-reach) * 0.5) calc(var(--frost-reach) * 0.4) at 0 100%, #000, transparent),
+    linear-gradient(to right, #000, transparent calc(var(--frost-reach) * 0.16)),
+    linear-gradient(to left, #000, transparent calc(var(--frost-reach) * 0.16)),
+    linear-gradient(to bottom, #000, transparent calc(var(--frost-reach) * 0.12)),
+    linear-gradient(to top, #000, transparent calc(var(--frost-reach) * 0.16));
+  mask-image:
+    radial-gradient(var(--frost-reach) calc(var(--frost-reach) * 0.85) at 100% 0, #000 10%, transparent 100%),
+    radial-gradient(calc(var(--frost-reach) * 0.5) calc(var(--frost-reach) * 0.4) at 0 100%, #000, transparent),
+    linear-gradient(to right, #000, transparent calc(var(--frost-reach) * 0.16)),
+    linear-gradient(to left, #000, transparent calc(var(--frost-reach) * 0.16)),
+    linear-gradient(to bottom, #000, transparent calc(var(--frost-reach) * 0.12)),
+    linear-gradient(to top, #000, transparent calc(var(--frost-reach) * 0.16));
+  animation: frost-grow 1.2s var(--ease-smooth-out) both; transition: background-position 600ms var(--ease-smooth-out); }
+@keyframes frost-grow { from { --frost-reach: 0rem; opacity: 0; } }
+[data-reveal="wait"] .frost { animation: none; }
+/* The frost map loads after the page (app/landing/tilt-cards.tsx sets data-frost), never before the hero image. */
+.frost { visibility: hidden; }
+[data-frost="on"] .frost { visibility: visible; background-image: linear-gradient(#dbe8f5, #dbe8f5), url("/art/frost.webp"); }
+
+/* ── D2d · Tilt and glare on a few landing cards (app/landing/tilt-cards.tsx) ── */
+[data-tilt][data-tilting] { transform: perspective(900px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)) translateY(-2px); transition: transform var(--duration-fast) var(--ease-smooth-out); }
+.tilt-glare { position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none; opacity: 0; mix-blend-mode: screen;
+  background: radial-gradient(20rem circle at var(--gx, 50%) var(--gy, 0%), rgb(232 237 245 / 0.11), transparent 55%), linear-gradient(115deg, transparent 30%, rgb(214 228 242 / 0.05) 48%, transparent 62%);
+  transition: opacity var(--duration-fast) var(--ease-out); }
+[data-tilting] .tilt-glare { opacity: 1; }
+
+/* ── D2d · Effect tiles: four small dark glass tiles below the hero, still until hovered ── */
+.fx-row { position: relative; z-index: 2; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-4); max-width: calc(76rem + 2 * var(--space-5)); margin: var(--space-7) auto 0; padding: 0 var(--space-5); }
+.fx-tile { position: relative; isolation: isolate; overflow: hidden; aspect-ratio: 16 / 10; border: 1px solid transparent; border-radius: var(--radius-lg);
+  background: var(--noise-panel), linear-gradient(160deg, rgb(22 24 48 / 0.92), rgb(8 8 19 / 0.94)) padding-box, var(--edge-light) border-box;
+  box-shadow: var(--elev-2); -webkit-backdrop-filter: blur(var(--blur-md)); backdrop-filter: blur(var(--blur-md)); }
+.fx-tile__art { position: absolute; inset: 0; z-index: -1; -webkit-mask-image: linear-gradient(to top, transparent 0, #000 45%); mask-image: linear-gradient(to top, transparent 0, #000 45%); }
+.fx-tile__art::before, .fx-tile__art::after, .fx-tile__art > span { content: ""; position: absolute; animation-play-state: paused !important; }
+.fx-tile:hover .fx-tile__art::before, .fx-tile:hover .fx-tile__art::after, .fx-tile:hover .fx-tile__art > span { animation-play-state: running !important; }
+.fx-tile__name { position: absolute; left: var(--space-4); bottom: var(--space-3); font-family: var(--font-mono); font-size: 0.6875rem; letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--color-text-muted); }
+/* Aurora: soft, slow bands of Frozen light. */
+.fx-tile--aurora .fx-tile__art::before { inset: -35%; filter: blur(16px); opacity: 0.9;
+  background: radial-gradient(40% 12% at 34% 52%, rgb(160 189 219 / 0.75), transparent 70%), radial-gradient(34% 10% at 60% 40%, rgb(214 228 242 / 0.55), transparent 70%), radial-gradient(48% 16% at 50% 66%, rgb(110 146 190 / 0.6), transparent 72%), radial-gradient(30% 9% at 70% 58%, rgb(189 210 232 / 0.4), transparent 70%);
+  transform: rotate(-12deg); animation: fx-aurora 7s ease-in-out infinite alternate; }
+@keyframes fx-aurora { to { transform: rotate(6deg) translate(6%, -4%) scale(1.1); } }
+/* Ripple: still rings; hovered, a ring spreads out from the center. */
+.fx-tile--ripple .fx-tile__art > span { inset: 0; background: radial-gradient(circle at 50% 46%, rgb(214 228 242 / 0.9) 0 3px, rgb(160 189 219 / 0.25) 4px, transparent 12px), repeating-radial-gradient(circle at 50% 46%, transparent 0 17px, rgb(160 189 219 / 0.22) 18px, transparent 19px 30px); -webkit-mask-image: radial-gradient(circle at 50% 46%, #000 20%, transparent 62%); mask-image: radial-gradient(circle at 50% 46%, #000 20%, transparent 62%); }
+.fx-tile--ripple .fx-tile__art::before, .fx-tile--ripple .fx-tile__art::after { left: 50%; top: 46%; width: 70%; aspect-ratio: 1; margin: -35% 0 0 -35%; border: 1px solid rgb(189 210 232 / 0.55); border-radius: 50%; opacity: 0; transform: scale(0.15); animation: fx-ripple 2.4s var(--ease-out) infinite; }
+.fx-tile--ripple .fx-tile__art::after { animation-delay: 1.2s; }
+@keyframes fx-ripple { 0% { opacity: 0.8; transform: scale(0.15); } 100% { opacity: 0; transform: scale(1.4); } }
+/* Glass: one frosted pane; hovered, it turns a little and light runs across it. */
+.fx-tile--glass .fx-tile__art { -webkit-mask-image: none; mask-image: none; }
+.fx-tile--glass .fx-tile__art > span { left: 36%; top: 14%; width: 28%; height: 62%; border-radius: 14px; border: 1px solid transparent;
+  background: linear-gradient(150deg, rgb(232 237 245 / 0.14), rgb(160 189 219 / 0.04) 60%, rgb(232 237 245 / 0.1)) padding-box, var(--edge-light-strong) border-box;
+  box-shadow: 0 18px 40px -18px rgb(0 0 0 / 0.8), inset 0 0 18px rgb(214 228 242 / 0.08); transform: perspective(500px) rotateY(-16deg) rotateX(6deg); animation: fx-glass 3.2s var(--ease-in-out) infinite alternate; }
+.fx-tile--glass .fx-tile__art::after { inset: 0; background: linear-gradient(105deg, transparent 35%, rgb(232 237 245 / 0.14) 48%, transparent 58%); background-size: 250% 100%; background-position: 120% 0; animation: fx-sheen 3.2s var(--ease-in-out) infinite alternate; }
+@keyframes fx-glass { to { transform: perspective(500px) rotateY(14deg) rotateX(-4deg); } }
+@keyframes fx-sheen { to { background-position: -20% 0; } }
+.frost--tile { opacity: calc(var(--frost-strength) * 0.9); -webkit-mask-image: radial-gradient(70% 80% at 100% 0, #000, transparent 75%); mask-image: radial-gradient(70% 80% at 100% 0, #000, transparent 75%); animation: none; }
+/* Spotlight: a soft cone of cool light; hovered, it sweeps slowly. */
+.fx-tile--spotlight .fx-tile__art::before { inset: -20% -10% 0 0; transform-origin: 88% 0; filter: blur(8px);
+  background: conic-gradient(from 198deg at 88% 0, transparent 0deg, rgb(214 228 242 / 0.32) 12deg, rgb(160 189 219 / 0.16) 22deg, transparent 34deg); animation: fx-spot 4s var(--ease-in-out) infinite alternate; }
+.fx-tile--spotlight .fx-tile__art::after { left: 18%; bottom: 14%; width: 46%; height: 18%; border-radius: 50%; background: radial-gradient(closest-side, rgb(189 210 232 / 0.32), transparent); filter: blur(4px); animation: fx-pool 4s var(--ease-in-out) infinite alternate; }
+@keyframes fx-spot { to { transform: rotate(14deg); } }
+@keyframes fx-pool { to { transform: translateX(-30%); } }
+@media (max-width: 60rem) { .fx-row { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: var(--space-6); } }
+@media (max-width: 40rem) { .fx-row { gap: var(--space-3); padding: 0 var(--space-4); } }
+@media (prefers-reduced-motion: reduce) {
+  .fx-tile__art::before, .fx-tile__art::after, .fx-tile__art > span { animation: none !important; }
+  .fx-tile--ripple .fx-tile__art::before, .fx-tile--ripple .fx-tile__art::after { display: none; }
+  .frost { animation: none; transition: none; }
+  [data-tilt][data-tilting] { transform: none; }
+}

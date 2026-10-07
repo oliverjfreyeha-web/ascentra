@@ -3,6 +3,10 @@ import { preload } from "react-dom";
 import { AccountPanel } from "./account-panel";
 import { ServiceStatus } from "./service-status";
 import { HeroMotion } from "./landing/hero-motion";
+import { HeroScene } from "./landing/hero-scene";
+import { EffectTiles } from "./landing/effect-tiles";
+import { TiltCards } from "./landing/tilt-cards";
+import { Frost } from "./ui/frost";
 import { Crosshair } from "./ui/hud";
 import { Icon, type IconName } from "./ui/icons";
 import { ART, Picture, srcSet } from "./ui/picture";
@@ -10,18 +14,18 @@ import { SiteFooter } from "./ui/site-footer";
 import { Reveal } from "./ui/reveal";
 
 // D2b: every line here describes how ASCENTRA already works (the screens and notices it links to say the same).
-const FEATURES: { n: string; label: string; icon: IconName; title: string; body: string; size: "wide" | "tall" | "small"; art?: "left" | "right" }[] = [
+const FEATURES: { n: string; label: string; icon: IconName; title: string; body: string; size: "wide" | "tall" | "small"; art?: "left" | "right"; tilt?: boolean }[] = [
   { n: "01", label: "Lessons", icon: "cite", title: "Cited, line by line", size: "wide",
     body: "Each lesson is written from approved sources and cites them inline. A passage without a source is marked, and every lesson shows when it was last verified.",
     art: "left" },
   { n: "02", label: "Mentor", icon: "mentor", title: "An AI Mentor that shows its sources", size: "tall",
     body: "The Mentor (Claude, an AI) answers from the course's approved sources, cites them, and says when they don't cover a question. It won't do graded work.",
     art: "right" },
-  { n: "03", label: "Your path", icon: "path", title: "A path from four questions", size: "small",
+  { n: "03", tilt: true, label: "Your path", icon: "path", title: "A path from four questions", size: "small",
     body: "Goal, level, time and topics. Your path is picked from published courses; nothing is generated just for you." },
-  { n: "04", label: "Practice", icon: "practice", title: "Honest about grading", size: "small",
+  { n: "04", tilt: true, label: "Practice", icon: "practice", title: "Honest about grading", size: "small",
     body: "Graded checks show the answer with a cited explanation. Everything else is labeled practice, not graded." },
-  { n: "05", label: "Privacy", icon: "privacy", title: "Your data, your call", size: "small",
+  { n: "05", tilt: true, label: "Privacy", icon: "privacy", title: "Your data, your call", size: "small",
     body: "Download your data or request deletion in the Privacy Center. Mentor conversations aren't used to train AI models." },
   { n: "06", label: "Families", icon: "family", title: "Teens join with a Guardian", size: "wide",
     body: "Learners 14 to 17 need a parent or guardian, who confirms they're an adult and agrees to the teen terms before anything starts." },
@@ -56,9 +60,12 @@ export default function Home() {
         </div>
         <div className="hero__art" aria-hidden="true">
           <Picture art={ART.heroSculpture} sizes={HERO_SIZES} className="hero__sculpture" priority />
+          <HeroScene />
         </div>
         <HeroMotion />
       </header>
+      <EffectTiles />
+      <TiltCards />
 
       <section className="landing__section hud-ruler" aria-labelledby="features-h">
         <div className="landing__head" data-reveal>
@@ -67,7 +74,9 @@ export default function Home() {
         </div>
         <div className="bento">
           {FEATURES.map((f, i) => (
-            <article key={f.n} className={`ui-tile hud-frame bento__${f.size}`} data-reveal style={{ ["--i" as string]: i % 3 }}>
+            <article key={f.n} className={`ui-tile hud-frame has-frost bento__${f.size}`} data-reveal data-tilt={f.tilt ? "" : undefined} style={{ ["--i" as string]: i % 3 }}>
+              <Frost />
+              {f.tilt && <span className="tilt-glare" aria-hidden="true" />}
               <p className="ui-label ui-tile__label"><span className="ui-num">{f.n}</span> / {f.label}</p>
               <span className="ui-tile__icon"><Icon name={f.icon} /></span>
               <h3>{f.title}</h3>
