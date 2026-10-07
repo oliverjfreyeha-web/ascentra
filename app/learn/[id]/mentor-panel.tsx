@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { call } from "../../call";
 import { mentorReplyFrom, mentorThreadFrom, mentorThreadsFrom, type MentorInfo, type MentorMessage } from "../../mentor-api";
+import { Meter } from "../../ui/meter";
 
 const KIND_NOTE: Partial<Record<NonNullable<MentorMessage["kind"]>, string>> = {
   not_in_sources: "Not in the course's sources",
@@ -92,7 +93,7 @@ export function MentorPanel({ lessonId }: { lessonId: string }) {
       {status === "paused" && <p className="muted small">This conversation is paused. Start a new one to keep going with your lesson.</p>}
       {info?.allowance.line && (
         <p className="small ui-meter-line" aria-label="Mentor allowance meter">
-          <meter min={0} max={info.allowance.usableUsd || 1} value={Math.min(info.allowance.usedUsd, info.allowance.usableUsd)} />{" "}
+          <Meter max={info.allowance.usableUsd || 1} value={Math.min(info.allowance.usedUsd, info.allowance.usableUsd)} />{" "}
           {info.allowance.line}{info.allowance.trial ? " (free trial allowance)" : ""}
         </p>
       )}

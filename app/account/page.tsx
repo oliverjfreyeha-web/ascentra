@@ -5,11 +5,13 @@ import { BillingPanel } from "./billing-panel";
 import { DevicesPanel } from "./devices-panel";
 import { PrivacyCenter } from "./privacy-center";
 import { SiteFooter } from "../ui/site-footer";
+import { Reveal } from "../ui/reveal";
 
 // Passkeys, password and second factor are managed by Clerk. ASCENTRA stores none of them.
 export default function AccountPage() {
   return (
     <main className="ui-main-wide">
+      <Reveal selector=".ui-block, .ui-course, .ui-path > li" />
       <nav className="ui-crumbs" aria-label="Breadcrumb">
         <Link href="/">Home</Link> · <SignOut />
       </nav>

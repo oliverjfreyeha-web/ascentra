@@ -176,3 +176,25 @@ describe("D2d: 3D hero, frost, effect tiles and tilt", () => {
     expect(readFileSync("app/landing/tilt-cards.tsx", "utf8")).toMatch(/prefers-reduced-motion: reduce/);
   });
 });
+
+describe("D3: glow, motion and activities", () => {
+  const polish = readFileSync("app/styles/polish.css", "utf8");
+  it("glow is a token set built from the palette, and status labels never glow", () => {
+    for (const t of ["--glow-ice", "--glow-frozen", "--glow-steel", "--glow-blur", "--glow-spread", "--glow-ring"]) expect(main).toContain(t);
+    expect(polish).toMatch(/\.ui-status, \.st, \.ui-status \* \{ box-shadow: none !important; text-shadow: none !important; filter: none !important; \}/);
+  });
+  it("ambient motion is landing-only, pauses off-screen, and stops with reduced motion", () => {
+    expect(polish).toMatch(/\[data-ambient\]\[data-paused\][^{]*\{ animation-play-state: paused !important; \}/);
+    const rm = polish.slice(polish.lastIndexOf("@media (prefers-reduced-motion: reduce)"));
+    expect(rm).toMatch(/\.closing__glow, \.ui-btn--breathe::after/);
+    expect(readFileSync("app/learn/[id]/page.tsx", "utf8")).not.toMatch(/Reveal|AmbientPause|data-ambient/);
+    expect(readFileSync("app/ui/ambient-pause.tsx", "utf8")).not.toMatch(/SoundEngine|useSound/); // animations only, never the sound
+  });
+  it("graded and practice items look different and keep their labels in words", () => {
+    const src = readFileSync("app/learn/[id]/practice.tsx", "utf8");
+    expect(src).toMatch(/data-graded=\{a\.graded \? "true" : "false"\}/);
+    expect(src).toMatch(/\{a\.graded \? "Graded" : a\.label\}/);
+    expect(polish).toMatch(/\.ui-act\[data-graded="false"\][^{]*\{ border: 1px dashed/);
+    expect(polish).toMatch(/@keyframes result-in \{ from \{ transform: translateY\(6px\); \} \}/); // transform only: never hides the answer
+  });
+});

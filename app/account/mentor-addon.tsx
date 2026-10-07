@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { call } from "../call";
 import { addonChangeFrom, addonName, addonQuoteFrom, usd, type AddonCents, type AddonQuote, type AllowanceView } from "../billing-api";
+import { Meter } from "../ui/meter";
 
 const day = (iso: string | null | undefined) => (iso ? new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" }) : "your next renewal");
 type Terms = { title: string; version: string; body: string };
@@ -12,7 +13,7 @@ export function AllowanceMeter({ a }: { a: AllowanceView }) {
   if (!a.line) return null;
   return (
     <p aria-label="Mentor allowance meter" className="ui-meter-line">
-      <meter min={0} max={a.usableUsd || 1} value={Math.min(a.usedUsd, a.usableUsd)} /> {a.line}
+      <Meter max={a.usableUsd || 1} value={Math.min(a.usedUsd, a.usableUsd)} /> {a.line}
       {a.trial ? " (free trial allowance; the add-on is first charged when the trial converts)" : ""}
       {a.nextAddonCents !== a.addonCents ? `. From ${day(a.resetsAt)}: ${addonName(a.nextAddonCents)}.` : ""}
     </p>

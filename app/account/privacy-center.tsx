@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useReverification } from "@clerk/nextjs";
 import { call, when } from "../call";
+import { Loading } from "../ui/loading";
 
 type Consent = {
   id: string; title: string; version: string; status: "given" | "withdrawn"; at: string; method: string;
@@ -67,7 +68,7 @@ export function PrivacyCenter() {
     });
   }
 
-  if (!data) return <section className="ui-block"><h2>Privacy Center</h2><p className="muted">{message ?? "Loading…"}</p></section>;
+  if (!data) return <section className="ui-block"><h2>Privacy Center</h2>{message ? <p className="muted ui-state ui-state--error">{message}</p> : <Loading shape="list" />}</section>;
   return (
     <section aria-labelledby="privacy-h" className="ui-block">
       <h2 id="privacy-h">Privacy Center</h2>
