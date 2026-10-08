@@ -35,7 +35,7 @@ describe("D5 · motion safety and performance", () => {
     expect(gl).toMatch(/if \(now - last < 33\) return; \/\/ 30 fps cap/);
     expect(gl).toMatch(/document\.hidden/);
     expect(gl).toMatch(/dialog\[open\]/);
-    expect(gl).toMatch(/if \(avg > 40\)[^]*now - slowFrom >= 2000\) \{ opts\.onSlow\(\)/);
+    expect(gl).toMatch(/if \(now - winStart >= 2000\) \{\s*if \(sum \/ count > 40\) \{ opts\.onSlow\(\); return; \}/);
     expect(gl).toMatch(/Math\.min\(window\.devicePixelRatio \|\| 1, 1\.5\)/);
   });
   it("the wallpaper code loads only after idle, as its own chunk, and never on admin screens", () => {

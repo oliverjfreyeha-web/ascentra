@@ -198,21 +198,24 @@ export function mountEnv(host: HTMLElement, opts: { scene: EnvScene; reduce: boo
   // ── pausing and the slow-device check ──
   const covered = () => !!document.querySelector("dialog[open]");
   const running = () => !destroyed && ready && !opts.reduce && !document.hidden && !covered() && window.scrollY < window.innerHeight * 1.5;
-  let slowFrom = 0, sum = 0, count = 0, prev = 0;
+  // Slow-device check: every browser frame (not only the frames this draws) over a rolling 2 s window. If they average
+  // more than 40 ms, the page is struggling (the wallpaper plus everything over it), so hand over to the still photo.
+  let winStart = 0, sum = 0, count = 0, prev = 0;
   const loop = (now: number) => {
     frame = 0;
-    if (!running()) { prev = 0; slowFrom = 0; return; } // stops; wake() restarts it
+    if (!running()) { prev = 0; winStart = 0; sum = 0; count = 0; return; } // stops; wake() restarts it
     frame = requestAnimationFrame(loop);
-    if (now - last < 33) return; // 30 fps cap
     if (prev) {
       sum += now - prev; count++;
-      if (count >= 10) {
-        const avg = sum / count; sum = 0; count = 0;
-        if (avg > 40) { if (!slowFrom) slowFrom = now; else if (now - slowFrom >= 2000) { opts.onSlow(); return; } }
-        else slowFrom = 0;
+      if (!winStart) winStart = now;
+      if (now - winStart >= 2000) {
+        if (sum / count > 40) { opts.onSlow(); return; }
+        winStart = now; sum = 0; count = 0;
       }
     }
-    prev = now; last = now;
+    prev = now;
+    if (now - last < 33) return; // 30 fps cap
+    last = now;
     draw(now);
   };
   const wake = () => { if (!frame && running()) frame = requestAnimationFrame(loop); };

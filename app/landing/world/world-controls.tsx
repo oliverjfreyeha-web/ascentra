@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { useAuth } from "@clerk/nextjs";
 import { applyPrefs, GLASSES, readPrefs, SCENE_INFO, SCENES, writePref, type Glass, type Prefs, type Scene } from "../../env/prefs";
 
@@ -52,8 +53,10 @@ export function WorldDock({ hideable = true }: { hideable?: boolean }) {
           {hideable && <button ref={hideBtn} type="button" className="world__pill ui-plain" onClick={() => setHidden(true)}>Hide interface</button>}
         </div>
       </div>
-      {hidden && (
-        <button ref={showBtn} type="button" className="world__show ui-glass ui-plain" onClick={() => { setHidden(false); requestAnimationFrame(() => hideBtn.current?.focus()); }}>Show interface</button>
+      {/* Outside the hidden (inert) interface, so it stays reachable and can take focus. */}
+      {hidden && createPortal(
+        <button ref={showBtn} type="button" className="world__show ui-glass ui-plain" onClick={() => { setHidden(false); requestAnimationFrame(() => hideBtn.current?.focus()); }}>Show interface</button>,
+        document.body,
       )}
     </>
   );

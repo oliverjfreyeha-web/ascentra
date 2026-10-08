@@ -71,3 +71,4 @@
 .world-hall { position: relative; }
 .world-hall__dock { position: absolute; z-index: 4; left: 0; right: 0; bottom: clamp(1rem, 3vh, 2rem); padding: 0 1rem; }
 @media (max-width: 47.5rem) { .world-hall__dock { bottom: 1rem; } }
+.world__show:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
