@@ -1,0 +1,182 @@
+/*
+ * D4 · The Hall (app/landing/hall). Layers, bottom to top: photo, replacement sky (masked to the sky, so it never paints
+ * over the building), stars, clouds, rim light, window lights and door, foliage (cut from the photo, so the lights sit
+ * behind the hedges), tint, mist, wash and grain, fireflies, scrim, then the words and links.
+ * Every visual layer is decorative and ignores the pointer. Only transform and opacity animate; the phase variables are
+ * written by app/landing/hall/hall-life.tsx when the visitor's clock moves the sky visibly.
+ */
+.hall {
+  /* Phase variables (dusk until the boot script sets the visitor's real phase). */
+  --sky-op: 0; --sk-top: rgb(12 41 87); --sk-mid: rgb(30 66 114); --sk-hor: rgb(150 120 130); --stars: 0.12;
+  --cloud: rgb(9 14 40 / 0.55); --imgf: none; --tint: rgb(0 0 0); --tint-op: 0; --win: 1; --mistop: 0.55; --wash: 1;
+  --scrim: 0; --glass-day: 0; --hero-shadow: rgb(2 3 12 / 0.55);
+  --sx: -50%;
+  --hall-ease: var(--ease-smooth-out);
+  --hall-lede: #c4cce2;
+  --hall-note: #dfe7f6;
+  --hall-mute: #d6deef;
+  position: relative;
+  isolation: isolate;
+  height: 100svh;
+  min-height: 36rem;
+  overflow: hidden;
+  container-type: size;
+  background: var(--color-base);
+}
+.hall__scene { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+.hall__scene * { pointer-events: none; }
+
+/* The stage keeps the photo's 1344 × 752 shape and always covers the hero; a slow push-in over 40 s. */
+.hall__stage { position: absolute; left: 50%; top: 44%; width: max(100cqw, 190cqh); aspect-ratio: 1344 / 752;
+  transform: translate(var(--sx), -50%) scale(1); animation: hall-push 40s var(--hall-ease) forwards; }
+@keyframes hall-push { to { transform: translate(var(--sx), -50%) scale(1.07); } }
+.hall__stage > *, .hall__photo img { position: absolute; inset: 0; width: 100%; height: 100%; }
+.hall__photo img { display: block; filter: var(--imgf); }
+
+/* Replacement sky: masked by an alpha map cut from the photo (scripts/d4-assets.mjs). */
+.hall__sky { overflow: hidden;
+  -webkit-mask: url("/art/hall-sky-mask.png") center / 100% 100% no-repeat; mask: url("/art/hall-sky-mask.png") center / 100% 100% no-repeat; }
+.hall__sky-fill { position: absolute; inset: 0; opacity: var(--sky-op); background: linear-gradient(180deg, var(--sk-top) 0%, var(--sk-mid) 38%, var(--sk-hor) 66%, var(--sk-hor) 100%); }
+.hall__stars { position: absolute; inset: 0; opacity: var(--stars); }
+.hall__stars i { position: absolute; inset: 0; background-repeat: no-repeat; animation: hall-twinkle 5s ease-in-out infinite; }
+.hall__stars i:nth-child(2) { animation-delay: -1.7s; animation-duration: 6.2s; }
+.hall__stars i:nth-child(3) { animation-delay: -3.3s; animation-duration: 7.4s; }
+@keyframes hall-twinkle { 50% { opacity: 0.4; } }
+.hall__cloud { position: absolute; width: 46%; height: 20%; border-radius: 50%; filter: blur(20px); background: radial-gradient(closest-side, var(--cloud), transparent); }
+.hall__cloud--1 { top: 10%; left: -30%; animation: hall-cloud 130s linear infinite; }
+.hall__cloud--2 { top: 28%; left: -50%; width: 62%; height: 17%; opacity: 0.8; animation: hall-cloud 180s linear -70s infinite; }
+.hall__cloud--3 { top: 3%; left: -40%; width: 38%; height: 15%; opacity: 0.7; animation: hall-cloud 100s linear -30s infinite; }
+@keyframes hall-cloud { to { transform: translateX(290%); } }
+
+/* A faint cool light on the portico. */
+.hall__rim { left: 44% !important; top: 30% !important; width: 22% !important; height: 42% !important; mix-blend-mode: screen;
+  background: radial-gradient(closest-side, rgb(190 215 255 / 0.1), transparent); animation: hall-breathe 9s ease-in-out infinite; }
+@keyframes hall-breathe { 50% { opacity: 0.45; } }
+
+/* Windows: warm panes with glazing bars. Lit at their own brightness (--b); the whole set follows the phase (--win). */
+.hall__wins { opacity: var(--win); }
+.hall__win { position: absolute; overflow: hidden; border-radius: 1px; mix-blend-mode: screen; opacity: var(--b);
+  background:
+    linear-gradient(90deg, transparent calc(50% - 0.5px), rgb(30 20 10 / 0.55) calc(50% - 0.5px), rgb(30 20 10 / 0.55) calc(50% + 0.5px), transparent calc(50% + 0.5px)),
+    linear-gradient(180deg, transparent calc(33% - 0.5px), rgb(30 20 10 / 0.5) calc(33% - 0.5px), rgb(30 20 10 / 0.5) calc(33% + 0.5px), transparent calc(33% + 0.5px), transparent calc(66% - 0.5px), rgb(30 20 10 / 0.5) calc(66% - 0.5px), rgb(30 20 10 / 0.5) calc(66% + 0.5px), transparent calc(66% + 0.5px)),
+    linear-gradient(180deg, #f7d5a0 0%, #e9a85f 60%, #c98340 100%);
+  box-shadow: 0 0 0.9cqw 0.12cqw rgb(255 190 110 / 0.38), 0 0 3cqw 0.4cqw rgb(255 170 90 / 0.16); }
+/* The one authored moment: at dusk and night the lights come on, spreading from the middle, each with one soft dip
+ * (12% → 34% of 1.5 s: about 330 ms, under 400 ms), never more than once per window. */
+.hall:is([data-phase="dusk"], [data-phase="night"]) .hall__wins:not([data-lit]) .hall__win { animation: hall-win-on 1.5s var(--hall-ease) var(--d) both; }
+.hall:is([data-phase="dusk"], [data-phase="night"]) .hall__wins:not([data-lit]) :is(.hall__door, .hall__spill) { animation: hall-fade-in 2s var(--hall-ease) 4.8s both; }
+@keyframes hall-win-on { 0% { opacity: 0; } 12% { opacity: calc(var(--b) * 0.9); } 20% { opacity: calc(var(--b) * 0.25); } 34% { opacity: calc(var(--b) * 0.8); } 100% { opacity: var(--b); } }
+@keyframes hall-fade-in { from { opacity: 0; } }
+/* Life in the rooms, once lit: every change is a fade of 1.5 s or longer. */
+.hall__wins[data-lit] .hall__win { transition: opacity 1.8s ease; }
+.hall__wins[data-lit] .hall__win.is-dim { opacity: calc(var(--b) * 0.45); transition-duration: 2.2s; }
+.hall__wins[data-lit] .hall__win.is-off { opacity: 0; transition-duration: 1.6s; }
+.hall__win::after { content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 38%; transform: translateX(-110%); background: linear-gradient(90deg, transparent, rgb(30 20 10 / 0.55), transparent); }
+.hall__wins[data-lit] .hall__win.is-passing::after { animation: hall-pass 3.4s ease-in-out forwards; }
+@keyframes hall-pass { to { transform: translateX(280%); } }
+.hall__door { position: absolute; left: 60.4%; top: 58.5%; width: 3%; height: 10.2%; opacity: 0.5; mix-blend-mode: screen; background: linear-gradient(180deg, #f2c98f, #d4914d); box-shadow: 0 0 1.4cqw 0.3cqw rgb(255 190 110 / 0.35); }
+.hall__spill { position: absolute; left: 55%; top: 68%; width: 13%; height: 5%; filter: blur(6px); mix-blend-mode: screen; background: radial-gradient(closest-side, rgb(255 190 110 / 0.32), transparent); }
+
+/* Foliage in front of the lights: the photo's own hedges and small trees, swaying a fraction of a pixel. */
+.hall__foliage { top: 37.899% !important; height: 35.505% !important; transform-origin: 50% 100%; animation: hall-sway 9s ease-in-out infinite alternate; }
+.hall__foliage img { display: block; width: 100%; height: 100%; filter: var(--imgf); }
+@keyframes hall-sway { from { transform: translateX(-0.5px) skewX(-0.08deg); } to { transform: translateX(0.6px) skewX(0.1deg); } }
+.hall__tint { mix-blend-mode: soft-light; background: var(--tint); opacity: var(--tint-op); }
+
+/* Atmosphere over the whole hero. */
+.hall__mist { position: absolute; left: -10%; right: -10%; height: 30%; filter: blur(18px); opacity: var(--mistop); }
+.hall__mist--1 { top: 63%; background: radial-gradient(60% 50% at 30% 50%, rgb(160 189 219 / 0.3), transparent 70%), radial-gradient(50% 45% at 78% 55%, rgb(160 189 219 / 0.22), transparent 70%); animation: hall-drift 38s ease-in-out infinite alternate; }
+.hall__mist--2 { top: 70%; opacity: calc(var(--mistop) * 0.7); background: radial-gradient(55% 45% at 60% 50%, rgb(200 215 235 / 0.26), transparent 70%); animation: hall-drift 55s ease-in-out infinite alternate-reverse; }
+@keyframes hall-drift { from { transform: translateX(-4%); } to { transform: translateX(5%); } }
+.hall__wash { position: absolute; inset: 0; opacity: var(--wash); background:
+  linear-gradient(180deg, transparent 0%, transparent 45%, rgb(8 8 19 / 0.55) 78%, var(--color-base) 100%),
+  radial-gradient(120% 90% at 55% 45%, transparent 55%, rgb(8 8 19 / 0.55) 100%),
+  linear-gradient(90deg, rgb(8 8 19 / 0.55), transparent 42%); }
+/* The page always ends in Black Iris, whatever the phase, so the next section meets it cleanly. */
+.hall__scene::after { content: ""; position: absolute; inset: auto 0 0; height: 18%; background: linear-gradient(180deg, transparent, var(--color-base)); }
+.hall__grain { position: absolute; inset: 0; opacity: 0.07; mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"); }
+.hall__fireflies { position: absolute; inset: 0; width: 100%; height: 100%; mix-blend-mode: screen; }
+/* A scrim behind the words at every phase, deepest by day (--scrim rises from 0 at night to 1 by day), so every line
+ * keeps at least 4.5:1 (3:1 for the headline) against the brightest part of the picture behind it. */
+.hall__scrim { position: absolute; inset: 0; opacity: calc(0.72 + var(--scrim) * 0.28);
+  background: linear-gradient(90deg, rgb(6 10 40 / 0.8), rgb(6 10 40 / 0.58) 34%, rgb(6 10 40 / 0.22) 52%, transparent 68%), linear-gradient(180deg, rgb(6 10 40 / 0.45), transparent 26%); }
+
+/* ── The words and links ───────────────────────────────────────────────────────────────────────── */
+.hall__nav { position: absolute; z-index: 3; top: 1.375rem; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 0.375rem;
+  padding: 0.5rem 0.5rem 0.5rem 1.25rem; border-radius: 999px; white-space: nowrap; }
+.hall__mark { margin-right: 0.875rem; color: var(--color-text); font-weight: 600; font-size: 0.8125rem; letter-spacing: 0.18em; text-decoration: none; }
+.hall__navlink, .hall__go { display: inline-flex; align-items: center; min-height: 2.5rem; padding: 0 0.875rem; border-radius: 999px; font-size: 0.875rem; text-decoration: none; }
+.hall__navlink { color: var(--hall-mute); transition: color var(--duration-quick) var(--hall-ease), background-color var(--duration-quick) var(--hall-ease); }
+.hall__go { color: var(--color-on-accent); background: #eaf2fc; font-weight: 500; transition: background-color var(--duration-quick) var(--hall-ease); }
+@media (hover: hover) and (pointer: fine) {
+  .hall__navlink:hover { color: var(--color-text); background: rgb(255 255 255 / 0.07); }
+  .hall__go:hover { background: #fff; }
+}
+.hall a:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.hall__mark:focus-visible { border-radius: 4px; }
+
+.hall__copy { position: absolute; z-index: 2; left: clamp(1.25rem, 5.5vw, 6rem); top: clamp(6rem, 17cqh, 12rem); max-width: min(47.5rem, 88vw); }
+.hall__title { margin: 0; font-family: var(--font-headline); font-weight: var(--weight-regular); font-size: clamp(2.75rem, 6vw, 5.75rem); line-height: 0.98;
+  letter-spacing: -0.02em; text-wrap: balance; color: var(--color-text); text-shadow: 0 2px 30px var(--hero-shadow); }
+.hall__title > * { display: block; }
+.hall__title em { font-family: var(--font-accent); font-style: italic; color: var(--color-accent); padding-inline-end: 0.06em; }
+.hall__lede { margin: 1.375rem 0 0; max-width: 46ch; font-size: clamp(0.9375rem, 1.25vw, 1.125rem); line-height: 1.6; color: var(--hall-lede); text-wrap: pretty; text-shadow: 0 1px 14px var(--hero-shadow); }
+.hall__cta { display: flex; flex-wrap: wrap; gap: 0.75rem; margin: 1.875rem 0 0; }
+/* Buttons: press feedback in 160 ms, hover lift only with a real pointer (D4 animation audit). */
+.hall__btn { display: inline-flex; align-items: center; min-height: 3rem; padding: 0 1.5rem; border-radius: 999px; font-size: 0.9375rem; font-weight: 500; text-decoration: none; cursor: pointer;
+  transition: transform 160ms var(--hall-ease), box-shadow var(--duration-quick) var(--hall-ease), background-color var(--duration-quick) var(--hall-ease); }
+.hall__btn:active { transform: scale(0.97); }
+.hall__btn--primary { color: var(--color-on-accent); background: linear-gradient(180deg, #f4f9ff, #c9dcf2); box-shadow: inset 0 1px 0 #fff, 0 10px 30px -10px rgb(160 189 219 / 0.7); }
+.hall__btn--glass { color: var(--color-text); }
+@media (hover: hover) and (pointer: fine) {
+  .hall__btn--primary:hover { box-shadow: inset 0 1px 0 #fff, 0 14px 40px -8px rgb(160 189 219 / 0.95); transform: translateY(-1px); }
+  .hall__btn--glass:hover { transform: translateY(-1px); }
+  .hall__btn:active { transform: scale(0.97); }
+}
+.hall .hall__btn:focus-visible { box-shadow: var(--focus-ring); }
+
+.hall__note { position: absolute; z-index: 2; left: clamp(1.25rem, 5.5vw, 6rem); bottom: clamp(1.25rem, 5cqh, 3rem); width: min(21.25rem, calc(100vw - 2.5rem)); padding: 1.125rem 1.25rem; border-radius: 22px; }
+.hall__note p { margin: 0; font-size: 0.90625rem; line-height: 1.5; color: var(--hall-note); }
+.hall__note b { font-weight: 500; color: #fff; }
+
+/* By day the glass over the hero takes a deeper Black Iris shade, so its text stays at least 4.5:1. */
+.hall .ui-glass { --glass-shade: calc(0.74 + var(--glass-day) * 0.06); }
+
+/* Narrow screens: centre the stage on the portico (about 62% across the photo), keep only the essentials. */
+@media (max-width: 47.5rem) {
+  .hall { --sx: -62%; }
+  .hall__navlink--wide { display: none; }
+  .hall__nav { padding-left: 1rem; }
+  .hall__mark { margin-right: 0.25rem; }
+  .hall__copy { top: 5.5rem; }
+  .hall__note { display: none; }
+}
+/* On narrow and portrait screens the words sit over the portico: the scrim runs top-down across the full width. */
+@media (max-width: 47.5rem), (max-aspect-ratio: 1 / 1) {
+  .hall__scrim { background: linear-gradient(180deg, rgb(6 10 40 / 0.7) 0, rgb(6 10 40 / 0.8) 44%, rgb(6 10 40 / 0.62) 64%, transparent 84%); }
+}
+@media (max-height: 40rem) and (max-width: 47.5rem) { .hall__copy { top: 4.75rem; } }
+
+/* Paused while off-screen or the tab is hidden (data-paused from app/ui/ambient-pause.tsx). */
+.hall[data-paused] .hall__scene *, .hall[data-paused] .hall__scene { animation-play-state: paused !important; }
+
+/* Reduced motion: no push-in, sway, drift, twinkle or window life; windows are simply lit; no fireflies. */
+@media (prefers-reduced-motion: reduce) {
+  .hall__scene, .hall__scene * { animation: none !important; transition: none !important; }
+  .hall__fireflies { display: none; }
+  .hall__btn, .hall__navlink, .hall__go { transition: none; }
+  .hall__btn:active, .hall__btn:hover { transform: none; }
+}
+@media print { .hall__scene { display: none; } .hall { height: auto; min-height: 0; } .hall__copy, .hall__nav, .hall__note { position: static; transform: none; } }
+
+/* ── Signed in: Home (the account line and its links) instead of the Hall. Chosen before first paint by the boot
+ * script from Clerk's cookie, then confirmed by Clerk in hall-life.tsx. ── */
+.home-head { display: none; padding: 6.5rem var(--space-5) var(--space-6); border-bottom: 1px solid var(--color-line); }
+[data-landing][data-auth="in"] .hall { display: none; }
+[data-landing][data-auth="in"] .home-head { display: block; }
+.home-head__inner { max-width: 76rem; margin: 0 auto; }
+.home-head__title { margin: 0 0 var(--space-5); font-family: var(--font-headline); font-weight: var(--weight-regular); font-size: clamp(2.5rem, 5vw, 4rem); line-height: 1; letter-spacing: -0.02em; text-wrap: balance; }
+.home-head__title em { font-family: var(--font-accent); font-style: italic; color: var(--color-accent); }
+.home-head__account p { margin: 0; }
+@media (max-width: 40rem) { .home-head { padding: 5rem var(--space-4) var(--space-5); } }

@@ -94,10 +94,7 @@ describe("D2 depth", () => {
     expect(main).not.toMatch(/--elev-\d:[^;]*inset/); // no bevelled top light in the shadows
   });
 
-  it("D2b motion respects reduced motion: the hero shows a still image, reveals and the spotlight are off", () => {
-    const hero = readFileSync("app/landing/hero-motion.tsx", "utf8");
-    expect(hero).toMatch(/\(hover: hover\) and \(pointer: fine\)"\)\.matches \|\| window\.matchMedia\("\(prefers-reduced-motion: reduce\)"\)\.matches\) return;/);
-    expect(components).toMatch(/@media \(prefers-reduced-motion: reduce\) \{ \.hero__dust \{ animation: none; \} \.hero__readout \{ display: none; \} \}/);
+  it("D2b motion respects reduced motion: reveals and the spotlight are off (D4: the Hall has its own block)", () => {
     expect(readFileSync("app/ui/reveal.tsx", "utf8")).toMatch(/prefers-reduced-motion: reduce\)"\)\.matches/);
     expect(readFileSync("app/ui/spotlight.tsx", "utf8")).toMatch(/prefers-reduced-motion: reduce\)"\)\.matches/);
     expect(components).toMatch(/@media \(prefers-reduced-motion: reduce\) \{ \[data-reveal="wait"\] \{ opacity: 1; transform: none; \}/);
@@ -129,51 +126,18 @@ describe("D2c: art, HUD, fonts, sound and credits", () => {
 });
 
 
-describe("D2d: 3D hero, frost, effect tiles and tilt", () => {
-  const scene = readFileSync("app/landing/hero-scene.tsx", "utf8");
-  const three = readFileSync("app/landing/hero-3d.ts", "utf8");
-
-  it("the 3D stage loads lazily and only where it should: still image for reduced motion, Save-Data, narrow or low-power screens, no WebGL2", () => {
-    expect(scene).toMatch(/import\("\.\/hero-3d"\)/); // a separate, lazily loaded chunk
-    expect(readFileSync("app/page.tsx", "utf8")).not.toMatch(/from "\.\/landing\/hero-3d"/);
-    expect(scene).toMatch(/prefers-reduced-motion: reduce/);
-    expect(scene).toMatch(/saveData/);
-    expect(scene).toMatch(/innerWidth < 768/);
-    expect(scene).toMatch(/hardwareConcurrency/);
-    expect(scene).toMatch(/WebGL2RenderingContext/);
-    expect(scene).toMatch(/addEventListener\("load"/); // after first paint
+describe("D2d → D4: the 3D hero, frost, effect tiles and tilt are retired", () => {
+  it("the old 3D hero stays in the repo but no page loads it, so three.js is out of the landing bundle", () => {
+    expect(statSync("app/landing/hero-3d.ts").size).toBeGreaterThan(1000);
+    const page = readFileSync("app/page.tsx", "utf8");
+    expect(page).not.toMatch(/HeroScene|hero-3d|hero-scene|from "three/);
+    expect(readFileSync("app/landing/hall/hall.tsx", "utf8") + readFileSync("app/landing/hall/hall-life.tsx", "utf8")).not.toMatch(/from "three|hero-3d|hero-scene/);
   });
-
-  it("the 3D stage is decorative, capped, paused when unseen, guarded against slow devices, and never WebGPU", () => {
-    expect(three).toMatch(/MAX_DPR = 1\.5/);
-    expect(three).toMatch(/failIfMajorPerformanceCaveat: true/);
-    expect(three).toMatch(/aria-hidden/);
-    expect(three).toMatch(/IntersectionObserver/);
-    expect(three).toMatch(/document\.hidden/);
-    expect(three).toMatch(/< 30\) return fail\(\)/);
-    expect(three).toMatch(/\{ passive: true \}/);
-    expect(three).not.toMatch(/preventDefault|WebGPU|navigator\.gpu/);
-    expect(three).not.toMatch(/\.(glb|gltf|hdr|exr)\b/); // made in code
-    expect(components).toMatch(/\.hero__stage \{[^}]*pointer-events: none/);
-  });
-
-  it("frost strength is one token, and the frost map is a small generated file", () => {
-    expect(main).toMatch(/--frost-strength: [0-9.]+;/);
-    expect(three).toMatch(/--frost-strength/);
-    expect(statSync("public/art/frost.webp").size).toBeLessThan(150 * 1024);
-  });
-
-  it("no 3D, frost or tilt on lesson, learner dashboard, billing, Privacy Center or admin screens", () => {
-    const off = ["app/learn/page.tsx", "app/learn/[id]/page.tsx", "app/learn/[id]/lesson-reader.tsx", "app/learn/path/page.tsx", "app/account/page.tsx", "app/admin/audit/audit-log.tsx", "app/admin/style-guide/style-guide.tsx"];
-    for (const f of off) expect(readFileSync(f, "utf8"), f).not.toMatch(/<Frost|"frost|has-frost|data-tilt|HeroScene|EffectTiles|from "three/);
-  });
-
-  it("reduced motion stops the effect tiles, the frost growth and the tilt", () => {
-    const rm = components.slice(components.lastIndexOf("@media (prefers-reduced-motion: reduce)"));
-    expect(rm).toMatch(/\.fx-tile__art::before[^{]*\{ animation: none !important; \}/);
-    expect(rm).toMatch(/\.frost \{ animation: none; transition: none; \}/);
-    expect(rm).toMatch(/\[data-tilt\]\[data-tilting\] \{ transform: none; \}/);
-    expect(readFileSync("app/landing/tilt-cards.tsx", "utf8")).toMatch(/prefers-reduced-motion: reduce/);
+  it("the frost overlay, effect tiles, tilt glare and HUD marks are gone from the code and the assets", () => {
+    for (const f of ["app/ui/frost.tsx", "app/ui/hud.tsx", "app/landing/effect-tiles.tsx", "app/landing/tilt-cards.tsx", "app/landing/hero-motion.tsx", "public/art/frost.webp"]) expect(() => statSync(f), f).toThrow();
+    const css = components + readFileSync("app/styles/polish.css", "utf8") + readFileSync("app/styles/glass.css", "utf8") + globals;
+    expect(css).not.toMatch(/border-image|\.frost\b|\.hud-|\.fx-tile|tilt-glare|--frost-strength/);
+    expect(readFileSync("app/page.tsx", "utf8")).not.toMatch(/<Frost|Crosshair|hud-|data-tilt|EffectTiles|TiltCards/);
   });
 });
 
@@ -208,7 +172,6 @@ describe("D3 pass 3: brand, 4K and accessibility", () => {
   });
   it("raster art ships responsive widths up to its native size, never upscaled", () => {
     const pic = readFileSync("app/ui/picture.tsx", "utf8");
-    expect(pic).toMatch(/textureTopo: \{ base: "\/art\/texture-topo", widths: \[800, 1280, 1600, 2000\], width: 2000/);
     expect(pic).toMatch(/cardGlass: \{ base: "\/art\/card-glass", widths: \[640, 960, 1280, 1600, 2000\], width: 2000/);
     for (const w of [1600, 2000]) expect(statSync(`public/art/card-glass-${w}.avif`).size).toBeGreaterThan(1000);
   });

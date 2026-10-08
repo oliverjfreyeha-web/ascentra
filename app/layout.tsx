@@ -10,6 +10,7 @@ import "./styles/tokens.css";
 import "./styles/components.css";
 import "./globals.css";
 import "./styles/polish.css";
+import "./styles/glass.css";
 
 export const metadata: Metadata = {
   title: "ASCENTRA",

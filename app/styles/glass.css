@@ -1,0 +1,65 @@
+/*
+ * D4 · Liquid glass: one token set and one recipe for every glass surface (replaces the D2d frost overlay).
+ *   fill    a soft white light over a Black Iris shade, the page blurred and lifted behind it
+ *   edges   inset highlight lines (top strongest) and a 1 px hairline rim that fades like real edge light
+ *   frost   inside the glass: fine noise in screen blend, dense at the edges, clear in the middle
+ * Used by .ui-glass (app/ui/glass.tsx) and the existing glass surfaces: panels, the sign-in style cards, modals and
+ * menus. Never stacked more than two levels deep. Text on glass keeps at least 4.5:1 because the shade token sets a
+ * floor under the light fill (checked against the brightest backdrop in tests/unit/design-tokens.test.ts).
+ * Dark only; palette only (Black Iris #080813 and Frozen #A0BDDB, plus white light).
+ */
+:root {
+  --glass-blur: 22px;
+  --glass-filter: blur(var(--glass-blur)) saturate(1.7) brightness(1.08);
+  --glass-shade: 0.74;
+  --glass-light: linear-gradient(155deg, rgb(255 255 255 / 0.13), rgb(255 255 255 / 0.035) 45%, rgb(160 189 219 / 0.07));
+  --glass-rim: linear-gradient(140deg, rgb(255 255 255 / 0.65), rgb(255 255 255 / 0.08) 28%, rgb(160 189 219 / 0.05) 60%, rgb(255 255 255 / 0.32));
+  --glass-inset: inset 0 1px 0 rgb(255 255 255 / 0.38), inset 0 -1px 0 rgb(255 255 255 / 0.07), inset 1px 0 0 rgb(255 255 255 / 0.12), inset -1px 0 0 rgb(255 255 255 / 0.06), inset 0 0 28px rgb(160 189 219 / 0.1);
+  --glass-drop: 0 1px 1px rgb(0 0 0 / 0.25), 0 18px 40px -12px rgb(2 3 12 / 0.65);
+  --glass-frost: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><filter id='f' x='0' y='0' width='100%' height='100%'><feTurbulence type='fractalNoise' baseFrequency='.045 .09' numOctaves='5' seed='4'/><feColorMatrix values='0 0 0 0 .78  0 0 0 0 .87  0 0 0 0 1  0 0 0 2.2 -.95'/></filter><rect width='300' height='300' filter='url(%23f)'/></svg>");
+  --glass-frost-opacity: 0.38;
+  --glass-frost-mask: radial-gradient(ellipse 78% 74% at 50% 50%, transparent 55%, #000 100%);
+  --glass-fallback: rgb(8 8 19 / 0.85);
+}
+
+.ui-glass, .ui-panel, .ui-auth__card, .ui-modal, .ui-menu {
+  isolation: isolate;
+  border: 1px solid transparent;
+  background: var(--glass-light) padding-box, linear-gradient(rgb(8 8 19 / var(--glass-shade)), rgb(8 8 19 / var(--glass-shade))) padding-box;
+  -webkit-backdrop-filter: var(--glass-filter);
+  backdrop-filter: var(--glass-filter);
+  box-shadow: var(--glass-inset), var(--glass-drop);
+}
+.ui-glass, .ui-panel, .ui-auth__card { position: relative; }
+/* The rim: a 1 px gradient ring (mask-composite cuts out the middle), strong top-left, faint middle, medium bottom-right. */
+.ui-glass::before, .ui-panel::before, .ui-auth__card::before, .ui-modal::before, .ui-menu::before {
+  content: ""; position: absolute; inset: -1px; border-radius: inherit; padding: 1px; pointer-events: none; background: var(--glass-rim);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite: exclude;
+}
+/* The frost, inside the glass and behind its content. */
+.ui-glass::after, .ui-panel::after, .ui-auth__card::after, .ui-modal::after, .ui-menu::after {
+  content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none;
+  opacity: var(--glass-frost-opacity); mix-blend-mode: screen; background: var(--glass-frost) 0 0 / 300px 300px;
+  -webkit-mask: var(--glass-frost-mask); mask: var(--glass-frost-mask);
+}
+/* Glass on glass, two levels at most: anything deeper is a plain shaded surface. */
+:is(.ui-glass, .ui-panel, .ui-auth__card, .ui-modal, .ui-menu) :is(.ui-glass, .ui-panel, .ui-auth__card, .ui-menu) :is(.ui-glass, .ui-panel, .ui-auth__card, .ui-menu) {
+  -webkit-backdrop-filter: none; backdrop-filter: none; background: rgb(8 8 19 / 0.6) padding-box;
+}
+/* Without backdrop-filter: a solid translucent Black Iris surface with the same rim. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .ui-glass, .ui-panel, .ui-auth__card, .ui-modal, .ui-menu { background: var(--glass-fallback) padding-box; }
+}
+/* Admin keeps its D3 flat, dense panels (no rim, no frost); its modals and menus are glass like everywhere else. */
+main.ui-admin .ui-panel::before, main.ui-admin .ui-panel::after { content: none; }
+
+/* ── D4 · Declutter: decorative grids and frames removed app-wide (meaning is carried by content, not ornament) ── */
+.ui-auth__halo, .ui-scene__grid { display: none; }
+main.ui-main-wide::before { content: none; }
+.ui-art { background: var(--color-surface); }
+.closing { background: none; }
+
+/* Browser surfaces in the palette: text selection and scrollbars. */
+::selection { background: var(--color-accent); color: var(--color-on-accent); }
+html { scrollbar-color: rgb(160 189 219 / 0.35) var(--color-base); }

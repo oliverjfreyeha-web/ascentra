@@ -14,14 +14,18 @@ export default function CreditsPage() {
       </header>
       <div className="ui-block">
         <p>
-          The hero art (a glass sculpture), the background textures, the card art and the optional ambient music on ASCENTRA
+          The picture of a white columned hall on the home page, and the firefly glows over it, were generated with AI, using
+          Higgsfield. They are illustrations, not photographs of a real building. The sky, lights, mist and motion over the
+          picture are drawn in code for ASCENTRA.
+        </p>
+        <p>
+          The card art, the sound player&apos;s artwork (a glass sculpture) and the optional ambient music on ASCENTRA
           were made with AI, using DaVinci AI, and are used under that service&apos;s terms.
         </p>
         <ul>
-          <li>Hero art, glass sculpture: made with DaVinci AI</li>
-          <li>Topographic line texture: made with DaVinci AI</li>
+          <li>The hall and the fireflies: generated with Higgsfield (AI)</li>
           <li>Glass panels card art (recolored to our palette): made with DaVinci AI</li>
-          <li>Frost texture and the 3D hero scene: made in code for ASCENTRA, without AI (3D drawn with three.js, MIT License)</li>
+          <li>Sound player artwork, glass sculpture: made with DaVinci AI</li>
         </ul>
         <h2>Ambient soundtracks</h2>
         <p className="muted">Off unless you turn them on.</p>
