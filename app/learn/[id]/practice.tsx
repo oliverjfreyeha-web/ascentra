@@ -4,6 +4,7 @@ import { useState } from "react";
 import { call } from "../../call";
 import { attemptFrom, feedbackFrom, type AttemptResult, type LearnerActivity, type Selection } from "../../activities-api";
 import { activityModeFrom } from "../../path-api";
+import { ActivityIcon } from "../../ui/activity-icon";
 
 type Strs = string[];
 const list = (v: unknown): Strs => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : []);
@@ -34,7 +35,7 @@ export function Practice({ items, score, selection, onScore, onModeChanged }: {
       {selection.personalized && <p><button type="button" className="link" onClick={() => void switchTo("default")}>Show the default set</button></p>}
       {selection.mode === "default" && selection.canPersonalize && <p><button type="button" className="link" onClick={() => void switchTo("personal")}>Pick practice for my answers again</button></p>}
       {message && <p role="status">{message}</p>}
-      {score.graded > 0 && <p className="small">Graded items right: {score.correct} of {score.graded}. Only graded items count toward your progress.</p>}
+      {score.graded > 0 && <p className="small ui-act-score">Graded items right: {score.correct} of {score.graded}. Only graded items count toward your progress.</p>}
       {items.map((a) => <ItemView key={a.id} item={a} onScore={onScore} />)}
     </section>
   );
@@ -77,77 +78,96 @@ function ItemView({ item: a, onScore }: { item: LearnerActivity; onScore: (s: { 
     return String(k);
   };
 
+  // D3: each type has its own layout, and graded items look different from "Practice, not graded" ones (a solid
+  // Frozen frame and a Graded chip, or a dashed slate frame and the practice chip). The words are unchanged.
+  const outcome = result?.graded ? (result.correct ? "correct" : "incorrect") : result ? "practice" : undefined;
   return (
-    <fieldset className="ui-practice">
-      <legend><strong>{a.typeLabel}</strong> · {a.graded ? "Graded" : a.label} · {a.level}</legend>
+    <fieldset className="ui-practice ui-act" data-type={a.type} data-graded={a.graded ? "true" : "false"} data-outcome={outcome}>
+      <legend>
+        <span className="ui-act__kind"><ActivityIcon type={a.type} /><strong>{a.typeLabel}</strong></span>
+        <span className="ui-act__sep"> · </span>
+        <span className="ui-act__grade">{a.graded ? "Graded" : a.label}</span>
+        <span className="ui-act__sep"> · </span>
+        <span className="ui-act__level">{a.level}</span>
+      </legend>
       {a.why && <p className="small muted">Why this one: {a.why.join("; ")}.</p>}
-      <p id={`${name}-prompt`}>{a.prompt}</p>
+      <p id={`${name}-prompt`} className="ui-act__prompt">{a.prompt}</p>
       {/* Graded types */}
-      {(a.type === "multiple_choice") && options.map((o, i) => (
-        <p key={i}><label><input type="radio" name={name} checked={answer.choice === i} onChange={() => setAnswer({ choice: i })} /> {o}</label></p>
-      ))}
-      {a.type === "true_false" && [true, false].map((v) => (
-        <label key={String(v)} className="ui-pill"><input type="radio" name={name} checked={answer.value === v} onChange={() => setAnswer({ value: v })} /> {v ? "True" : "False"}</label>
-      ))}
-      {a.type === "matching" && list(a.content.left).map((l, i) => (
-        <p key={i}><label>{l}{" "}
-          <select value={String((answer.pairs as number[] | undefined)?.[i] ?? "")} onChange={(e) => {
-            const pairs = [...((answer.pairs as number[] | undefined) ?? list(a.content.left).map(() => -1))];
-            pairs[i] = Number(e.target.value);
-            setAnswer({ pairs });
-          }}>
-            <option value="">Choose…</option>
-            {list(a.content.right).map((r, j) => <option key={j} value={j}>{r}</option>)}
-          </select></label></p>
-      ))}
-      {a.type === "ordering" && list(a.content.steps).map((_, pos) => (
-        <p key={pos}><label>Step {pos + 1}{" "}
-          <select value={String((answer.order as number[] | undefined)?.[pos] ?? "")} onChange={(e) => {
-            const order = [...((answer.order as number[] | undefined) ?? list(a.content.steps).map(() => -1))];
-            order[pos] = Number(e.target.value);
-            setAnswer({ order });
-          }}>
-            <option value="">Choose…</option>
-            {list(a.content.steps).map((s, j) => <option key={j} value={j}>{s}</option>)}
-          </select></label></p>
-      ))}
-      {a.type === "flashcard" && <p><strong>{String(a.content.front ?? "")}</strong> <span className="muted small">Think of the answer, then say whether you knew it.</span></p>}
+      {(a.type === "multiple_choice") && (
+        <div className="ui-act__options">{options.map((o, i) => (
+          <label key={i} className="ui-choice ui-act__option"><input type="radio" name={name} checked={answer.choice === i} onChange={() => setAnswer({ choice: i })} /> <span>{o}</span></label>
+        ))}</div>
+      )}
+      {a.type === "true_false" && (
+        <div className="ui-act__tf">{[true, false].map((v) => (
+          <label key={String(v)} className="ui-pill ui-act__tf-option"><input type="radio" name={name} checked={answer.value === v} onChange={() => setAnswer({ value: v })} /> {v ? "True" : "False"}</label>
+        ))}</div>
+      )}
+      {a.type === "matching" && (
+        <div className="ui-act__pairs">{list(a.content.left).map((l, i) => (
+          <label key={i} className="ui-act__pair"><span className="ui-act__term">{l}</span>{" "}
+            <span className="ui-act__arrow" aria-hidden="true">→</span>
+            <select className="ui-select" value={String((answer.pairs as number[] | undefined)?.[i] ?? "")} onChange={(e) => {
+              const pairs = [...((answer.pairs as number[] | undefined) ?? list(a.content.left).map(() => -1))];
+              pairs[i] = Number(e.target.value);
+              setAnswer({ pairs });
+            }}>
+              <option value="">Choose…</option>
+              {list(a.content.right).map((r, j) => <option key={j} value={j}>{r}</option>)}
+            </select></label>
+        ))}</div>
+      )}
+      {a.type === "ordering" && (
+        <ol className="ui-act__steps">{list(a.content.steps).map((_, pos) => (
+          <li key={pos}><label className="ui-act__pair"><span className="ui-act__step">Step {pos + 1}</span>{" "}
+            <select className="ui-select" value={String((answer.order as number[] | undefined)?.[pos] ?? "")} onChange={(e) => {
+              const order = [...((answer.order as number[] | undefined) ?? list(a.content.steps).map(() => -1))];
+              order[pos] = Number(e.target.value);
+              setAnswer({ order });
+            }}>
+              <option value="">Choose…</option>
+              {list(a.content.steps).map((s, j) => <option key={j} value={j}>{s}</option>)}
+            </select></label></li>
+        ))}</ol>
+      )}
+      {a.type === "flashcard" && <p className="ui-act__card"><strong>{String(a.content.front ?? "")}</strong> <span className="muted small">Think of the answer, then say whether you knew it.</span></p>}
       {/* Practice types: what's shown before trying */}
-      {!a.graded && list(a.content.checklist).length > 0 && <ul>{list(a.content.checklist).map((c, i) => <li key={i}>{c}</li>)}</ul>}
-      {!a.graded && a.type === "branching_scenario" && <ul>{options.map((o, i) => <li key={i}>{o}</li>)}</ul>}
-      {!a.graded && typeof a.content.passage === "string" && <blockquote>{a.content.passage}</blockquote>}
-      {!a.graded && typeof a.content.caseText === "string" && <><blockquote>{a.content.caseText}</blockquote><ul>{list(a.content.questions).map((q, i) => <li key={i}>{q}</li>)}</ul></>}
+      {!a.graded && list(a.content.checklist).length > 0 && <ul className="ui-act__checklist">{list(a.content.checklist).map((c, i) => <li key={i}>{c}</li>)}</ul>}
+      {!a.graded && a.type === "branching_scenario" && <ul className="ui-act__branches">{options.map((o, i) => <li key={i}>{o}</li>)}</ul>}
+      {!a.graded && typeof a.content.passage === "string" && <blockquote className="ui-act__doc">{a.content.passage}</blockquote>}
+      {!a.graded && typeof a.content.caseText === "string" && <><blockquote className="ui-act__doc">{a.content.caseText}</blockquote><ul className="ui-act__questions">{list(a.content.questions).map((q, i) => <li key={i}>{q}</li>)}</ul></>}
 
       {a.graded ? (
         a.type === "flashcard" ? (
-          <p>
-            <button type="button" disabled={busy || !!result} onClick={() => void submit({ answer: { knew: true } })}>I knew it</button>{" "}
-            <button type="button" disabled={busy || !!result} onClick={() => void submit({ answer: { knew: false } })}>I didn&apos;t know it</button>
+          <p className="ui-actions">
+            <button type="button" className="ui-btn" disabled={busy || !!result} onClick={() => void submit({ answer: { knew: true } })}>I knew it</button>{" "}
+            <button type="button" className="ui-btn" disabled={busy || !!result} onClick={() => void submit({ answer: { knew: false } })}>I didn&apos;t know it</button>
           </p>
         ) : (
-          <p><button type="button" disabled={busy || !Object.keys(answer).length} onClick={() => void submit({ answer })}>Check my answer</button></p>
+          <p className="ui-actions"><button type="button" className="ui-btn ui-btn--primary" disabled={busy || !Object.keys(answer).length} onClick={() => void submit({ answer })}>Check my answer</button></p>
         )
       ) : (
         <>
-          <p><label>Your answer (practice; not saved){" "}<textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} cols={60} aria-describedby={`${name}-prompt`} /></label></p>
-          <p>
-            <button type="button" disabled={busy} onClick={() => void submit({})}>Show the sample</button>{" "}
-            <button type="button" disabled={busy || text.trim().length < 3} onClick={() => void getFeedback()}>Get feedback (AI)</button>{" "}
+          <p className="ui-act__answer"><label>Your answer (practice; not saved){" "}<textarea className="ui-input" value={text} onChange={(e) => setText(e.target.value)} rows={3} cols={60} aria-describedby={`${name}-prompt`} /></label></p>
+          <p className="ui-actions">
+            <button type="button" className="ui-btn" disabled={busy} onClick={() => void submit({})}>Show the sample</button>{" "}
+            <button type="button" className="ui-btn ui-btn--quiet" disabled={busy || text.trim().length < 3} onClick={() => void getFeedback()}>Get feedback (AI)</button>{" "}
             <span className="small muted">AI feedback uses your Mentor allowance. It&apos;s never a grade.</span>
           </p>
         </>
       )}
       <div aria-live="polite">
-        {message && <p role="status">{message}</p>}
+        {message && <p role="status" className="ui-state ui-state--error">{message}</p>}
         {result?.graded && (
-          <div className="ui-result">
+          <div className="ui-result" data-outcome={outcome}>
+            <span className="ui-result__mark" aria-hidden="true" />
             <p><strong>{a.type === "flashcard" ? (result.correct ? "You knew it." : "Not yet: review it again.") : result.correct ? "Correct." : "Not quite."}</strong>{" "}
               {a.type === "flashcard" ? `Back: ${String(result.correctAnswer)}` : `Correct answer: ${correctText(result)}`}</p>
             <p>{result.explanation} <span className="small muted">Source: {result.citation.url ? <a href={result.citation.url} target="_blank" rel="noreferrer noopener">{result.citation.title}</a> : result.citation.title}</span></p>
           </div>
         )}
         {result && !result.graded && (
-          <div className="ui-result">
+          <div className="ui-result" data-outcome="practice">
             <p className="small"><strong>{result.label}.</strong></p>
             {Object.entries(result.reveal).map(([k, v]) => <p key={k} className="small">{k === "sampleAnswer" ? "Sample answer" : k === "keyPoints" ? "Key points" : k === "mistake" ? "The mistake" : k === "options" ? "Outcomes" : k}:{" "}
               {Array.isArray(v) ? v.map((x) => (typeof x === "string" ? x : `${(x as { text: string }).text}: ${(x as { outcome: string }).outcome} (${(x as { fit: string }).fit})`)).join("; ") : String(v)}</p>)}
@@ -155,7 +175,7 @@ function ItemView({ item: a, onScore }: { item: LearnerActivity; onScore: (s: { 
           </div>
         )}
         {feedback && (
-          <div className="ui-result">
+          <div className="ui-result" data-outcome="feedback">
             <p className="small"><strong>{feedback.label}</strong></p>
             <p>{feedback.feedback}</p>
             {feedback.note && <p className="small muted">{feedback.note}</p>}

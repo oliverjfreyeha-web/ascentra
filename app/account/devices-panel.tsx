@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useClerk } from "@clerk/nextjs";
 import { AppealForm } from "../device-gate";
 import { call, when } from "../call";
+import { Loading } from "../ui/loading";
 
 type Device = { id: string; name: string; kind: string; region: string | null; trustedAt: string | null; lastSeenAt: string | null; current: boolean; active: boolean };
 type Session = { id: string; device: string; state: string; startedAt: string; lastHeartbeatAt: string; endedAt: string | null; endReason: string | null; region: string | null };
@@ -42,7 +43,7 @@ export function DevicesPanel() {
     else await load();
   }
 
-  if (!data) return <p className="muted">{message ?? "Loading your devices…"}</p>;
+  if (!data) return message ? <p className="muted ui-state ui-state--error">{message}</p> : <Loading label="Loading your devices…" shape="list" />;
   const e = data.enforcement;
   const openAppeal = data.appeals.find((a) => a.status === "under_review");
 

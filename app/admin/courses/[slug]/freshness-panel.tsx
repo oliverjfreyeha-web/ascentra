@@ -106,7 +106,7 @@ export function FreshnessPanel({ slug, freshness, reports, role, busy, act }: {
                 <p>
                   <button type="button" disabled={busy} onClick={() => void act(() => call("POST", `${base}/edits/${e.id}`, { decision: "approve" }),
                     () => "Approved. It's in a new Draft of the lesson below: submit, verify and publish it as usual. Any proposed source it cites must be approved first.")}>Approve edit</button>{" "}
-                  <button type="button" disabled={busy} onClick={() => void act(() => call("POST", `${base}/edits/${e.id}`, { decision: "reject" }), () => "Rejected.")}>Reject</button>
+                  <button type="button" className="danger" disabled={busy} onClick={() => void act(() => call("POST", `${base}/edits/${e.id}`, { decision: "reject" }), () => "Rejected.")}>Reject</button>
                 </p>
               )}
             </div>

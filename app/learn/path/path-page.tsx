@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { call } from "../../call";
 import { courseRequestFrom, interviewFrom, interviewSavedFrom, pathFrom, type InterviewInfo, type PathView } from "../../path-api";
+import { CountUp } from "../../ui/count-up";
+import { Loading } from "../../ui/loading";
 
 /**
  * L7: the interview (four questions, each from a list: nothing personal can be typed in) and the path it builds from
@@ -39,7 +41,7 @@ export function PathPage() {
     if (!pv) await load();
   }
 
-  if (!info || !path) return <p className="muted">{message ?? "Loading…"}</p>;
+  if (!info || !path) return message ? <p className="muted ui-state ui-state--error">{message}</p> : <Loading shape="list" />;
   const showInterview = editing || path.interviewNeeded;
   return (
     <>
@@ -68,18 +70,18 @@ export function PathPage() {
               <li key={c.slug}>
                 <strong>{c.firstLessonId ? <Link href={`/learn/${c.firstLessonId}`}>{c.name}</Link> : c.name}</strong>
                 <div className="small">Why: {c.why}</div>
-                <div className="small muted">About {Math.round(c.minutes / 60 * 10) / 10} hours ({c.lessons} lesson{c.lessons === 1 ? "" : "s"}): about {c.weeks} week{c.weeks === 1 ? "" : "s"} at your pace · last verified {c.lastVerifiedOn ?? "unknown"}</div>
+                <div className="small muted">About {Math.round(c.minutes / 60 * 10) / 10} hours (<CountUp value={c.lessons} /> lesson{c.lessons === 1 ? "" : "s"}): about <CountUp value={c.weeks} /> week{c.weeks === 1 ? "" : "s"} at your pace · last verified {c.lastVerifiedOn ?? "unknown"}</div>
                 <div className="small ui-path__actions">
-                  <button type="button" className="link" disabled={busy || i === 0} aria-label={`Move ${c.name} up`}
+                  <button type="button" className="link" disabled={busy || i === 0} aria-label={`Move up: ${c.name}`}
                     onClick={() => { const o = path.courses.map((x) => x.slug); [o[i - 1], o[i]] = [o[i], o[i - 1]]; void change("PATCH", "/api/v1/learn/path", { order: o }); }}>Move up</button>{" · "}
-                  <button type="button" className="link" disabled={busy || i === path.courses.length - 1} aria-label={`Move ${c.name} down`}
+                  <button type="button" className="link" disabled={busy || i === path.courses.length - 1} aria-label={`Move down: ${c.name}`}
                     onClick={() => { const o = path.courses.map((x) => x.slug); [o[i + 1], o[i]] = [o[i], o[i + 1]]; void change("PATCH", "/api/v1/learn/path", { order: o }); }}>Move down</button>{" · "}
                   <button type="button" className="link" disabled={busy} onClick={() => void change("DELETE", `/api/v1/learn/path/courses/${encodeURIComponent(c.slug)}`)}>Remove</button>
                 </div>
               </li>
             ))}
           </ol>
-          {path.courses.length === 0 && path.plan && <p className="muted">No published course on your path. Redo the interview, or add one below.</p>}
+          {path.courses.length === 0 && path.plan && <p className="muted ui-empty ui-empty--inline">No published course on your path. Redo the interview, or add one below.</p>}
           {path.canAdd && path.addable.length > 0 && <AddCourse path={path} busy={busy} onAdd={(slug) => void change("POST", "/api/v1/learn/path/courses", { slug })} />}
           <p className="small ui-block ui-block--slim">
             Practice items: {path.activityMode === "personal" ? "picked for your answers (each lesson says why)" : "the default set (every reviewed item)"}.{" "}

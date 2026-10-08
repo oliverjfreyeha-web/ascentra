@@ -5,6 +5,7 @@ import { useReverification } from "@clerk/nextjs";
 import { call, when, type ApiResult } from "../call";
 import { mentorAddonFrom, teenAllowancesFrom, type AddonCents, type MentorAddonInfo, type TeenAllowance } from "../billing-api";
 import { AddonChanger, AllowanceMeter, CheckoutAddon } from "../account/mentor-addon";
+import { Loading } from "../ui/loading";
 
 type Doc = { key: "teen_terms" | "minor_privacy_notice"; title: string; version: string; body: string };
 type Teen = {
@@ -78,7 +79,7 @@ export function GuardianCenter() {
     await load();
   }
 
-  if (!data) return <p className="muted">{message ?? "Loading…"}</p>;
+  if (!data) return message ? <p className="muted ui-state ui-state--error">{message}</p> : <Loading />;
   const idOk = data.identity.status === "verified";
   return (
     <>

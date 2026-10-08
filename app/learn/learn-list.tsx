@@ -5,6 +5,7 @@ import Link from "next/link";
 import { call } from "../call";
 import { learnerCoursesFrom, type LearnerCourse } from "../courses-api";
 import { pathFrom } from "../path-api";
+import { Loading } from "../ui/loading";
 
 /** L2: published courses and lessons only (the API never returns a Draft or a version in Review). */
 export function LearnList() {
@@ -26,9 +27,9 @@ export function LearnList() {
   const prompt = askInterview ? (
     <p className="ui-banner"><span className="ui-banner__mark" aria-hidden="true" /><span>Get a path for you: <Link href="/learn/path">answer four quick questions</Link> (you can skip it).</span></p>
   ) : <p className="small"><Link href="/learn/path" className="ui-btn ui-btn--secondary ui-btn--sm">My path</Link></p>;
-  if (failed) return <>{prompt}<p role="status">{failed}</p></>;
-  if (!courses) return <p className="muted">Loading…</p>;
-  if (!courses.length) return <>{prompt}<p className="muted">No published lessons yet.</p></>;
+  if (failed) return <>{prompt}<p role="status" className="ui-state ui-state--error">{failed}</p></>;
+  if (!courses) return <Loading shape="list" />;
+  if (!courses.length) return <>{prompt}<p className="muted ui-empty ui-empty--inline">No published lessons yet.</p></>;
   return (
     <>
       {prompt}

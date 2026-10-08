@@ -1,0 +1,286 @@
+/*
+ * D3 · Overall polish: one finished look across the app.
+ * "Shiny" here means light-catching edges, thin crisp borders and glass highlights; never glossy gradient buttons,
+ * bevels or heavy shadows. Glow (tokens.css) marks only what is interactive, active or selected; status labels never
+ * glow. Motion animates transform and opacity (plus paint-only gradient tricks), 150–300 ms, easing out; it stops with
+ * reduced motion, and nothing blocks clicking or typing.
+ */
+
+/* ── Focus: a clear solid ring plus a soft glow, everywhere ─────────── */
+:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; box-shadow: 0 0 14px 2px rgb(var(--glow-frozen) / 0.3); }
+
+/* ── Buttons: one system (older plain buttons now match .ui-btn) ────── */
+.ui-btn:not(.ui-btn--primary):not(.ui-btn--quiet):not(.ui-btn--danger),
+button:not(.link):not(.primary):not([class*="ui-"]) {
+  border: 1px solid transparent;
+  background: linear-gradient(var(--btn-bg, var(--color-surface)), var(--btn-bg, var(--color-surface))) padding-box, var(--edge-light) border-box;
+}
+.ui-btn:not(.ui-btn--primary):not(.ui-btn--quiet):not(.ui-btn--danger):hover:not(:disabled),
+button:not(.link):not(.primary):not([class*="ui-"]):hover:not(:disabled) {
+  background: linear-gradient(var(--color-raised), var(--color-raised)) padding-box, var(--edge-light-strong) border-box;
+}
+button:not(.link):not(.primary):not([class*="ui-"]),
+button.primary {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2);
+  min-height: 2.5rem; font-size: var(--text-sm); font-weight: var(--weight-medium); line-height: 1.2;
+}
+button.primary { font-weight: var(--weight-semibold); }
+/* The primary action carries a faint glow ring (interactive), a little brighter on hover. */
+.ui-btn--primary, button.primary { box-shadow: var(--glow-ring); }
+.ui-btn--primary:hover:not(:disabled), button.primary:hover:not(:disabled) { box-shadow: var(--glow-ring-strong); }
+.ui-btn--primary:focus-visible, button.primary:focus-visible { box-shadow: var(--focus-ring); }
+.ui-btn--primary:disabled, button.primary:disabled { box-shadow: none; }
+/* Press feedback and hover lift, shared. */
+button:not(.link):not([class*="ui-"]):active:not(:disabled), button.primary:active:not(:disabled) { transform: translateY(0) scale(0.985); transition-duration: var(--duration-micro); }
+.ui-btn--quiet { background: transparent; }
+/* Icons get a tiny nudge on hover. */
+.ui-icon { transition: transform var(--duration-fast) var(--ease-smooth-out); }
+.ui-btn:hover:not(:disabled) .ui-icon, a:hover > .ui-icon { transform: translateX(2px); }
+/* Dangerous actions look dangerous everywhere (never glow). */
+.ui-btn--danger, button.danger { box-shadow: none; }
+
+/* ── Links: an underline that draws in (navigation-style links) ───── */
+.ui-crumbs a, .site-footer__link, .ui-rows a, .ui-path strong a, a.ui-link {
+  text-decoration: none;
+  background: linear-gradient(currentColor, currentColor) 0 100% / 0 1px no-repeat;
+  transition: color var(--duration-quick) var(--ease-out), background-size var(--duration-fast) var(--ease-smooth-out);
+}
+.ui-crumbs a:hover, .site-footer__link:hover, .ui-rows a:hover, .ui-path strong a:hover, a.ui-link:hover,
+.ui-crumbs a:focus-visible, .site-footer__link:focus-visible, .ui-rows a:focus-visible, .ui-path strong a:focus-visible, a.ui-link:focus-visible { background-size: 100% 1px; }
+.ui-rows a::after { display: none; }
+/* The active navigation item. */
+a[aria-current="page"] { color: var(--color-text); text-decoration: none; box-shadow: 0 1px 0 rgb(var(--glow-frozen) / 0.9), 0 6px 12px -8px rgb(var(--glow-frozen) / 0.8); }
+
+/* ── Tabs: the active tab gets a sliding, softly glowing indicator ── */
+.ui-tabs { position: relative; }
+.ui-tabs__indicator { position: absolute; top: var(--space-1); bottom: var(--space-1); left: 0; z-index: 0; border-radius: var(--radius-sm); pointer-events: none;
+  background: linear-gradient(var(--color-raised), var(--color-raised)) padding-box, var(--edge-light-strong) border-box; border: 1px solid transparent; box-shadow: var(--glow-soft);
+  transition: transform var(--duration-fast) var(--ease-smooth-out); }
+.ui-tabs.has-indicator .ui-tab { position: relative; z-index: 1; }
+.ui-tabs.has-indicator .ui-tab[aria-selected="true"] { background: transparent; border-color: transparent; box-shadow: none; }
+.ui-tab[aria-selected="true"]:focus-visible { box-shadow: var(--focus-ring); }
+
+/* ── Selected options and choices: a soft glow ring (selected) ─────── */
+.ui-choice:has(input:checked), .ui-pill:has(input:checked) { box-shadow: var(--glow-ring); }
+.ui-choice:has(input:checked):has(input:focus-visible), .ui-pill:has(input:checked):has(input:focus-visible) { box-shadow: var(--focus-ring); }
+.ui-choice:hover { transform: translateY(-2px); }
+
+/* Checkboxes, radios and toggles: small springy micro-motion. */
+.ui-check input::after, input[type="checkbox"]::after, input[type="radio"]::after { transition: transform var(--duration-fast) var(--ease-spring); }
+.ui-check input:active:not(:disabled), input[type="checkbox"]:active:not(:disabled), input[type="radio"]:active:not(:disabled) { transform: scale(0.9); }
+input[type="checkbox"], input[type="radio"] { transition: background-color var(--duration-quick) var(--ease-out), border-color var(--duration-quick) var(--ease-out), transform var(--duration-quick) var(--ease-spring); }
+.sound-toggle svg { transition: transform var(--duration-fast) var(--ease-spring); }
+.sound-toggle[aria-pressed="true"] svg { transform: scale(1.08); }
+
+/* Status labels never glow (nothing looks Connected or Verified by default). */
+.ui-status, .st, .ui-status * { box-shadow: none !important; text-shadow: none !important; filter: none !important; }
+
+/* ── Meter: Frozen gradient fill, a soft glow at its end, easing to its value ── */
+.ui-meterbar { position: relative; display: inline-block; flex: none; width: min(14rem, 100%); height: 0.5rem; border-radius: var(--radius-pill); background: var(--color-raised); box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.5), 0 0 0 1px var(--color-line); overflow: visible; vertical-align: middle; }
+.ui-meterbar meter { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; }
+.ui-meterbar__fill { position: absolute; inset: 0; border-radius: inherit; background: var(--glow-fill); transform-origin: left; transform: scaleX(var(--v, 0)); animation: meter-in 700ms var(--ease-smooth-out) both; }
+.ui-meterbar__cap { position: absolute; top: 50%; left: calc(var(--v, 0) * 100%); width: 0.6rem; height: 0.6rem; margin: -0.3rem 0 0 -0.3rem; border-radius: 50%; background: rgb(var(--glow-ice)); box-shadow: 0 0 10px 3px rgb(var(--glow-frozen) / 0.55); opacity: 0.9; animation: meter-cap-in 900ms var(--ease-out) both; }
+@keyframes meter-in { from { transform: scaleX(0); } }
+@keyframes meter-cap-in { 0%, 60% { opacity: 0; } }
+.ui-lesson .ui-meterbar__fill, .ui-lesson .ui-meterbar__cap { animation: none; } /* the lesson stays still */
+
+/* ── Loading, empty and error states: one look ──────────────────────── */
+.ui-loading { display: grid; gap: var(--space-3); padding: var(--space-5); border: 1px solid var(--color-line); border-radius: var(--radius-lg); background: rgb(14 15 31 / 0.6); }
+.ui-loading__label { font-family: var(--font-mono); font-size: 0.75rem; letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--color-text-muted); }
+.ui-loading__body { display: grid; gap: var(--space-3); }
+.ui-loading__row { display: flex; justify-content: space-between; gap: var(--space-4); padding: var(--space-2) 0; border-bottom: 1px solid var(--color-line); }
+.ui-loading__row:last-child { border-bottom: 0; }
+.ui-loading--lesson { max-width: var(--measure, 42rem); border: 0; background: none; padding: 0; }
+.ui-skeleton { background: linear-gradient(100deg, var(--color-raised) 20%, rgb(var(--glow-frozen) / 0.12) 40%, var(--color-raised) 60%); background-size: 300% 100%; }
+.ui-empty--inline { display: block; justify-items: start; padding: var(--space-5); text-align: left; background: rgb(8 8 19 / 0.35); }
+.ui-state { position: relative; padding: var(--space-3) var(--space-4) var(--space-3) calc(var(--space-4) + 0.75rem); border: 1px solid var(--color-line-strong); border-radius: var(--radius-md); background: rgb(8 8 19 / 0.45); color: var(--color-text); }
+.ui-state::before { content: ""; position: absolute; left: var(--space-3); top: var(--space-3); bottom: var(--space-3); width: 3px; border-radius: var(--radius-pill); background: var(--color-text-muted); }
+.ui-state--error { border-color: rgb(242 167 167 / 0.4); }
+.ui-state--error::before { background: var(--color-danger); }
+.ui-state-page { margin-top: clamp(var(--space-7), 12vh, var(--space-9)); }
+.ui-state-page h1 { font-family: var(--font-headline); font-weight: var(--weight-regular); font-size: clamp(2rem, 5vw, 3rem); line-height: 1.05; margin: var(--space-3) 0 var(--space-3); }
+
+/* ── Activities: each type its own look; graded vs practice clearly different ── */
+.ui-act > legend { display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--space-1); float: left; width: 100%; }
+.ui-act__kind { display: inline-flex; align-items: center; gap: var(--space-2); }
+.ui-act__icon { color: var(--color-accent); }
+.ui-act__sep { color: var(--color-text-muted); }
+.ui-act__grade { padding: 0.05rem var(--space-2); border-radius: var(--radius-pill); font-size: var(--text-xs); font-weight: var(--weight-semibold); letter-spacing: 0.01em; }
+.ui-act__level { font-size: var(--text-xs); }
+/* Graded: a solid Frozen frame, a filled chip and a rail. */
+.ui-lesson .ui-act[data-graded="true"], .ui-act[data-graded="true"] {
+  --edge: linear-gradient(155deg, rgb(160 189 219 / 0.7), rgb(160 189 219 / 0.25) 45%, rgb(160 189 219 / 0.4));
+  background: linear-gradient(var(--surface, rgb(14 15 31 / 0.94)), var(--surface, rgb(14 15 31 / 0.94))) padding-box, var(--edge) border-box;
+  box-shadow: inset 3px 0 0 rgb(160 189 219 / 0.85);
+}
+.ui-act[data-graded="true"] .ui-act__grade { border: 1px solid var(--color-accent); background: rgb(160 189 219 / 0.16); color: var(--color-accent-strong); }
+/* Practice, not graded: a dashed slate frame and an outlined chip. */
+.ui-lesson .ui-act[data-graded="false"], .ui-act[data-graded="false"] { border: 1px dashed rgb(154 166 186 / 0.55); background: rgb(12 13 27 / 0.9); box-shadow: none; }
+.ui-act[data-graded="false"] .ui-act__grade { border: 1px dashed var(--color-simulated); color: var(--color-text); }
+.ui-act__prompt { font-size: var(--text-md); line-height: var(--leading-snug); color: var(--color-text); margin: var(--space-2) 0 var(--space-4); }
+/* Multiple choice: option cards. */
+.ui-act__options { display: grid; gap: var(--space-2); margin: 0 0 var(--space-3); }
+.ui-act__option { align-items: center; padding: var(--space-3) var(--space-4); box-shadow: none; }
+.ui-act__option input { margin: 0; }
+/* True / false: two large switches side by side. */
+.ui-act__tf { display: grid; grid-template-columns: repeat(2, minmax(0, 10rem)); gap: var(--space-3); margin: 0 0 var(--space-3); }
+.ui-act__tf-option { justify-content: center; min-height: 2.75rem; font-weight: var(--weight-medium); }
+/* Matching and ordering: aligned rows. */
+.ui-act__pairs, .ui-act__steps { display: grid; gap: var(--space-2); margin: 0 0 var(--space-3); padding: 0; list-style: none; }
+.ui-act__pair { display: grid; grid-template-columns: minmax(7rem, 1fr) auto minmax(10rem, 1.4fr); align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-3); border: 1px solid var(--color-line); border-radius: var(--radius-md); background: rgb(8 8 19 / 0.4); }
+.ui-act__steps .ui-act__pair { grid-template-columns: auto minmax(10rem, 1fr); }
+.ui-act__term { font-weight: var(--weight-medium); }
+.ui-act__arrow { color: var(--color-accent); }
+.ui-act__step { padding: 0.15rem var(--space-2); border: 1px solid rgb(160 189 219 / 0.45); border-radius: var(--radius-xs); color: var(--color-accent); font-family: var(--font-mono); font-size: var(--text-xs); white-space: nowrap; }
+/* Flashcard: a card face. */
+.ui-act__card { display: grid; gap: var(--space-2); place-items: center; min-height: 7.5rem; margin: 0 0 var(--space-3); padding: var(--space-5); text-align: center; border: 1px solid transparent; border-radius: var(--radius-md);
+  background: linear-gradient(rgb(20 22 44 / 0.96), rgb(20 22 44 / 0.96)) padding-box, var(--edge-light-strong) border-box; }
+.ui-act__card strong { font-family: var(--font-headline); font-weight: var(--weight-regular); font-size: var(--text-xl); }
+/* Practice types. */
+.ui-act__checklist, .ui-act__branches, .ui-act__questions { margin: 0 0 var(--space-4); padding: 0; list-style: none; display: grid; gap: var(--space-2); }
+.ui-act__checklist li, .ui-act__branches li, .ui-act__questions li { position: relative; padding-left: 1.6rem; }
+.ui-act__checklist li::before { content: ""; position: absolute; left: 0; top: 0.3em; width: 0.9rem; height: 0.9rem; border: 1.5px solid var(--color-line-strong); border-radius: var(--radius-xs); }
+.ui-act[data-type="mini_project"] .ui-act__checklist { counter-reset: mp; }
+.ui-act[data-type="mini_project"] .ui-act__checklist li { counter-increment: mp; }
+.ui-act[data-type="mini_project"] .ui-act__checklist li::before { content: counter(mp); border-radius: 50%; display: grid; place-items: center; font-family: var(--font-mono); font-size: 0.625rem; color: var(--color-accent); }
+.ui-act__branches li::before { content: "↳"; position: absolute; left: 0.2rem; color: var(--color-accent); }
+.ui-act__questions li::before { content: "?"; position: absolute; left: 0.25rem; color: var(--color-accent); font-family: var(--font-mono); }
+.ui-act__doc { margin: 0 0 var(--space-4); padding: var(--space-4) var(--space-5); border: 1px solid var(--color-line); border-left: 2px solid var(--color-line-strong); border-radius: var(--radius-sm); background: rgb(8 8 19 / 0.5); font-size: var(--text-sm); line-height: var(--leading-normal); }
+.ui-act[data-type="spot_the_mistake"] .ui-act__doc { background-image: repeating-linear-gradient(transparent 0 1.55em, rgb(232 195 126 / 0.08) 1.55em 1.6em); }
+.ui-act[data-type="teach_back"] .ui-act__prompt { position: relative; padding: var(--space-3) var(--space-4); border: 1px solid var(--color-line); border-radius: var(--radius-md) var(--radius-md) var(--radius-md) 2px; background: rgb(8 8 19 / 0.45); }
+.ui-act__answer label { display: grid; gap: var(--space-2); font-size: var(--text-sm); color: var(--color-text-muted); }
+.ui-act__answer textarea { width: 100%; }
+.ui-act .ui-actions { margin-top: var(--space-3); }
+/* Feedback: the result settles in (transform only, so the answer and its source are never hidden). */
+.ui-result { position: relative; animation: result-in var(--duration-fast) var(--ease-smooth-out); }
+@keyframes result-in { from { transform: translateY(6px); } }
+.ui-result[data-outcome="correct"] { border-color: rgb(143 217 182 / 0.5); background: rgb(143 217 182 / 0.07); padding-left: calc(var(--space-4) + 1.5rem); }
+.ui-result[data-outcome="incorrect"] { border-color: rgb(232 195 126 / 0.5); background: rgb(232 195 126 / 0.06); padding-left: calc(var(--space-4) + 1.5rem); }
+.ui-result[data-outcome="practice"], .ui-result[data-outcome="feedback"] { border-style: dashed; border-color: rgb(154 166 186 / 0.5); background: rgb(154 166 186 / 0.05); }
+.ui-result__mark { position: absolute; left: var(--space-4); top: calc(var(--space-3) + 0.2rem); width: 1rem; height: 1rem; }
+.ui-result[data-outcome="correct"] .ui-result__mark { background: var(--color-success); clip-path: polygon(14% 52%, 0 66%, 38% 100%, 100% 22%, 86% 8%, 38% 72%); animation: check-in var(--duration-slow) var(--ease-spring); }
+.ui-result[data-outcome="incorrect"] .ui-result__mark { border: 2px solid var(--color-warning); border-radius: 50%; animation: nudge 300ms var(--ease-out); }
+@keyframes check-in { from { transform: scale(0.3); } }
+@keyframes nudge { 25% { transform: translateX(-3px); } 50% { transform: translateX(3px); } 75% { transform: translateX(-2px); } }
+@media (max-width: 40rem) {
+  .ui-act__pair, .ui-act__steps .ui-act__pair { grid-template-columns: 1fr; gap: var(--space-2); }
+  .ui-act__arrow { display: none; }
+  .ui-act__tf { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* ── Lesson: the calmest screen. Comfortable measure, clear citations, quiet progress; no ambient motion. ── */
+.ui-lesson .ui-prose { font-size: clamp(1.0625rem, 0.35vw + 0.98rem, 1.1875rem); }
+.ui-lesson .ui-prose sup a:focus-visible { box-shadow: var(--focus-ring); }
+.ui-lesson [data-reveal] { opacity: 1 !important; transform: none !important; }
+
+/* ── Content motion: staggered scroll reveals on learner screens (app/ui/reveal.tsx; one way, never on the lesson) ── */
+main.ui-main-wide:not(.ui-lesson) [data-reveal] { transition-delay: calc(var(--i, 0) * 60ms); }
+
+/* ── Ambient (landing only): a slow glow drift and a breathing main call-to-action; paused off-screen ── */
+.closing__glow { position: absolute; inset: -20% 10% auto; height: 70%; z-index: 0; pointer-events: none; border-radius: 50%;
+  background: radial-gradient(50% 50% at 50% 50%, rgb(var(--glow-frozen) / 0.12), rgb(var(--glow-steel) / 0.06) 45%, transparent 70%);
+  filter: blur(8px); animation: glow-drift var(--duration-drift) ease-in-out infinite alternate; }
+@keyframes glow-drift { from { transform: translate3d(-6%, 0, 0) scale(1); } to { transform: translate3d(6%, 4%, 0) scale(1.08); } }
+.ui-btn--breathe { position: relative; isolation: isolate; }
+.ui-btn--breathe::after { content: ""; position: absolute; inset: -6px; z-index: -1; border-radius: calc(var(--radius-sm) + 6px); pointer-events: none;
+  box-shadow: 0 0 22px 2px rgb(var(--glow-frozen) / 0.45); opacity: 0.35; animation: breathe var(--duration-breathe) ease-in-out infinite; }
+@keyframes breathe { 50% { opacity: 0.85; transform: scale(1.02); } }
+[data-ambient][data-paused], [data-ambient][data-paused] *, [data-ambient][data-paused] *::before, [data-ambient][data-paused] *::after { animation-play-state: paused !important; }
+
+/* ── Reduced motion: no ambient or reveal motion; instant state changes; static glow stays ── */
+@media (prefers-reduced-motion: reduce) {
+  .closing__glow, .ui-btn--breathe::after, .ui-meterbar__fill, .ui-meterbar__cap, .ui-result, .ui-result__mark { animation: none !important; }
+  .ui-tabs__indicator, .ui-icon, .sound-toggle svg { transition: none; }
+  .ui-btn:hover:not(:disabled) .ui-icon, a:hover > .ui-icon { transform: none; }
+}
+@media print { .closing__glow, .ui-btn--breathe::after { display: none; } }
+
+/* Polish: inside the lesson, option cards drop the cursor spotlight (the lesson has no ambient or cursor light). */
+.ui-lesson .ui-choice { background: linear-gradient(var(--surface), var(--surface)) padding-box, var(--edge) border-box; }
+
+/*
+ * ── D3 pass 2 · Admin and staff screens: plain, dense and fast to scan ──
+ * No 3D, frost, wallpaper, ambient motion or cursor light; glow only on focus and selection. Tables are dense with
+ * sticky headers; filters read as a toolbar; dangerous actions look dangerous. Confirmations and second-factor prompts
+ * are unchanged.
+ */
+main.ui-admin { --spotlight: linear-gradient(transparent, transparent); max-width: min(var(--width-wide), 100%); padding-top: var(--space-5); font-size: 0.9375rem; line-height: 1.5; animation: none; }
+main.ui-admin:not(.wide) { max-width: 60rem; }
+/* The header line (Home · Audit log · …) becomes a quiet sticky bar. */
+main.ui-admin > p.muted:first-child { position: sticky; top: 0; z-index: var(--z-sticky); display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); margin: 0 0 var(--space-5); padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--color-line); border-radius: var(--radius-md); background: rgb(14 15 31 / 0.92); -webkit-backdrop-filter: blur(var(--blur-sm)); backdrop-filter: blur(var(--blur-sm)); font-size: var(--text-sm); }
+main.ui-admin > p.muted:first-child a { color: var(--color-text-muted); text-decoration: none; padding: 0.15rem 0.25rem; border-radius: var(--radius-xs); }
+main.ui-admin > p.muted:first-child a:hover { color: var(--color-text); background: var(--tint-neutral); }
+main.ui-admin h1 { margin: 0 0 var(--space-2); font-family: var(--font-sans); font-size: var(--text-xl); font-weight: var(--weight-semibold); letter-spacing: var(--tracking-tight); }
+main.ui-admin h1 + p.muted { margin: 0 0 var(--space-5); }
+main.ui-admin h2 { margin: 0 0 var(--space-3); font-family: var(--font-sans); font-size: 1.0625rem; font-weight: var(--weight-semibold); }
+main.ui-admin h3 { font-size: var(--text-base); margin: var(--space-4) 0 var(--space-2); }
+/* Each area is a flat panel (no noise, no light). */
+main.ui-admin > section, main.ui-admin > form, main.ui-admin > div:not(.table-wrap):not(.ui-loading) > section {
+  margin: 0 0 var(--space-5); padding: var(--space-4) var(--space-5); border: 1px solid var(--color-line); border-radius: var(--radius-md); background: rgb(14 15 31 / 0.88); box-shadow: none; }
+main.ui-admin :is(.ui-block, .ui-card, .ui-panel, .ui-rows, .ui-choice, .ui-tile) { background: rgb(14 15 31 / 0.88) padding-box; border: 1px solid var(--color-line); box-shadow: none; }
+main.ui-admin [data-reveal] { opacity: 1 !important; transform: none !important; }
+/* Dense tables with sticky headers and tabular numbers. */
+main.ui-admin .table-wrap, main.ui-admin .ui-table-wrap { overflow-x: auto; border: 1px solid var(--color-line); border-radius: var(--radius-md); background: var(--color-surface); }
+main.ui-admin table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; font-variant-numeric: tabular-nums; }
+main.ui-admin th, main.ui-admin td { padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--color-line); text-align: left; vertical-align: top; }
+main.ui-admin thead th { position: sticky; top: 0; z-index: 1; background: var(--color-raised); color: var(--color-text-muted); font-family: var(--font-mono); font-size: 0.6875rem; font-weight: var(--weight-medium); letter-spacing: var(--tracking-label); text-transform: uppercase; white-space: nowrap; }
+main.ui-admin tbody tr:nth-child(even) { background: rgb(232 237 245 / 0.018); }
+main.ui-admin tbody tr:hover { background: var(--tint-neutral); }
+main.ui-admin tbody tr:focus-within { background: var(--tint-accent); }
+main.ui-admin tbody tr:last-child td { border-bottom: 0; }
+main.ui-admin td .muted { font-size: 0.75rem; }
+/* Lists of people, invites and items: dense rows. */
+main.ui-admin .services { border-top: 1px solid var(--color-line); }
+main.ui-admin .services li { padding: var(--space-2) var(--space-1); }
+main.ui-admin .services li:hover { background: var(--tint-neutral); }
+main.ui-admin .services .row { align-items: baseline; }
+/* Filters read as a toolbar: labels above compact fields. */
+main.ui-admin .filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-3); margin: 0 0 var(--space-5); padding: var(--space-3) var(--space-4); border: 1px solid var(--color-line); border-radius: var(--radius-md); background: rgb(8 8 19 / 0.5); }
+main.ui-admin .filters label { display: inline-grid; gap: var(--space-1); margin: 0; font-size: 0.75rem; color: var(--color-text-muted); }
+main.ui-admin :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) { min-height: 2.25rem; font-size: var(--text-sm); }
+main.ui-admin :is(button:not(.link), .ui-btn) { min-height: 2.25rem; }
+main.ui-admin :is(.ui-btn--primary, button.primary), main.ui-admin :is(.ui-btn--primary, button.primary):hover:not(:disabled) { box-shadow: none; }
+main.ui-admin :is(.ui-btn--primary, button.primary):focus-visible { box-shadow: var(--focus-ring); }
+main.ui-admin details > summary { cursor: pointer; font-weight: var(--weight-medium); }
+main.ui-admin details[open] > summary { margin-bottom: var(--space-2); }
+/* Plain, readable flags for facts in tables (not status labels: no dots, no glow). */
+.ui-flag { display: inline-block; padding: 0 0.4rem; border: 1px solid currentColor; border-radius: var(--radius-xs); font-size: 0.6875rem; font-weight: var(--weight-semibold); letter-spacing: 0.02em; line-height: 1.5; white-space: nowrap; }
+.ui-flag--danger { color: var(--color-danger); }
+.ui-flag--warn { color: var(--color-warning); }
+
+/* Dangerous actions look dangerous, everywhere (never glow). */
+button.danger:not(.link) { color: var(--color-danger); border: 1px solid rgb(242 167 167 / 0.55); background: var(--tint-danger); }
+button.danger:not(.link):hover:not(:disabled) { border-color: var(--color-danger); background: rgb(242 167 167 / 0.2); }
+button.link.danger { color: var(--color-danger); text-decoration-color: rgb(242 167 167 / 0.5); }
+button.link.danger:hover:not(:disabled) { color: #f7c4c4; text-decoration-color: currentColor; }
+@media (max-width: 40rem) {
+  main.ui-admin > section, main.ui-admin > form { padding: var(--space-3) var(--space-4); }
+  main.ui-admin > p.muted:first-child { position: static; }
+}
+/* Admin tables that aren't already in a scroll box scroll on their own on narrow screens (no page-wide sideways scroll). */
+@media (max-width: 60rem) {
+  main.ui-admin table:not(.table-wrap table):not(.ui-table-wrap table) { display: block; max-width: 100%; overflow-x: auto; }
+  main.ui-admin :is(input, select, textarea) { max-width: 100%; }
+  main.ui-admin input[size] { width: min(100%, 20rem); }
+}
+
+/* ── D3 pass 3 · 4K, ultra-wide and phones ── */
+/* Fluid base size: 16px up to 1920 px wide, growing gently to about 21px at 3840 px wide (rem-based layout scales with it). */
+html { font-size: clamp(100%, calc(100% + (100vw - 1920px) * 0.0026), 131.25%); }
+/* The admin Style guide: its grid never grows wider than the screen (it showed a 60 px sideways scroll on phones). */
+.sg { grid-template-columns: minmax(0, 1fr); }
+.sg > *, .sg-section > * { min-width: 0; }
+.sg .ui-table-wrap, .sg pre { max-width: 100%; overflow-x: auto; }
+/* Comfortable touch targets on touch screens. */
+@media (pointer: coarse) {
+  .ui-btn, button:not(.link), select, .ui-select, input:not([type="checkbox"]):not([type="radio"]), .ui-tab, .ui-pill, .ui-choice { min-height: 44px; }
+  button.link, .ui-crumbs a, .site-footer__link { display: inline-block; padding-block: 0.6rem; }
+}
+/* Lesson section headings are h2 (heading order); they keep the quiet D2 size. */
+.ui-prose h2 { margin: var(--space-7) 0 var(--space-3); font-size: var(--text-lg); letter-spacing: var(--tracking-tight); }
+.ui-takeaways h2, .ui-sources h2 { margin-top: 0; }
+/* The selected tab keeps a visible focus ring over the sliding indicator. */
+.ui-tabs.has-indicator .ui-tab[aria-selected="true"]:focus-visible { box-shadow: var(--focus-ring); }
+/* Scroll boxes contain their own screen-reader-only labels (so nothing pokes out sideways on phones). */
+.table-wrap, .ui-table-wrap { position: relative; }

@@ -3,7 +3,7 @@ import { TopicCatalog } from "./topic-catalog";
 
 export default function CatalogPage() {
   return (
-    <main className="wide">
+    <main className="wide ui-admin">
       <p className="muted"><Link href="/">Home</Link> · <Link href="/admin/courses">Course builder</Link> · <Link href="/admin/sources">Source library</Link></p>
       <h1>Topic catalog</h1>
       <p className="muted">

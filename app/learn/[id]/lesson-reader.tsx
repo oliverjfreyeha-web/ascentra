@@ -8,6 +8,7 @@ import { ReadLine } from "./read-line";
 import { Practice } from "./practice";
 import { lessonActivitiesFrom, type LessonPractice } from "../../activities-api";
 import { learnerLessonFrom, type LearnerLesson } from "../../courses-api";
+import { Loading } from "../../ui/loading";
 
 /** L2: one published lesson, with its citations and "last verified" date. Progress records the version read. */
 export function LessonReader({ id }: { id: string }) {
@@ -29,8 +30,8 @@ export function LessonReader({ id }: { id: string }) {
     void load();
   }, [load]);
 
-  if (failed) return <p role="status">{failed}</p>;
-  if (!data) return <p className="muted">Loading…</p>;
+  if (failed) return <p role="status" className="ui-state ui-state--error">{failed}</p>;
+  if (!data) return <Loading shape="lesson" />;
   const v = data.lesson.version;
   async function complete() {
     const r = await call("POST", `${url}/progress`, { versionId: v.id, status: "complete" });

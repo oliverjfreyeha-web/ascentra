@@ -75,7 +75,7 @@ export function AdjustmentsPanel() {
           )}
           <p><label>Amount in USD {kind === "refund" ? "(empty: all that's left)" : ""} <input value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" /></label></p>
           <p><label>Reason (recorded) <input value={reason} onChange={(e) => setReason(e.target.value)} /></label></p>
-          <button type="submit" disabled={busy}>{kind === "refund" ? "Refund" : "Credit"}</button>
+          <button type="submit" className={kind === "refund" ? "danger" : undefined} disabled={busy}>{kind === "refund" ? "Refund" : "Credit"}</button>
         </form>
       )}
     </section>

@@ -12,6 +12,7 @@ import { Icon, type IconName } from "./ui/icons";
 import { ART, Picture, srcSet } from "./ui/picture";
 import { SiteFooter } from "./ui/site-footer";
 import { Reveal } from "./ui/reveal";
+import { AmbientPause } from "./ui/ambient-pause";
 
 // D2b: every line here describes how ASCENTRA already works (the screens and notices it links to say the same).
 const FEATURES: { n: string; label: string; icon: IconName; title: string; body: string; size: "wide" | "tall" | "small"; art?: "left" | "right"; tilt?: boolean }[] = [
@@ -37,7 +38,7 @@ const STEPS = [
   { title: "Read, practice, ask", body: "Lessons with their sources, practice items, and the Mentor beside each lesson (it needs a Mentor allowance)." },
 ];
 
-const HERO_SIZES = "(min-width: 64rem) 34vw, 86vw";
+const HERO_SIZES = "(min-width: 64rem) 40rem, 86vw";
 
 export default function Home() {
   // The hero sculpture is the largest image on this page: fetch it early, at the size this screen needs.
@@ -45,7 +46,8 @@ export default function Home() {
   return (
     <main className="landing">
       <Reveal />
-      <header className="hero">
+      <AmbientPause />
+      <header className="hero" data-ambient>
         <div className="hero__bg" aria-hidden="true">
           <Picture art={ART.textureTopo} sizes="100vw" className="hero__texture" priority />
           <div className="hero__dust" />
@@ -109,12 +111,13 @@ export default function Home() {
         <div className="ui-block home-status"><ServiceStatus /></div>
       </section>
 
-      <section className="closing" aria-labelledby="closing-h" data-reveal>
+      <section className="closing" aria-labelledby="closing-h" data-reveal data-ambient>
+        <span className="closing__glow" aria-hidden="true" />
         <Crosshair className="hud-cross--tl" />
         <Crosshair className="hud-cross--tr" />
         <h2 id="closing-h" className="closing__title">Start where you <em>are</em>.</h2>
         <p className="ui-actions closing__actions">
-          <Link href="/sign-up" className="ui-btn ui-btn--primary ui-btn--lg">Create an account <Icon name="arrow" size={18} /></Link>
+          <Link href="/sign-up" className="ui-btn ui-btn--primary ui-btn--lg ui-btn--breathe">Create an account <Icon name="arrow" size={18} /></Link>
         </p>
         <p className="ui-label closing__foot">ASCENTRA is available in the United States.</p>
       </section>

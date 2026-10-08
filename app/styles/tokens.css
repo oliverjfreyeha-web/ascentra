@@ -96,7 +96,7 @@
   --border-hairline: 1px solid var(--color-line);
   --border-control: 1px solid var(--color-line-strong);
   --border-glass: 1px solid var(--glass-edge);
-  --focus-ring: 0 0 0 2px var(--color-base), 0 0 0 4px var(--color-accent);
+  --focus-ring: 0 0 0 2px var(--color-base), 0 0 0 4px var(--color-accent), 0 0 16px 3px rgb(160 189 219 / 0.35); /* D3: a clear solid ring plus a soft glow */
 
   /* ── Blur ───────────────────────────────────────────────────────── */
   --blur-sm: 8px;
@@ -147,6 +147,25 @@
   /* D2d · Frost: how strongly ice shows on landing glass (cards, effect tiles and the 3D blocks). 0 = clear glass, 1 = heavy frost. */
   --frost-strength: 0.55;
 
+  /*
+   * ── Glow (D3): light that marks what is interactive, active or selected. Never decoration, never behind body text,
+   * never on status labels (Demo, Simulated, Disconnected or real states). Built from the palette only: Frozen to pale
+   * ice, and Frozen to a muted steel blue, at low opacity.
+   */
+  --glow-ice: 214 228 242;          /* pale ice (rgb channels) */
+  --glow-frozen: 160 189 219;       /* Frozen */
+  --glow-steel: 104 134 170;        /* muted steel blue */
+  --glow-blur: 18px;
+  --glow-spread: -6px;
+  --glow-ring: 0 0 0 1px rgb(var(--glow-frozen) / 0.38), 0 0 var(--glow-blur) var(--glow-spread) rgb(var(--glow-frozen) / 0.55);
+  --glow-ring-strong: 0 0 0 1px rgb(var(--glow-ice) / 0.55), 0 0 calc(var(--glow-blur) + 6px) calc(var(--glow-spread) + 2px) rgb(var(--glow-frozen) / 0.6);
+  --glow-soft: 0 0 calc(var(--glow-blur) * 1.5) var(--glow-spread) rgb(var(--glow-frozen) / 0.32);
+  --glow-fill: linear-gradient(90deg, rgb(var(--glow-steel)), rgb(var(--glow-frozen)) 62%, rgb(var(--glow-ice)));
+  --glow-wash: radial-gradient(60% 80% at 50% 0%, rgb(var(--glow-frozen) / 0.09), transparent 70%);
+  --duration-drift: 32s;            /* ambient glow drift (landing only) */
+  --duration-breathe: 5.5s;         /* the single main call-to-action */
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
   /* ── Type (D2b): oversized display, mono labels ── */
   --text-mega: clamp(3.25rem, 9.5vw, 8.5rem);
   --tracking-display: -0.035em;
@@ -191,6 +210,8 @@
     --duration-slow: 0ms;
     --duration-very-slow: 0ms;
     --duration-ambient: 0ms;
+    --duration-drift: 0ms;
+    --duration-breathe: 0ms;
     --distance-micro: 0px;
     --distance-base: 0px;
     --scale-modal: 1;

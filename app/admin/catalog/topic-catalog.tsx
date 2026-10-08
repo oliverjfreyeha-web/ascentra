@@ -5,6 +5,7 @@ import Link from "next/link";
 import { call, when } from "../../call";
 import { meFrom } from "../../me";
 import { batchQueuedFrom, batchQuoteFrom, catalogFrom, type BatchQuote, type Catalog } from "../../activities-api";
+import { Loading } from "../../ui/loading";
 
 const usd = (n: number) => `$${n.toFixed(2)}`;
 
@@ -55,7 +56,7 @@ export function TopicCatalog() {
   }
 
   if (role && !["owner", "courseAdmin", "reviewer"].includes(role)) return <p>The topic catalog is for the Owner, Course Admins and Reviewers.</p>;
-  if (!data) return <p className="muted">{message ?? "Loading…"}</p>;
+  if (!data) return message ? <p className="muted ui-state ui-state--error">{message}</p> : <Loading shape="table" />;
   const canQueue = role === "owner" || role === "courseAdmin";
   return (
     <>
@@ -87,7 +88,7 @@ export function TopicCatalog() {
                   <>
                     {t.job.status}{t.job.waitingLabel ? ` · waiting for ${t.job.waitingLabel}` : ""}{t.job.note ? `: ${t.job.note}` : ""}
                     <div className="muted">Queued {when(t.job.queuedAt)}{t.job.lastStepAt ? ` · last step ${when(t.job.lastStepAt)}` : ""}</div>
-                    {canQueue && !["done", "canceled", "failed"].includes(t.job.status) && <button type="button" className="link" onClick={() => void cancel(t.job!.id)}>Take off the queue</button>}
+                    {canQueue && !["done", "canceled", "failed"].includes(t.job.status) && <button type="button" className="link danger" onClick={() => void cancel(t.job!.id)}>Take off the queue</button>}
                   </>
                 ) : "—"}
               </td>

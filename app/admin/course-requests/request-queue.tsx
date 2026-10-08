@@ -5,6 +5,7 @@ import Link from "next/link";
 import { call, when } from "../../call";
 import { meFrom } from "../../me";
 import { requestDecidedFrom, requestsFrom, type CourseRequest } from "../../path-api";
+import { Loading } from "../../ui/loading";
 
 /** L7: the Course Admins' (and the Owner's) queue of anonymous course requests. */
 export function RequestQueue() {
@@ -38,7 +39,7 @@ export function RequestQueue() {
     <>
       <p><label>Show <select value={status} onChange={(e) => setStatus(e.target.value)}><option value="open">Open</option><option value="planned">Planned</option><option value="dismissed">Dismissed</option><option value="">All</option></select></label></p>
       {message && <p role="status">{message}</p>}
-      {list === null ? <p className="muted">Loading…</p> : list.length === 0 ? <p className="muted">Nothing here.</p> : (
+      {list === null ? <Loading shape="table" /> : list.length === 0 ? <p className="muted ui-empty ui-empty--inline">Nothing here.</p> : (
         <table>
           <caption className="sr-only">Course requests</caption>
           <thead><tr><th scope="col">Topic</th><th scope="col">Level</th><th scope="col">Asked</th><th scope="col">Status</th><th scope="col">Decide</th></tr></thead>

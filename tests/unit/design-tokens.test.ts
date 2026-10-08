@@ -176,3 +176,47 @@ describe("D2d: 3D hero, frost, effect tiles and tilt", () => {
     expect(readFileSync("app/landing/tilt-cards.tsx", "utf8")).toMatch(/prefers-reduced-motion: reduce/);
   });
 });
+
+describe("D3: glow, motion and activities", () => {
+  const polish = readFileSync("app/styles/polish.css", "utf8");
+  it("glow is a token set built from the palette, and status labels never glow", () => {
+    for (const t of ["--glow-ice", "--glow-frozen", "--glow-steel", "--glow-blur", "--glow-spread", "--glow-ring"]) expect(main).toContain(t);
+    expect(polish).toMatch(/\.ui-status, \.st, \.ui-status \* \{ box-shadow: none !important; text-shadow: none !important; filter: none !important; \}/);
+  });
+  it("ambient motion is landing-only, pauses off-screen, and stops with reduced motion", () => {
+    expect(polish).toMatch(/\[data-ambient\]\[data-paused\][^{]*\{ animation-play-state: paused !important; \}/);
+    const rm = polish.slice(polish.lastIndexOf("@media (prefers-reduced-motion: reduce)"));
+    expect(rm).toMatch(/\.closing__glow, \.ui-btn--breathe::after/);
+    expect(readFileSync("app/learn/[id]/page.tsx", "utf8")).not.toMatch(/Reveal|AmbientPause|data-ambient/);
+    expect(readFileSync("app/ui/ambient-pause.tsx", "utf8")).not.toMatch(/SoundEngine|useSound/); // animations only, never the sound
+  });
+  it("graded and practice items look different and keep their labels in words", () => {
+    const src = readFileSync("app/learn/[id]/practice.tsx", "utf8");
+    expect(src).toMatch(/data-graded=\{a\.graded \? "true" : "false"\}/);
+    expect(src).toMatch(/\{a\.graded \? "Graded" : a\.label\}/);
+    expect(polish).toMatch(/\.ui-act\[data-graded="false"\][^{]*\{ border: 1px dashed/);
+    expect(polish).toMatch(/@keyframes result-in \{ from \{ transform: translateY\(6px\); \} \}/); // transform only: never hides the answer
+  });
+});
+
+describe("D3 pass 3: brand, 4K and accessibility", () => {
+  const polish = readFileSync("app/styles/polish.css", "utf8");
+  it("brand assets are built from the palette and wired up", () => {
+    for (const f of ["app/icon.svg", "app/favicon.ico", "app/apple-icon.png", "app/opengraph-image.jpg", "public/icons/icon-192.png", "public/icons/icon-512.png", "public/icons/maskable-512.png"]) expect(statSync(f).size, f).toBeGreaterThan(500);
+    expect(readFileSync("app/icon.svg", "utf8")).toMatch(/#080813/i);
+    expect(readFileSync("app/manifest.ts", "utf8")).toMatch(/theme_color: "#080813"/);
+  });
+  it("raster art ships responsive widths up to its native size, never upscaled", () => {
+    const pic = readFileSync("app/ui/picture.tsx", "utf8");
+    expect(pic).toMatch(/textureTopo: \{ base: "\/art\/texture-topo", widths: \[800, 1280, 1600, 2000\], width: 2000/);
+    expect(pic).toMatch(/cardGlass: \{ base: "\/art\/card-glass", widths: \[640, 960, 1280, 1600, 2000\], width: 2000/);
+    for (const w of [1600, 2000]) expect(statSync(`public/art/card-glass-${w}.avif`).size).toBeGreaterThan(1000);
+  });
+  it("fluid type, contained scroll regions, coarse-pointer targets, admin stays plain", () => {
+    expect(polish).toMatch(/html \{ font-size: clamp\(100%,/);
+    expect(polish).toMatch(/@media \(pointer: coarse\)[\s\S]*min-height: 44px/);
+    expect(polish).toMatch(/main\.ui-admin \{ --spotlight: linear-gradient\(transparent, transparent\);[^}]*animation: none; \}/);
+    expect(readFileSync("app/admin/audit/audit-log.tsx", "utf8")).toMatch(/className="table-wrap" tabIndex=\{0\} role="region"/);
+    expect(readFileSync("app/lesson-body.tsx", "utf8")).toMatch(/<h2>\{s\.heading\}<\/h2>/);
+  });
+});

@@ -159,7 +159,7 @@ function ItemCard({ item: i, reviews, busy, note, setNote, edit, setEdit, save, 
           {!edit && <><button type="button" className="link" onClick={() => setEdit({ prompt: i.prompt, explanation: i.explanation })}>Edit</button>{" "}</>}
           <label>Review note (recorded) <input value={note} onChange={(e) => setNote(e.target.value)} size={40} /></label>{" "}
           <button type="button" disabled={busy || note.trim().length < 5} onClick={() => decide("approve")}>Approve</button>{" "}
-          <button type="button" disabled={busy || note.trim().length < 5} onClick={() => decide("reject")}>Reject</button>
+          <button type="button" className="danger" disabled={busy || note.trim().length < 5} onClick={() => decide("reject")}>Reject</button>
         </p>
       )}
     </div>

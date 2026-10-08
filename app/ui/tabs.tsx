@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useRef, useState, type ReactNode } from "react";
+import { useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 
 /** D1 · Tabs with the ARIA tabs pattern: arrow keys, Home and End move between tabs. */
 export function Tabs({ tabs, label }: { tabs: { key: string; label: string; content: ReactNode; disabled?: boolean }[]; label: string }) {
@@ -8,6 +8,18 @@ export function Tabs({ tabs, label }: { tabs: { key: string; label: string; cont
   const [active, setActive] = useState(tabs.find((t) => !t.disabled)?.key ?? tabs[0]?.key);
   const refs = useRef<Record<string, HTMLButtonElement | null>>({});
   const enabled = tabs.filter((t) => !t.disabled);
+  // D3: a sliding indicator under the active tab (transform only; it jumps with reduced motion).
+  const list = useRef<HTMLDivElement>(null);
+  const [bar, setBar] = useState<{ x: number; w: number } | null>(null);
+  useLayoutEffect(() => {
+    const el = refs.current[active ?? ""], host = list.current;
+    if (!el || !host) return;
+    const measure = () => setBar({ x: el.offsetLeft, w: el.offsetWidth });
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(host);
+    return () => ro.disconnect();
+  }, [active]);
 
   function onKey(e: React.KeyboardEvent, key: string) {
     const i = enabled.findIndex((t) => t.key === key);
@@ -21,7 +33,8 @@ export function Tabs({ tabs, label }: { tabs: { key: string; label: string; cont
 
   return (
     <div>
-      <div className="ui-tabs" role="tablist" aria-label={label}>
+      <div ref={list} className={`ui-tabs${bar ? " has-indicator" : ""}`} role="tablist" aria-label={label}>
+        {bar && <span className="ui-tabs__indicator" aria-hidden="true" style={{ transform: `translateX(${bar.x}px)`, width: bar.w }} />}
         {tabs.map((t) => (
           <button key={t.key} ref={(el) => { refs.current[t.key] = el; }} type="button" role="tab" className="ui-tab" id={`${id}-${t.key}-tab`}
             aria-selected={active === t.key} aria-controls={`${id}-${t.key}-panel`} tabIndex={active === t.key ? 0 : -1} disabled={t.disabled}

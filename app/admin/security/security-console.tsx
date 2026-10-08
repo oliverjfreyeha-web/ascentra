@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useReverification } from "@clerk/nextjs";
 import { call, when } from "../../call";
+import { Loading } from "../../ui/loading";
 
 type Appeal = { id: string; reference: string; step: string; text: string; status: string; submittedAt: string; decisionReason: string | null; account?: { id: string; email: string; displayName: string; role: string } | null };
 type SessionV = { id: string; device: string; state: string; startedAt: string; lastHeartbeatAt: string; endedAt: string | null; endReason: string | null; region: string | null };
@@ -98,9 +99,9 @@ export function SecurityConsole() {
 
       <section aria-labelledby="queue-h">
         <h2 id="queue-h">Appeals under review</h2>
-        {!queue ? <p className="muted">Loading…</p> : queue.length === 0 ? <p className="muted">No open appeals.</p> : (
+        {!queue ? <Loading shape="table" /> : queue.length === 0 ? <p className="muted ui-empty ui-empty--inline">No open appeals.</p> : (
           <table className="plain">
-            <thead><tr><th>Reference</th><th>Account</th><th>Step</th><th>Submitted</th><th>Appeal</th><th /></tr></thead>
+            <thead><tr><th>Reference</th><th>Account</th><th>Step</th><th>Submitted</th><th>Appeal</th><th><span className="sr-only">Actions</span></th></tr></thead>
             <tbody>
               {queue.map((a) => (
                 <tr key={a.id}>
@@ -114,7 +115,7 @@ export function SecurityConsole() {
                       <>
                         {a.account && <button type="button" className="link" onClick={() => open(a.account!.id)}>Review account</button>}{" · "}
                         <button type="button" className="link" onClick={() => setPending({ kind: "appeal", appealId: a.id, reference: a.reference, decision: "accept" })}>Accept</button>{" · "}
-                        <button type="button" className="link" onClick={() => setPending({ kind: "appeal", appealId: a.id, reference: a.reference, decision: "decline" })}>Decline</button>
+                        <button type="button" className="link danger" onClick={() => setPending({ kind: "appeal", appealId: a.id, reference: a.reference, decision: "decline" })}>Decline</button>
                       </>
                     )}
                   </td>
@@ -144,15 +145,15 @@ export function SecurityConsole() {
           </p>
           {pending?.kind === "limit" || pending?.kind === "suspend" ? reasonForm(pending.kind === "limit" ? "Apply Limit" : "Apply Suspend") : (
             <p>
-              <button type="button" className="link" onClick={() => setPending({ kind: "limit" })}>Apply Limit</button>{" · "}
-              <button type="button" className="link" onClick={() => setPending({ kind: "suspend" })}>Apply Suspend</button>{" "}
+              <button type="button" className="link danger" onClick={() => setPending({ kind: "limit" })}>Apply Limit</button>{" · "}
+              <button type="button" className="link danger" onClick={() => setPending({ kind: "suspend" })}>Apply Suspend</button>{" "}
               <span className="muted">Limit follows Verify and needs Support; Suspend follows Limit and needs a Super Admin or the Owner. Never the Owner.</span>
             </p>
           )}
 
           <h3>Devices <span className="muted">{view.devices.filter((d) => d.state === "trusted").length} of {view.deviceLimit} trusted</span></h3>
           <table className="plain">
-            <thead><tr><th>Device</th><th>State</th><th>Trusted</th><th>Last active</th><th /></tr></thead>
+            <thead><tr><th>Device</th><th>State</th><th>Trusted</th><th>Last active</th><th><span className="sr-only">Actions</span></th></tr></thead>
             <tbody>
               {view.devices.map((d) => (
                 <tr key={d.id}>

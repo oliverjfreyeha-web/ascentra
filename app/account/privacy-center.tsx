@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useReverification } from "@clerk/nextjs";
 import { call, when } from "../call";
+import { Loading } from "../ui/loading";
 
 type Consent = {
   id: string; title: string; version: string; status: "given" | "withdrawn"; at: string; method: string;
@@ -67,16 +68,16 @@ export function PrivacyCenter() {
     });
   }
 
-  if (!data) return <section className="ui-block"><h2>Privacy Center</h2><p className="muted">{message ?? "Loading…"}</p></section>;
+  if (!data) return <section className="ui-block"><h2>Privacy Center</h2>{message ? <p className="muted ui-state ui-state--error">{message}</p> : <Loading shape="list" />}</section>;
   return (
     <section aria-labelledby="privacy-h" className="ui-block">
       <h2 id="privacy-h">Privacy Center</h2>
       {message && <p role="status">{message}</p>}
       <h3>What you agreed to</h3>
       {data.consents.length === 0 ? <p className="muted">Nothing yet.</p> : (
-        <div className="table-wrap">
+        <div className="table-wrap" tabIndex={0} role="region" aria-label="What you agreed to (scrolls sideways)">
           <table className="plain">
-            <thead><tr><th>Document</th><th>Version</th><th>For</th><th>Status</th><th>When</th><th></th></tr></thead>
+            <thead><tr><th>Document</th><th>Version</th><th>For</th><th>Status</th><th>When</th><th><span className="sr-only">Actions</span></th></tr></thead>
             <tbody>
               {data.consents.map((c) => (
                 <tr key={c.id}>

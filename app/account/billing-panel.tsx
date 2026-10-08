@@ -5,6 +5,7 @@ import { useReverification } from "@clerk/nextjs";
 import { call } from "../call";
 import { mentorAddonFrom, usd as fmt, type AddonCents, type MentorAddonInfo } from "../billing-api";
 import { AddonChanger, AllowanceMeter, CheckoutAddon } from "./mentor-addon";
+import { Loading } from "../ui/loading";
 
 type Plan = { key: "basic" | "pro"; name: string; cents: number };
 type Billing = {
@@ -105,7 +106,7 @@ export function BillingPanel() {
     setBusy(false);
   }
 
-  if (!data) return <p className="muted">{message ?? "Loading your plan…"}</p>;
+  if (!data) return message ? <p className="muted ui-state ui-state--error">{message}</p> : <Loading label="Loading your plan…" />;
   const s = data.subscription;
   const chosen = data.plans.find((p) => p.key === plan);
   const trial = plan === "basic" && data.trialEligible;
