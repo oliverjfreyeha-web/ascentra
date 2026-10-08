@@ -1,48 +1,79 @@
 /*
- * D4 · Liquid glass: one token set and one recipe for every glass surface (replaces the D2d frost overlay).
- *   fill    a soft white light over a Black Iris shade, the page blurred and lifted behind it
- *   edges   inset highlight lines (top strongest) and a 1 px hairline rim that fades like real edge light
- *   frost   inside the glass: fine noise in screen blend, dense at the edges, clear in the middle
+ * D5 · Glass: two materials, chosen by the learner (html[data-glass], saved in this browser; default Liquid).
+ *   Liquid   clear glass whose rim bends the scene behind it like the edge of a thick lens (an SVG displacement map
+ *            per element, built from its real size and corner radius by app/ui/glass-lens.tsx), a slight colour split at
+ *            the edge, a lit conic rim, a soft sky reflection and a slow sheen. The lens needs SVG filters in
+ *            backdrop-filter; where that is unsupported, the same glass renders clear, with the same rim and reflection.
+ *   Frosted  a thick, soft blur with fine grain, a lighter fill and no bending. Best for reading.
  * Used by .ui-glass (app/ui/glass.tsx) and the existing glass surfaces: panels, the sign-in style cards, modals and
- * menus. Never stacked more than two levels deep. Text on glass keeps at least 4.5:1 because the shade token sets a
- * floor under the light fill (checked against the brightest backdrop in tests/unit/design-tokens.test.ts).
- * Dark only; palette only (Black Iris #080813 and Frozen #A0BDDB, plus white light).
+ * menus. Never stacked more than two levels deep. Text on glass keeps at least 4.5:1 over all five scenes: the tint
+ * (--glass-shade, Black Iris under the light) is set per material and measured in the D5 report.
+ * Course UI (progress, charts, video, inputs) is never glass: see app/ui/neo.tsx.
  */
 :root {
-  --glass-blur: 22px;
-  --glass-filter: blur(var(--glass-blur)) saturate(1.7) brightness(1.08);
-  --glass-shade: 0.74;
-  --glass-light: linear-gradient(155deg, rgb(255 255 255 / 0.13), rgb(255 255 255 / 0.035) 45%, rgb(160 189 219 / 0.07));
-  --glass-rim: linear-gradient(140deg, rgb(255 255 255 / 0.65), rgb(255 255 255 / 0.08) 28%, rgb(160 189 219 / 0.05) 60%, rgb(255 255 255 / 0.32));
-  --glass-inset: inset 0 1px 0 rgb(255 255 255 / 0.38), inset 0 -1px 0 rgb(255 255 255 / 0.07), inset 1px 0 0 rgb(255 255 255 / 0.12), inset -1px 0 0 rgb(255 255 255 / 0.06), inset 0 0 28px rgb(160 189 219 / 0.1);
-  --glass-drop: 0 1px 1px rgb(0 0 0 / 0.25), 0 18px 40px -12px rgb(2 3 12 / 0.65);
-  --glass-frost: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><filter id='f' x='0' y='0' width='100%' height='100%'><feTurbulence type='fractalNoise' baseFrequency='.045 .09' numOctaves='5' seed='4'/><feColorMatrix values='0 0 0 0 .78  0 0 0 0 .87  0 0 0 0 1  0 0 0 2.2 -.95'/></filter><rect width='300' height='300' filter='url(%23f)'/></svg>");
-  --glass-frost-opacity: 0.38;
-  --glass-frost-mask: radial-gradient(ellipse 78% 74% at 50% 50%, transparent 55%, #000 100%);
+  --glass-shade: 0.6;
+  --glass-blur: 2.5px;
+  --glass-filter: blur(var(--glass-blur)) saturate(1.7) brightness(1.1);
+  --glass-light: linear-gradient(160deg, rgb(255 255 255 / 0.12), rgb(255 255 255 / 0.02) 40%, rgb(255 255 255 / 0.05));
+  --glass-rim-width: 1.4px;
+  --glass-rim: conic-gradient(from 205deg at 50% 50%, rgb(255 255 255 / 0.95), rgb(255 255 255 / 0.12) 16%, rgb(255 255 255 / 0.05) 38%, rgb(255 255 255 / 0.6) 50%, rgb(255 255 255 / 0.1) 64%, rgb(255 255 255 / 0.04) 82%, rgb(255 255 255 / 0.95));
+  --glass-inset: inset 0 1px 1px rgb(255 255 255 / 0.55), inset 0 -1px 1px rgb(255 255 255 / 0.25), inset 0 0 22px rgb(255 255 255 / 0.07);
+  --glass-drop: 0 20px 46px -22px rgb(2 6 22 / 0.55), 0 2px 4px rgb(0 0 0 / 0.18);
+  --glass-reflect: radial-gradient(130% 80% at 15% -15%, rgb(255 255 255 / 0.14), transparent 55%), radial-gradient(90% 60% at 100% 118%, rgb(200 230 255 / 0.14), transparent 55%);
+  --glass-sheen: linear-gradient(105deg, transparent 42%, rgb(255 255 255 / 0.12) 50%, transparent 58%);
+  --glass-text-shadow: 0 1px 8px rgb(2 3 12 / 0.45);
   --glass-fallback: rgb(8 8 19 / 0.85);
+}
+/* Frosted: thick, soft, grainy, no bending. */
+:root[data-glass="frost"] {
+  --glass-shade: 0.62;
+  --glass-blur: 26px;
+  --glass-filter: blur(var(--glass-blur)) saturate(1.5) brightness(1.1);
+  --glass-light: linear-gradient(160deg, rgb(255 255 255 / 0.12), rgb(255 255 255 / 0.05) 50%, rgb(255 255 255 / 0.09));
+  --glass-rim: linear-gradient(150deg, rgb(255 255 255 / 0.8), rgb(255 255 255 / 0.14) 30%, rgb(255 255 255 / 0.08) 70%, rgb(255 255 255 / 0.5));
+  --glass-inset: inset 0 1px 0 rgb(255 255 255 / 0.7), inset 0 -1px 0 rgb(255 255 255 / 0.2), inset 0 0 30px rgb(255 255 255 / 0.1);
+  --glass-reflect: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' seed='3'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .55 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>") 0 0 / 180px 180px;
+  --glass-sheen: linear-gradient(transparent, transparent);
+}
+/* Small windows: lighter blur and a thinner rim, so glass never looks muddy. */
+@media (max-width: 43.75rem) {
+  :root { --glass-rim-width: 1.1px; }
+  :root[data-glass="frost"] { --glass-blur: 16px; }
 }
 
 .ui-glass, .ui-panel, .ui-auth__card, .ui-modal, .ui-menu {
   isolation: isolate;
   border: 1px solid transparent;
-  background: var(--glass-light) padding-box, linear-gradient(rgb(8 8 19 / var(--glass-shade)), rgb(8 8 19 / var(--glass-shade))) padding-box;
+  background: var(--glass-light) padding-box, linear-gradient(rgb(8 10 28 / var(--glass-shade)), rgb(8 10 28 / var(--glass-shade))) padding-box;
   -webkit-backdrop-filter: var(--glass-filter);
   backdrop-filter: var(--glass-filter);
   box-shadow: var(--glass-inset), var(--glass-drop);
+  text-shadow: var(--glass-text-shadow);
+}
+/* Liquid's lens: the per-element displacement map (--lg, set only where the browser supports it) runs first. */
+@supports (backdrop-filter: url(#a)) {
+  :root:not([data-glass="frost"]) :is(.ui-glass, .ui-panel, .ui-auth__card) { backdrop-filter: var(--lg, blur(0)) var(--glass-filter); }
 }
 .ui-glass, .ui-panel, .ui-auth__card { position: relative; }
-/* The rim: a 1 px gradient ring (mask-composite cuts out the middle), strong top-left, faint middle, medium bottom-right. */
+/* The lit rim: a gradient ring (mask-composite cuts out the middle). */
 .ui-glass::before, .ui-panel::before, .ui-auth__card::before, .ui-modal::before, .ui-menu::before {
-  content: ""; position: absolute; inset: -1px; border-radius: inherit; padding: 1px; pointer-events: none; background: var(--glass-rim);
+  content: ""; position: absolute; inset: -1px; border-radius: inherit; padding: var(--glass-rim-width); pointer-events: none; z-index: 2; background: var(--glass-rim);
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
   mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite: exclude;
 }
-/* The frost, inside the glass and behind its content. */
+/* The reflection of the sky (Liquid) or the grain (Frosted), inside the glass and behind its content. */
 .ui-glass::after, .ui-panel::after, .ui-auth__card::after, .ui-modal::after, .ui-menu::after {
-  content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none;
-  opacity: var(--glass-frost-opacity); mix-blend-mode: screen; background: var(--glass-frost) 0 0 / 300px 300px;
-  -webkit-mask: var(--glass-frost-mask); mask: var(--glass-frost-mask);
+  content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none; opacity: 0.9;
+  background: var(--glass-reflect);
 }
+:root[data-glass="frost"] :is(.ui-glass, .ui-panel, .ui-auth__card, .ui-modal, .ui-menu)::after { opacity: 0.5; mix-blend-mode: soft-light; }
+/* The slow sheen: only on the small .ui-glass pieces (nav, cards, docks), never on large panels. 12 s per pass. */
+.ui-glass::after { background: var(--glass-sheen) no-repeat, var(--glass-reflect); background-size: 60% 100%, auto; animation: glass-sheen 12s linear infinite; }
+:root[data-glass="frost"] .ui-glass::after { animation: none; background: var(--glass-reflect); }
+@keyframes glass-sheen { from { background-position: -80% 0, 0 0; } to { background-position: 190% 0, 0 0; } }
+@media (prefers-reduced-motion: reduce) { .ui-glass::after { animation: none; } }
+:root[data-motion="off"] .ui-glass::after { animation: none; }
+
 /* Glass on glass, two levels at most: anything deeper is a plain shaded surface. */
 :is(.ui-glass, .ui-panel, .ui-auth__card, .ui-modal, .ui-menu) :is(.ui-glass, .ui-panel, .ui-auth__card, .ui-menu) :is(.ui-glass, .ui-panel, .ui-auth__card, .ui-menu) {
   -webkit-backdrop-filter: none; backdrop-filter: none; background: rgb(8 8 19 / 0.6) padding-box;
@@ -51,7 +82,7 @@
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .ui-glass, .ui-panel, .ui-auth__card, .ui-modal, .ui-menu { background: var(--glass-fallback) padding-box; }
 }
-/* Admin keeps its D3 flat, dense panels (no rim, no frost); its modals and menus are glass like everywhere else. */
+/* Admin keeps its D3 flat, dense panels (no rim, no reflection); its modals and menus are glass like everywhere else. */
 main.ui-admin .ui-panel::before, main.ui-admin .ui-panel::after { content: none; }
 
 /* ── D4 · Declutter: decorative grids and frames removed app-wide (meaning is carried by content, not ornament) ── */

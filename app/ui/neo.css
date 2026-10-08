@@ -1,0 +1,60 @@
+/*
+ * D5 · Course UI (app/ui/neo.tsx): solid neomorphic surfaces for progress, charts, video and inputs. Opaque Black Iris
+ * shades only, light from the top-left; never on glass. Text on them meets 4.5:1 (the colours are the D1 tokens).
+ */
+.neo-card, .neo-well, .neo-video, .neo-input, .neo-btn, .neo-toggle__track, .neo-progress__track {
+  --neo-bg: #11132a;
+  --neo-hi: rgb(255 255 255 / 0.055);
+  --neo-lo: rgb(0 0 0 / 0.55);
+}
+.neo-card { padding: var(--space-5); border-radius: 22px; background: linear-gradient(145deg, #15183a, #0e1024); color: var(--color-text);
+  box-shadow: -6px -6px 14px var(--neo-hi), 8px 10px 22px var(--neo-lo), inset 0 1px 0 rgb(255 255 255 / 0.05); }
+.neo-well { padding: var(--space-4); border-radius: 18px; background: var(--neo-bg);
+  box-shadow: inset 4px 5px 10px var(--neo-lo), inset -4px -4px 10px var(--neo-hi); }
+
+.neo-progress__track { height: 0.75rem; border-radius: 999px; background: var(--neo-bg); overflow: hidden;
+  box-shadow: inset 2px 3px 6px var(--neo-lo), inset -2px -2px 5px var(--neo-hi); }
+.neo-progress__fill { height: 100%; border-radius: inherit; background: linear-gradient(180deg, #c3d8f1, var(--color-accent));
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.12) inset; transition: width var(--duration-slow) var(--ease-smooth-out); }
+
+.neo-ring { position: relative; display: inline-grid; place-items: center; border-radius: 50%; background: linear-gradient(145deg, #15183a, #0e1024);
+  box-shadow: -5px -5px 12px rgb(255 255 255 / 0.05), 6px 8px 16px rgb(0 0 0 / 0.55); }
+.neo-ring svg { position: absolute; inset: 8%; width: 84%; height: 84%; }
+.neo-ring__track { fill: none; stroke: #0a0b1c; stroke-width: 9; }
+.neo-ring__fill { fill: none; stroke: var(--color-accent); stroke-width: 9; stroke-linecap: round; transition: stroke-dashoffset var(--duration-slow) var(--ease-smooth-out); }
+.neo-ring > span { position: relative; font-family: var(--font-mono); font-size: 0.875rem; font-variant-numeric: tabular-nums; }
+
+.neo-chart { margin: 0; display: grid; gap: var(--space-2); }
+.neo-chart figcaption { font-size: var(--text-sm); color: var(--color-text-muted); }
+.neo-chart svg { display: block; width: 100%; height: 8rem; }
+.neo-chart__area { fill: rgb(160 189 219 / 0.12); }
+.neo-chart__line { fill: none; stroke: var(--color-accent); stroke-width: 2; stroke-linejoin: round; }
+
+.neo-video { position: relative; padding: 0.75rem; border-radius: 22px; background: linear-gradient(145deg, #15183a, #0e1024);
+  box-shadow: -6px -6px 14px var(--neo-hi), 8px 10px 22px var(--neo-lo); }
+.neo-video__screen { aspect-ratio: 16 / 9; border-radius: 14px; overflow: hidden; background: #05060f; box-shadow: inset 3px 4px 10px rgb(0 0 0 / 0.8), inset -2px -2px 6px rgb(255 255 255 / 0.04); }
+.neo-video__screen > * { display: block; width: 100%; height: 100%; object-fit: cover; }
+.neo-video__play { position: absolute; left: 50%; top: 50%; width: 3.5rem; height: 3.5rem; margin: -1.75rem 0 0 -1.75rem; display: grid; place-items: center; border: 0; border-radius: 50%; cursor: pointer;
+  color: var(--color-on-accent); background: linear-gradient(180deg, #fbfdff, #c3d8f1); box-shadow: 0 10px 24px -8px rgb(0 0 0 / 0.7), inset 0 1px 0 #fff; transition: transform 160ms var(--ease-smooth-out); }
+.neo-video__play:active { transform: scale(0.96); }
+
+.neo-field { display: grid; gap: var(--space-2); font-size: var(--text-sm); }
+.neo-input { min-height: 2.75rem; padding: 0 var(--space-4); border: 0; border-radius: 14px; background: var(--neo-bg); color: var(--color-text); font: inherit; font-size: var(--text-base);
+  box-shadow: inset 3px 4px 8px var(--neo-lo), inset -3px -3px 7px var(--neo-hi); }
+.neo-input::placeholder { color: #8f9bb1; }
+
+.neo-toggle { display: inline-flex; align-items: center; gap: var(--space-3); min-height: 2.75rem; padding: 0; border: 0; background: none; color: var(--color-text); font: inherit; cursor: pointer; }
+.neo-toggle__track { position: relative; width: 3.25rem; height: 1.75rem; border-radius: 999px; background: var(--neo-bg); box-shadow: inset 2px 3px 6px var(--neo-lo), inset -2px -2px 5px var(--neo-hi); }
+.neo-toggle__knob { position: absolute; left: 0.1875rem; top: 0.1875rem; width: 1.375rem; height: 1.375rem; border-radius: 50%; background: linear-gradient(145deg, #3a4064, #23273f);
+  box-shadow: 2px 3px 6px rgb(0 0 0 / 0.5); transition: transform var(--duration-fast) var(--ease-smooth-out), background-color var(--duration-fast); }
+.neo-toggle[aria-checked="true"] .neo-toggle__knob { transform: translateX(1.5rem); background: linear-gradient(180deg, #fbfdff, #c3d8f1); }
+
+.neo-btn { min-height: 2.75rem; padding: 0 var(--space-5); border: 0; border-radius: 999px; color: var(--color-text); font: inherit; font-weight: 500; cursor: pointer;
+  background: linear-gradient(145deg, #181b3e, #0f1126); box-shadow: -4px -4px 10px var(--neo-hi), 5px 6px 14px var(--neo-lo); transition: box-shadow 160ms var(--ease-smooth-out), transform 160ms var(--ease-smooth-out); }
+.neo-btn:active { transform: scale(0.98); box-shadow: inset 3px 4px 8px var(--neo-lo), inset -3px -3px 7px var(--neo-hi); }
+:is(.neo-btn, .neo-toggle, .neo-input, .neo-video__play):focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) { .neo-progress__fill, .neo-ring__fill, .neo-toggle__knob, .neo-btn, .neo-video__play { transition: none; } }
+.neo-showcase { display: grid; gap: var(--space-6); grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr)); margin-top: var(--space-5); }
+.neo-showcase h2 { margin: 0 0 var(--space-2); font-size: var(--text-lg); }
+.neo-showcase .neo-card { display: grid; gap: var(--space-4); align-content: start; }
+.neo-showcase__row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-5); }

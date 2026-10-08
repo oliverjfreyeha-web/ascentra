@@ -134,18 +134,18 @@ describe("D4 · motion and photosensitivity", () => {
   });
 });
 
-describe("D4 · liquid glass", () => {
-  it("is one token set and one recipe, with the frost inside the glass and a solid fallback", () => {
-    for (const t of ["--glass-blur: 22px", "--glass-filter: blur(var(--glass-blur)) saturate(1.7) brightness(1.08)", "--glass-frost-opacity: 0.38", "--glass-fallback: rgb(8 8 19 / 0.85)"]) expect(glass).toContain(t);
-    expect(glass).toMatch(/feTurbulence/);
-    expect(glass).toMatch(/radial-gradient\(ellipse 78% 74% at 50% 50%, transparent 55%, #000 100%\)/); // clear middle, dense edges
-    expect(glass).toMatch(/mask-composite: exclude/); // the hairline rim
+describe("D4 → D5 · glass", () => {
+  it("two materials, one recipe: Liquid (lens where supported) and Frosted, with the rim and a solid fallback", () => {
+    expect(glass).toMatch(/:root\[data-glass="frost"\] \{[^}]*--glass-blur: 26px;/);
+    expect(glass).toMatch(/@supports \(backdrop-filter: url\(#a\)\)/); // Liquid's lens only where supported
+    expect(glass).toMatch(/feTurbulence/); // Frosted grain
+    expect(glass).toMatch(/mask-composite: exclude/); // the lit rim
     expect(glass).toMatch(/@supports not \(\(backdrop-filter: blur\(1px\)\) or \(-webkit-backdrop-filter: blur\(1px\)\)\)/);
     expect(glass).not.toMatch(/border-image/);
     expect(readFileSync("app/layout.tsx", "utf8")).toMatch(/import "\.\/styles\/glass\.css";/);
   });
-  it("text on glass keeps 4.5:1 even over a pure white backdrop (the shade token sets the floor)", () => {
-    const shade = Number(/--glass-shade: ([\d.]+);/.exec(glass)![1]);
+  it("on the Hall, text on glass keeps 4.5:1 even over a pure white backdrop (the Hall's shade floor)", () => {
+    const shade = Number(/\.hall \.ui-glass \{ --glass-shade: calc\(([\d.]+) \+/.exec(css)![1]);
     const over = (bg: number, s: number) => { // white page under the shade, then the strongest part of the light fill (13% white)
       const c = bg * (1 - s) + 8 * s;
       const v = Math.round(c * 0.87 + 255 * 0.13);

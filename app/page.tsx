@@ -2,6 +2,8 @@ import Link from "next/link";
 import { AccountPanel } from "./account-panel";
 import { ServiceStatus } from "./service-status";
 import { Hall } from "./landing/hall/hall";
+import { WorldHero } from "./landing/world/world-hero";
+import { HallSlot } from "./landing/world/world-controls";
 import { Icon, type IconName } from "./ui/icons";
 import { ART, Picture } from "./ui/picture";
 import { SiteFooter } from "./ui/site-footer";
@@ -33,13 +35,15 @@ const STEPS = [
 ];
 
 export default function Home() {
-  // D4: visitors who are not signed in see the Hall; signed-in visitors see Home (the account line and its links).
-  // The choice is made before first paint (the Hall's boot script) and confirmed by Clerk (app/landing/hall/hall-life.tsx).
+  // D5: visitors who are not signed in see the living-world hero (or the Hall, if they chose it as their scene);
+  // signed-in visitors see Home (the account line and its links). Chosen before first paint, then confirmed by Clerk.
   return (
     <main className="landing" data-landing suppressHydrationWarning>
       <Reveal />
       <AmbientPause />
-      <Hall />
+      <WorldHero />
+      <HallSlot><Hall preloadImage={false} /></HallSlot>
+      <div className="landing__rest">
       <header className="home-head">
         <div className="home-head__inner">
           <h1 className="home-head__title">ASCENTRA <em>Founders</em> Academy</h1>
@@ -53,7 +57,7 @@ export default function Home() {
         </div>
         <div className="bento">
           {FEATURES.map((f, i) => (
-            <article key={f.n} className={`ui-tile bento__${f.size}`} data-reveal style={{ ["--i" as string]: i % 3 }}>
+            <article key={f.n} id={f.label === "Families" ? "guardians" : undefined} className={`ui-tile bento__${f.size}`} data-reveal style={{ ["--i" as string]: i % 3 }}>
               <span className="ui-tile__icon"><Icon name={f.icon} /></span>
               <h3>{f.title}</h3>
               <p className="muted">{f.body}</p>
@@ -93,6 +97,7 @@ export default function Home() {
         <p className="ui-label closing__foot">ASCENTRA is available in the United States.</p>
       </section>
       <SiteFooter />
+      </div>
     </main>
   );
 }
