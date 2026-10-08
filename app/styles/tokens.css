@@ -144,8 +144,6 @@
   /* The cursor spotlight on cards (desktop only): positioned by app/ui/spotlight.tsx. */
   --spotlight: radial-gradient(22rem circle at var(--mx, 50%) var(--my, -30%), rgb(160 189 219 / 0.085), transparent 45%);
   --duration-ambient: 24s;
-  /* D2d · Frost: how strongly ice shows on landing glass (cards, effect tiles and the 3D blocks). 0 = clear glass, 1 = heavy frost. */
-  --frost-strength: 0.55;
 
   /*
    * ── Glow (D3): light that marks what is interactive, active or selected. Never decoration, never behind body text,

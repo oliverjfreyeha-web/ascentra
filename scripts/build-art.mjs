@@ -16,8 +16,6 @@ mkdirSync("public/audio", { recursive: true });
 const jobs = [
   // The glass sculpture, cropped to the sculpture (it sits right of the headline), with its dark ground kept.
   { name: "hero-sculpture", src: "hero-glass-sculpture.webp", crop: { left: 900, top: 40, width: 1060, height: 1060 }, widths: [480, 720, 960, 1060], avif: 52, webp: 74 },
-  // The topographic lines: a full-bleed background layer. Served up to its native 2000 px (never upscaled).
-  { name: "texture-topo", src: "texture-topographic.webp", widths: [800, 1280, 1600, 2000], avif: 45, webp: 68 },
   // The glass panels, pulled into our palette: desaturated, tinted toward Frozen, darkened.
   { name: "card-glass", src: "card-glass-panels.webp", widths: [640, 960, 1280, 1600, 2000], avif: 50, webp: 72,
     tone: (img) => img.modulate({ saturation: 0.25, brightness: 0.62 }).tint({ r: 160, g: 189, b: 219 }) },
