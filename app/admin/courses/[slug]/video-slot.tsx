@@ -2,7 +2,7 @@
 
 import { useRef, useState, type DragEvent } from "react";
 import { call, when, type ApiResult } from "../../../call";
-import { MIN_TRANSCRIPT_CHARS, SLOT_STATUS, VIDEO_MAX_BYTES, mb, tooLarge, uploadStartFrom, type Brief, type SlotView } from "../../../studio-api";
+import { courseApi, MIN_TRANSCRIPT_CHARS, SLOT_STATUS, VIDEO_MAX_BYTES, mb, tooLarge, uploadStartFrom, type Brief, type SlotView } from "../../../studio-api";
 
 type Act = (run: () => Promise<ApiResult>, okText: (r: ApiResult) => string) => Promise<boolean>;
 const lines = (s: string) => s.split("\n").map((x) => x.trim()).filter(Boolean);
@@ -30,7 +30,7 @@ function sendFile(url: string, file: File, onProgress: (pct: number) => void): P
  * video keeps the old record; the list below shows every upload.
  */
 export function VideoSlotEditor({ slug, slot: s, owner, busy, act }: { slug: string; slot: SlotView; owner: boolean; busy: boolean; act: Act }) {
-  const base = `/api/v1/courses/${encodeURIComponent(slug)}/videos/${s.id}`;
+  const base = `${courseApi(slug)}/videos/${s.id}`;
   const [copied, setCopied] = useState<string | null>(null);
   const [transcript, setTranscript] = useState(s.transcript);
   const [progress, setProgress] = useState<number | null>(null);

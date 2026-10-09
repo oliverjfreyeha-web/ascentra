@@ -38,6 +38,12 @@ const READERS: [RegExp, string][] = [
   [/\/api\/v1\/learn\/activities\/\$\{a\.id\}\/attempt/, "attemptFrom"],
   [/\/api\/v1\/learn\/activities\/\$\{a\.id\}\/feedback/, "feedbackFrom"],
   [/\/api\/v1\/learn\/lessons\/\$\{encodeURIComponent\(id\)\}/, "lessonActivitiesFrom"],
+  // C1: the course studio, the Owner's review checklist, the boosters, uploads and a learner's video link.
+  [/`\$\{base\}\/studio`/, "studioFrom"],
+  [/"\/api\/v1\/review\/checklist"/, "checklistFrom"],
+  [/call\("GET", "\/api\/v1\/boosters"\)/, "boostersFrom"],
+  [/`\$\{base\}\/upload`, \{ name/, "uploadStartFrom"],
+  [/\/api\/v1\/learn\/videos\//, "videoLinkFrom"],
   // L7: the interview, the path, the activity mode and the course requests.
   [/call\("GET", "\/api\/v1\/learn\/interview"\)/, "interviewFrom"],
   [/call\("PUT", "\/api\/v1\/learn\/interview"/, "interviewSavedFrom"],

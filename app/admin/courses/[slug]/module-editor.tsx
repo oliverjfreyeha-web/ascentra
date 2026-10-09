@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { call, when, type ApiResult } from "../../../call";
-import { BOOSTERS_MAX, ITEM_PARTS, PART_NAMES, RECIPE_CAPS, type Booster, type StudioModule } from "../../../studio-api";
+import { courseApi, BOOSTERS_MAX, ITEM_PARTS, PART_NAMES, RECIPE_CAPS, type Booster, type StudioModule } from "../../../studio-api";
 import type { LessonBody } from "../../../courses-api";
 import { VideoSlotEditor } from "./video-slot";
 
@@ -15,7 +15,7 @@ export function ModuleEditor({ slug, module: m, index, count, boosters, owner, e
   slug: string; module: StudioModule; index: number; count: number; boosters: Booster[]; owner: boolean; editable: boolean; busy: boolean;
   act: Act; verified: Verified; onMove: (dir: -1 | 1) => Promise<boolean>;
 }) {
-  const base = `/api/v1/courses/${encodeURIComponent(slug)}`;
+  const base = courseApi(slug);
   const st = m.state;
   const [note, setNote] = useState("");
   const status = st.review?.current ? `Approved by the Owner on ${new Date(st.review.decidedAt).toLocaleDateString()}`

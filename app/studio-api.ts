@@ -99,3 +99,6 @@ export function reviewLabel(review: { by: "owner"; date: string } | { by: "revie
   if (!review) return null;
   return review.by === "owner" ? `Reviewed by the Owner on ${new Date(review.date).toLocaleDateString(locale)}` : "Reviewed by an ASCENTRA reviewer";
 }
+
+/** The studio's base path for one course (the course builder's own GET of this path is read by courseDetailFrom). */
+export const courseApi = (slug: string) => `/api/v1/courses/${encodeURIComponent(slug)}` as const;

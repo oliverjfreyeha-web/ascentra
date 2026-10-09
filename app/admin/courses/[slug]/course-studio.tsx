@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useReverification } from "@clerk/nextjs";
 import { call, when, type ApiResult } from "../../../call";
 import { meFrom } from "../../../me";
-import { studioFrom, type Studio } from "../../../studio-api";
+import { courseApi, studioFrom, type Studio } from "../../../studio-api";
 import { can } from "../../../courses-api";
 import { Loading } from "../../../ui/loading";
 import { ModuleEditor } from "./module-editor";
@@ -23,7 +23,7 @@ export function CourseStudio({ slug }: { slug: string }) {
   const [busy, setBusy] = useState(false);
   const [reason, setReason] = useState("");
   const verified = useReverification(call);
-  const base = `/api/v1/courses/${encodeURIComponent(slug)}`;
+  const base = courseApi(slug);
 
   const load = useCallback(async () => {
     const r = await call("GET", `${base}/studio`);
