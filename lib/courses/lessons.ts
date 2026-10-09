@@ -7,6 +7,7 @@ import { AI_MODELS, estimateUsd } from "@/lib/ai/config";
 import { ATTORNEY, NO_ATTORNEY, clean, courseScope, isUuid, longestSharedRun, refused, type Result } from "./common";
 import { approvedSources, passagesFor, renderContext, type CourseSource, type Passage } from "./passages";
 import type { KeyClaim } from "./blueprint";
+import { incomeReason, lessonFindings } from "./income";
 
 /**
  * L2 steps 3 and 4: drafting a lesson, and its review.
@@ -194,6 +195,9 @@ export async function submitVersion(actor: Account, slug: string, id: string): P
   const target = { type: "lesson_version", id, label: label(v) };
   if (scope) return refused(403, scope, A, target);
   if (v.status !== "draft") return refused(409, `This version is ${v.status}, not a Draft.`, A, target);
+  // C1: the income-claims check. Text that reads as a promise of income or results never goes to review.
+  const findings = lessonFindings(v.title, v.body, `"${v.title}" v${v.version}`);
+  if (findings.length) return refused(409, incomeReason(findings), A, target);
   const { error } = await getDb().from("lesson_versions").update({ status: "review", submitted_at: new Date().toISOString(), submitted_by_account_id: actor.id }).eq("id", id);
   if (error) throw new Error(`submit failed: ${error.message}`);
   return { ok: true, body: { id, status: "review" }, event: { action: A, result: "Completed", target, previous: "draft", next: "review", context: `Submitted ${label(v)} for review.` } };

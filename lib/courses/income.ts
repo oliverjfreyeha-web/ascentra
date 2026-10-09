@@ -58,3 +58,24 @@ export function textsOf(value: unknown): string[] {
 }
 
 export const INCOME_BLOCK = "This course version can't go to review: some of its text reads as a promise of income or results. Reword each place listed.";
+
+type LessonLike = { summary?: string; sections?: { heading: string; paragraphs: { text: string }[] }[]; takeaways?: { text: string }[] } | null | undefined;
+
+/** The check over one lesson version, each place labelled the way the editor shows it. */
+export function lessonFindings(title: string, body: LessonLike, at = "This lesson"): Finding[] {
+  return scanTexts([
+    { where: `${at} › title`, text: title },
+    { where: `${at} › summary`, text: body?.summary },
+    ...(body?.sections ?? []).flatMap((s, si) => [
+      { where: `${at} › section ${si + 1} heading`, text: s.heading },
+      ...s.paragraphs.map((p, pi) => ({ where: `${at} › section ${si + 1} "${s.heading}" › paragraph ${pi + 1}`, text: p.text })),
+    ]),
+    ...(body?.takeaways ?? []).map((t, ti) => ({ where: `${at} › takeaway ${ti + 1}`, text: t.text })),
+  ]);
+}
+
+/** A refusal reason that lists the first findings: the exact words and where they are. */
+export function incomeReason(findings: Finding[], max = 3): string {
+  const shown = findings.slice(0, max).map((f) => `${f.where}: "${f.text}" (${f.claim})`).join("; ");
+  return `${INCOME_BLOCK} ${shown}${findings.length > max ? `; and ${findings.length - max} more` : ""}.`;
+}

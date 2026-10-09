@@ -1,4 +1,5 @@
 import "server-only";
+import { incomeReason, scanTexts, textsOf } from "@/lib/courses/income";
 import type { Account } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { OWNER_ACADEMY_SLUG } from "@/lib/caps";
@@ -114,6 +115,9 @@ export async function editItem(actor: Account, slug: string, id: string, body: R
   const problem = checkItem(item.item_type, next.content, next.answer_key);
   if (problem) return refused(400, problem, A, target);
   if (ATTORNEY.test(JSON.stringify(next))) return refused(400, NO_ATTORNEY, A, target);
+  // C1: practice never promises income or results.
+  const claims = scanTexts([{ where: "This item", text: [next.prompt, next.explanation, next.goal, ...textsOf(next.content), ...textsOf(next.answer_key)].join(" \n ") }]);
+  if (claims.length) return refused(400, incomeReason(claims), A, target);
   const before = itemLines(item).join(" | ").slice(0, 900);
   const after = itemLines({ ...item, ...next } as ItemRow).join(" | ").slice(0, 900);
   const { error } = await getDb().from("activity_items").update({ ...next, edited_by_account_id: actor.id, edited_at: new Date().toISOString(), generated_by: "person" }).eq("id", id);

@@ -157,6 +157,11 @@ export const CAPABILITIES = {
   "topics.manage": { scope: "global", from: "L8: add, edit, publish/unpublish, set teen_hidden and has_course, reorder (every change audited)" },
   "picks.inspect": { scope: "global", from: "L8: the Owner looks up a learner's picks to change their business" },
   "picks.override": { scope: "global", from: "L8: a locked business: only the Owner can change it, audited with a reason", sensitive: true, reason: true },
+  // ---- Course structure and Owner review (C1): the Owner approves every module before a course publishes ----
+  "courses.owner_review": { scope: "global", from: "C1: the Owner's approval is the required last step: approve a module or send it back with a note", sensitive: true },
+  "courses.publish_course": { scope: "global", from: "C1: the Owner publishes or unpublishes a whole course (unpublishing keeps learners' progress)", sensitive: true, reason: true },
+  "courses.videos": { scope: "global", from: "C1: video slots: the Owner uploads, replaces and approves the videos they make" },
+  "courses.boosters": { scope: "global", from: "C1: the Owner edits the list of learning boosters" },
   // ---- Mentor safety (L4): the review queue holds no conversation text ----
   "safety.view": { scope: "global", from: "L4: a review queue for the Owner and Super Admin (categories and actions, never conversation text)" },
   "safety.review": { scope: "global", from: "L4: safety checks with SafetyEvent records and a review queue for the Owner and Super Admin", reason: true },
@@ -186,6 +191,10 @@ export const OWNER_ONLY_CAPS = [
   "courses.refresh.configure",
   "picks.inspect",
   "picks.override",
+  "courses.owner_review",
+  "courses.publish_course",
+  "courses.videos",
+  "courses.boosters",
 ] as const satisfies readonly Cap[];
 
 /** Held by no role. Listed so tests can prove it. */

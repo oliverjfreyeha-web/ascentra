@@ -42,7 +42,7 @@ export const WAITING_LABEL: Record<string, string> = {
 type Job = {
   id: string; batch_id: string; topic_slug: string; topic_name: string; audience_level: string; status: string; waiting_for: string | null; note: string | null;
   research_run_id: string | null; blueprint_id: string | null; academy_id: string | null; estimate_usd: number | string; queued_by_account_id: string;
-  queued_at: string; last_step_at: string | null; finished_at: string | null;
+  queued_at: string; last_step_at: string | null; finished_at: string | null; structure?: number;
 };
 type Topic = { slug: string; name: string; outcome: string | null; audience_level: string; origin: string };
 type CourseInfo = { exists: boolean; published: boolean; stale: boolean; inReview: boolean; drafting: boolean };
@@ -71,6 +71,44 @@ async function courseInfo(academyId: string): Promise<CourseInfo> {
   const published = versions.some((v) => v.status === "published");
   const f = published ? await courseFreshness(academyId) : null;
   return { exists: true, published, stale: !!f && (f.due || f.staleLessons.length > 0), inReview: draftBp || versions.some((v) => v.status === "review"), drafting: !published };
+}
+
+/** C1: where a topic's course stands, in the four words the Owner sees, plus where a learner opens it. */
+export type CourseStatus = "none" | "drafting" | "in_review" | "published" | "unpublished";
+export const COURSE_STATUS_LABEL: Record<CourseStatus, string> = { none: "None", drafting: "Drafting", in_review: "In review", published: "Published", unpublished: "Unpublished" };
+
+/** The course status of each catalog slug, and the first published lesson of a live course. */
+export async function courseStatuses(slugs: string[]): Promise<Map<string, { status: CourseStatus; label: string; firstLessonId: string | null }>> {
+  const out = new Map<string, { status: CourseStatus; label: string; firstLessonId: string | null }>();
+  if (!slugs.length) return out;
+  const db = getDb();
+  const academies = ((await db.from("academies").select("id, slug").in("slug", slugs)).data ?? []) as { id: string; slug: string }[];
+  const jobs = ((await db.from("catalog_jobs").select("topic_slug, status, waiting_for").in("topic_slug", slugs)).data ?? []) as Pick<Job, "topic_slug" | "status" | "waiting_for">[];
+  for (const slug of slugs) {
+    const a = academies.find((x) => x.slug === slug);
+    const job = jobs.find((j) => j.topic_slug === slug && !["done", "canceled", "failed"].includes(j.status)) ?? null;
+    let status: CourseStatus = "none";
+    let firstLessonId: string | null = null;
+    if (a) {
+      const courses = ((await db.from("courses").select("id, version, status, unpublished_at").eq("academy_id", a.id)).data ?? []) as { id: string; version: number; status: string; unpublished_at: string | null }[];
+      const live = courses.filter((c) => c.status === "published" || c.status === "restored").sort((x, y) => y.version - x.version)[0];
+      if (live && !live.unpublished_at) {
+        status = "published";
+        const mods = ((await db.from("modules").select("id, position").eq("course_id", live.id)).data ?? []) as { id: string; position: number }[];
+        const lessons = mods.length ? ((await db.from("lessons").select("id, module_id, position").in("module_id", mods.map((m) => m.id))).data ?? []) as { id: string; module_id: string; position: number }[] : [];
+        const pub = new Set((((lessons.length ? (await db.from("lesson_versions").select("lesson_id").eq("status", "published").in("lesson_id", lessons.map((l) => l.id))).data : []) ?? []) as { lesson_id: string }[]).map((v) => v.lesson_id));
+        const pos = (l: { module_id: string; position: number }) => (mods.find((m) => m.id === l.module_id)?.position ?? 0) * 1000 + l.position;
+        firstLessonId = lessons.filter((l) => pub.has(l.id)).sort((x, y) => pos(x) - pos(y))[0]?.id ?? null;
+      } else if (live?.unpublished_at) status = "unpublished";
+      else {
+        const info = await courseInfo(a.id);
+        const st = catalogState(job, info);
+        status = st === "no_course" ? "none" : st === "in_review" ? "in_review" : "drafting";
+      }
+    } else if (job) status = catalogState(job, null) === "in_review" ? "in_review" : "drafting";
+    out.set(slug, { status, label: COURSE_STATUS_LABEL[status], firstLessonId });
+  }
+  return out;
 }
 
 const jobView = (j: Job) => ({
@@ -110,7 +148,8 @@ export async function listCatalog(actor: Account) {
 }
 
 /**
- * Body: { slugs: string[], confirm?: true, expectedTotalUsd? }. Without confirm: the whole batch's estimate, nothing
+ * Body: { slugs: string[], confirm?: true, expectedTotalUsd?, structure?: 2 }. structure 2 (C1): the course gets the
+ * module recipe (5 or 6 modules), video briefs and the Owner's review. Without confirm: the whole batch's estimate, nothing
  * queued. With confirm: the same total must be confirmed, then the topics are queued for tonight.
  */
 export async function queueTopics(actor: Account, body: Record<string, unknown>): Promise<Result> {
@@ -141,6 +180,7 @@ export async function queueTopics(actor: Account, body: Record<string, unknown>)
   const batch = randomUUID();
   const { error } = await getDb().from("catalog_jobs").insert(chosen.map((t) => ({
     batch_id: batch, topic_slug: t.slug, topic_name: t.name, audience_level: t.audience, estimate_usd: per, queued_by_account_id: actor.id, status: "queued",
+    structure: body.structure === 2 ? 2 : 1,
   })));
   if (error?.code === "23505") return refused(409, "One of these topics was queued at the same moment. Reload.", A);
   if (error) throw new Error(`catalog queue failed: ${error.message}`);
@@ -253,7 +293,7 @@ async function step(job: Job, actor: Account): Promise<boolean> {
     const room = await capRoom("blueprint");
     if (room) return held(room);
     const approved = ((await db.from("sources").select("id").eq("research_run_id", job.research_run_id ?? "").eq("status", "approved")).data ?? []) as { id: string }[];
-    const r = await generateBlueprint(actor, job.topic_slug, { title: job.topic_name, topic: job.topic_name, audience: job.audience_level, sourceIds: approved.slice(0, 12).map((s) => s.id), researchRunIds: [job.research_run_id] });
+    const r = await generateBlueprint(actor, job.topic_slug, { title: job.topic_name, topic: job.topic_name, audience: job.audience_level, sourceIds: approved.slice(0, 12).map((s) => s.id), researchRunIds: [job.research_run_id], ...(job.structure === 2 ? { structure: 2 } : {}) });
     await recordAudit({ actor: batchActor(actor), ...r.event, requestId: `catalog:${job.id}`, reason: "Overnight batch run" });
     if (!r.ok) return r.status === 429 ? held(`the next night: ${r.reason}`) : failed(`The Blueprint couldn't be drafted: ${r.reason}`);
     const academy = (await db.from("academies").select("id").eq("slug", job.topic_slug).maybeSingle()).data as { id: string } | null;

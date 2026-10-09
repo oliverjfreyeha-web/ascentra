@@ -101,6 +101,11 @@ const GLOBAL: Record<string, RoleKey[]> = {
   "topics.manage": ["owner", "superAdmin", "courseAdmin"],
   "picks.inspect": ["owner"],
   "picks.override": ["owner"],
+  // C1: the Owner's review, publishing a whole course, the videos and the boosters list.
+  "courses.owner_review": ["owner"],
+  "courses.publish_course": ["owner"],
+  "courses.videos": ["owner"],
+  "courses.boosters": ["owner"],
   // L4: the safety review queue.
   "safety.view": ["owner", "superAdmin"],
   "safety.review": ["owner", "superAdmin"],
@@ -146,6 +151,8 @@ const SENSITIVE = new Set([
   "courses.release",
   // L8: changing a learner's locked business.
   "picks.override",
+  // C1: the Owner's module approval, and publishing or unpublishing a course.
+  "courses.owner_review", "courses.publish_course",
 ]);
 
 /** F5: actions that must carry a reason (role and invite changes, ownership, publishing, archiving and
@@ -169,6 +176,8 @@ const REASON = new Set([
   "course_requests.manage",
   // L8: changing a learner's locked business.
   "picks.override",
+  // C1: publishing or unpublishing a whole course.
+  "courses.publish_course",
 ]);
 
 function ctx(role: RoleKey, { verified = true, courses }: { verified?: boolean; courses?: string[] } = {}): AuthContext {
