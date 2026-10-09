@@ -11,14 +11,14 @@ describe("the C1 bundle on the live L8 database", () => {
   let owner: string, reviewer: string, learner: string, source: string, academy: string;
 
   const lesson = (n: number, mi: number) => ({ title: `Test lesson ${mi}.${n}`, minutes: 10, objectives: ["Test objective"], keyClaims: [{ claim: "Test claim.", sourceId: source }] });
-  const module = (mi: number, videos = 1) => ({
+  const moduleOf = (mi: number, videos = 1) => ({
     title: `Test module ${mi}`, stage: mi < 3 ? "Foundations" : "Application", lessons: [lesson(1, mi), lesson(2, mi)], skills: [{ key: `skill-${mi}`, name: `Skill ${mi}` }],
     recipe: { videos, quizzes: 2, assignments: 1, sandboxes: 1, sequences: 1, boosters: ["teach-it-back"] },
     videos: Array.from({ length: videos }, (_, i) => ({ title: `Test video ${mi}.${i + 1}`, brief: { purpose: "Test purpose", points: [{ text: "Test point", sources: [{ sourceId: source, title: "Test study" }] }], targetMinutes: 6 } })),
   });
   const blueprint = async (modules: number, structure = 2) => (await q(`insert into public.academy_blueprints (account_id, academy_id, kind, topic, audience_level, plan, generated_by)
     values ($1, $2, 'course', 'Test topic', 'beginner', $3, 'ai') returning id`,
-  [owner, academy, JSON.stringify({ structure, title: "Test course", outcome: "Test outcome", modules: Array.from({ length: modules }, (_, i) => module(i + 1, (i % 2) + 1)) })])).rows[0].id as string;
+  [owner, academy, JSON.stringify({ structure, title: "Test course", outcome: "Test outcome", modules: Array.from({ length: modules }, (_, i) => moduleOf(i + 1, (i % 2) + 1)) })])).rows[0].id as string;
   const approve = async (bp: string) => (await q("select public.approve_course_blueprint($1, $2) as id", [bp, owner])).rows[0].id as string;
   const modulesOf = async (course: string) => (await q("select id, position, recipe from public.modules where course_id = $1 order by position", [course])).rows as { id: string; position: number; recipe: Record<string, unknown> }[];
   const lessonsOf = async (mod: string) => (await q("select id from public.lessons where module_id = $1 order by position", [mod])).rows.map((r) => r.id as string);
@@ -205,7 +205,7 @@ describe("the C1 bundle on the live L8 database", () => {
     await expect(q("select public.new_course_version($1, $2)", [academy, owner])).rejects.toThrow(/still a Draft/);
     const other = (await q("insert into public.academies (slug, name) values ('test-copy', 'Test copy') returning id")).rows[0].id;
     const bp = (await q(`insert into public.academy_blueprints (account_id, academy_id, kind, topic, audience_level, plan, generated_by)
-      values ($1, $2, 'course', 'Test', 'beginner', $3, 'ai') returning id`, [owner, other, JSON.stringify({ structure: 2, title: "T", outcome: "O", modules: [1, 2, 3, 4, 5].map((i) => module(i)) })])).rows[0].id;
+      values ($1, $2, 'course', 'Test', 'beginner', $3, 'ai') returning id`, [owner, other, JSON.stringify({ structure: 2, title: "T", outcome: "O", modules: [1, 2, 3, 4, 5].map((i) => moduleOf(i)) })])).rows[0].id;
     const c1 = await approve(bp);
     const mods = await modulesOf(c1);
     for (const m of mods) await review(c1, m.id, "approved", await verifiedVersions(c1, m.id));

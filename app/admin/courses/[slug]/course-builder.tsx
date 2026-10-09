@@ -153,6 +153,19 @@ function BlueprintPanel({ bp, canEdit, busy, onSave, onApprove }: { bp: Bp; canE
             ))}
           </ol>
           {m.skills.length > 0 && <p className="muted small">Skills: {m.skills.map((s) => s.name).join(", ")}</p>}
+          {m.recipe && (
+            <p className="muted small">
+              Recipe: {m.recipe.videos} video(s), {m.recipe.quizzes} quiz(zes), {m.recipe.assignments} assignment(s), {m.recipe.sandboxes} sandbox(es), {m.recipe.sequences} interactive sequence(s)
+              {m.recipe.boosters.length ? `; boosters: ${m.recipe.boosters.join(", ")}` : ""}. Edit the recipe and briefs in the course studio after approval.
+            </p>
+          )}
+          {m.videos?.map((v, vi) => (
+            <details key={vi} className="small">
+              <summary>Video brief: {v.title}{v.brief.targetMinutes ? ` (about ${v.brief.targetMinutes} min)` : ""}</summary>
+              {v.brief.purpose && <p>{v.brief.purpose}</p>}
+              <ol>{(v.brief.points ?? []).map((p, pi) => <li key={pi}>{p.text} <span className="muted">— {p.sources?.length ? p.sources.map((x) => x.title ?? "a source").join("; ") : "No source (check it)"}</span></li>)}</ol>
+            </details>
+          ))}
         </div>
       ))}
       {canEdit && bp.status === "draft" && (

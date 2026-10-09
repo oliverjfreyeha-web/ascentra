@@ -52,6 +52,9 @@ import * as topicsRoute from "@/app/api/v1/topics/route";
 import * as pickRoute from "@/app/api/v1/learn/picks/route";
 import { learnerCourses } from "@/lib/courses/learn";
 import { learnerVideoLink } from "@/lib/courses/videos";
+import { checklistFrom, lessonVideosFrom, slotFrom, studioFrom, uploadStartFrom, videoLinkFrom } from "@/app/studio-api";
+import { adminTopicsFrom, chooserFrom } from "@/app/picks-api";
+import { learnerCoursesFrom, learnerLessonFrom } from "@/app/courses-api";
 
 let stack: Stack;
 const q = (sql: string, p: unknown[] = []) => stack.db.client.query(sql, p);
@@ -70,7 +73,8 @@ async function call(mod: Record<string, unknown>, method: string, url: string, r
   const json = (await res.json()) as Record<string, unknown> & { reason?: string };
   return { status: res.status, body: json, reason: json.reason };
 }
-const studio = async () => (await call(studioRoute, "GET", `/api/v1/courses/${SLUG}/studio`, "owner", undefined, { slug: SLUG })).body as {
+// Every studio answer goes through the page's own reader (app/studio-api.ts), so the page can't drift from the route.
+const studio = async () => studioFrom((await call(studioRoute, "GET", `/api/v1/courses/${SLUG}/studio`, "owner", undefined, { slug: SLUG })).body) as unknown as {
   version: { status: string; ownerReviewRequired: boolean }; canPublish: boolean; publishBlockers: string[]; emptySlots: number; findings: { where: string; text: string }[];
   modules: { id: string; state: { ready: boolean; blockers: string[]; review: { decision: string; current: boolean } | null }; slots: { id: string; status: string }[] }[];
 };
@@ -175,7 +179,7 @@ describe("C1 on the real database", () => {
     expect(s.publishBlockers.join(" ")).toMatch(/Module 2 "Test module 2" needs the Owner's approval/);
     expect((await call(publicationRoute, "POST", `/api/v1/courses/${SLUG}/publication`, "owner", { reason: "Test publish" }, { slug: SLUG })).reason).toMatch(/Not ready to publish/);
     // The Owner's checklist shows what waits.
-    const list = (await call(checklistRoute, "GET", "/api/v1/review/checklist", "owner")).body as { courses: { slug: string; approved: number; emptySlots: unknown[]; income: { ok: boolean } }[] };
+    const list = checklistFrom((await call(checklistRoute, "GET", "/api/v1/review/checklist", "owner")).body)!;
     expect(list.courses.find((c) => c.slug === SLUG)).toMatchObject({ approved: 1, income: { ok: true } });
     expect((await call(checklistRoute, "GET", "/api/v1/review/checklist", "superAdmin")).status).toBe(403);
   });
@@ -207,16 +211,19 @@ describe("C1 on the real database", () => {
     const r = await call(lessonRoute, "GET", `/api/v1/learn/lessons/${lessons[0].id}`, "learner", undefined, { id: lessons[0].id });
     expect(r.status).toBe(200);
     const body = r.body as { videos: { state: string; title: string }[]; activities: { label: string; simulated: boolean }[]; lesson: { review: unknown } };
-    expect(body.videos).toEqual([{ id: expect.any(String), title: "Test video 1", state: "coming", transcript: null }]);
+    expect(lessonVideosFrom(r.body)).toEqual([{ id: expect.any(String), title: "Test video 1", state: "coming", transcript: null }]);
+    expect(learnerLessonFrom(r.body)?.lesson.review).toMatchObject({ by: "owner" });
     expect(body.activities.find((a) => a.simulated)?.label).toBe("Practice (simulated)");
     expect(body.lesson.review).toMatchObject({ by: "owner", date: expect.any(String) });
     const slot = body.videos[0] as unknown as { id: string };
     expect((await call(videoRoute, "GET", `/api/v1/learn/videos/${slot.id}`, "learner", undefined, { id: slot.id })).status).toBe(404);
     // The chooser opens the course for a linked topic.
-    const topics = (await call(pickRoute, "GET", "/api/v1/learn/picks", "learner")).body as { skills: { slug: string; courseHref: string | null }[] };
+    const topics = chooserFrom((await call(pickRoute, "GET", "/api/v1/learn/picks", "learner")).body)!;
     expect(topics.skills.find((t) => t.slug === "cold-outreach")?.courseHref).toBe(`/learn/${lessons[0].id}`);
-    const admin = (await call(topicsRoute, "GET", "/api/v1/topics", "owner")).body as { topics: { slug: string; course: { status: string } }[] };
-    expect(admin.topics.find((t) => t.slug === "cold-outreach")?.course.status).toBe("published");
+    const admin = adminTopicsFrom((await call(topicsRoute, "GET", "/api/v1/topics", "owner")).body)!;
+    expect(admin.topics.find((t) => t.slug === "cold-outreach")?.course?.status).toBe("published");
+    const mine = learnerCoursesFrom((await call(coursesRoute, "GET", "/api/v1/learn/courses", "learner")).body)!;
+    expect(mine.find((c) => c.slug === SLUG)?.modules[0].pace).toBe("About 1 week");
   });
 
   it("an edit to the live course is refused until a new Draft version is started", async () => {
@@ -250,6 +257,7 @@ describe("C1 on the real database", () => {
     it("checks the file by its content: a renamed file is rejected and removed, the record kept", async () => {
       const s = await start(2000);
       expect(s.status).toBe(201);
+      expect(uploadStartFrom(s.body)).toMatchObject({ mime: "video/mp4", maxBytes: 50 * 1024 * 1024 });
       expect(String(s.body.url)).toMatch(/^https:\/\/storage\.test\/upload\//);
       const path = await put(String(s.body.uploadId), new TextEncoder().encode("%PDF-1.7 not a video at all, just a renamed file"));
       const c = await confirm(String(s.body.uploadId));
@@ -267,13 +275,14 @@ describe("C1 on the real database", () => {
       await put(String(s.body.uploadId), MP4);
       const c = await confirm(String(s.body.uploadId));
       expect(c.status).toBe(200);
-      expect(c.body).toMatchObject({ status: "uploaded" });
+      expect(slotFrom(c.body)).toMatchObject({ status: "uploaded", file: { mime: "video/mp4" } });
       const approve = () => call(approveSlotRoute, "POST", `/api/v1/courses/${SLUG}/videos/${slot}/approve`, "owner", {}, { slug: SLUG, id: slot });
       expect((await approve()).reason).toMatch(/transcript/);
       await call(slotRoute, "PATCH", `/api/v1/courses/${SLUG}/videos/${slot}`, "owner", { transcript: "Test transcript: what a good first line looks like." }, { slug: SLUG, id: slot });
       expect((await approve()).status).toBe(200);
       const link = await call(videoRoute, "GET", `/api/v1/learn/videos/${slot}`, "learner", undefined, { id: slot });
       expect(link.status).toBe(200);
+      expect(videoLinkFrom(link.body)).not.toBeNull();
       expect(link.body).toMatchObject({ url: expect.stringMatching(/expires=600$/), expiresIn: 600, transcript: expect.stringMatching(/^Test transcript/) });
       const lesson = (await call(lessonRoute, "GET", `/api/v1/learn/lessons/${lessons[0].id}`, "learner", undefined, { id: lessons[0].id })).body as { videos: { state: string }[] };
       expect(lesson.videos[0].state).toBe("ready");

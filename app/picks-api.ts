@@ -12,7 +12,7 @@ const bool = (v: unknown): v is boolean => typeof v === "boolean";
 
 export type Question = { label: string; options: Record<string, string> };
 export type PathAnswers = { goal: string; hours: number; experience: string; style: string; camera: string };
-export type ChoiceTopic = { slug: string; name: string; blurb: string; hasCourse: boolean; sortOrder: number; picked: boolean; paused: boolean; locked: boolean };
+export type ChoiceTopic = { slug: string; name: string; blurb: string; hasCourse: boolean; courseHref?: string | null; sortOrder: number; picked: boolean; paused: boolean; locked: boolean };
 export type Chooser = {
   plan: "trial" | "basic" | "pro" | null;
   questions: Record<"goal" | "hours" | "experience" | "style" | "camera", Question>;
@@ -38,6 +38,8 @@ export function chooserFrom(body: unknown): Chooser | null {
 export type AdminTopic = {
   id: string; kind: "business" | "skill"; slug: string; name: string; blurb: string; published: boolean; teenHidden: boolean; hasCourse: boolean;
   sortOrder: number; demand30: number; demandAll: number; activePicks: number;
+  // C1: the one link to the catalog, and where its course stands.
+  catalogSlug?: string | null; course?: { status: "none" | "drafting" | "in_review" | "published" | "unpublished"; label: string; firstLessonId: string | null };
 };
 export function adminTopicsFrom(body: unknown): { topics: AdminTopic[]; note: string } | null {
   return obj(body) && arr(body.topics) && str(body.note) && body.topics.every((t) => obj(t) && str(t.id) && str(t.slug) && (t.kind === "business" || t.kind === "skill")

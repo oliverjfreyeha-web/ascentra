@@ -60,13 +60,16 @@ export function NeoChart({ points, labels, title }: { points: number[]; labels: 
 }
 
 /** A video frame: raised bezel, dark screen, a play button. `children` is the <video> (or a still) when there is one. */
-export function NeoVideo({ title, children, onPlay }: { title: string; children?: ReactNode; onPlay?: () => void }) {
+/** The bezel around a lesson video. Once the real player is inside (`loaded`), its own controls take over. */
+export function NeoVideo({ title, children, onPlay, loaded = false, busy = false }: { title: string; children?: ReactNode; onPlay?: () => void; loaded?: boolean; busy?: boolean }) {
   return (
     <div className="neo-video">
       <div className="neo-video__screen">{children}</div>
-      <button type="button" className="neo-video__play ui-plain" onClick={onPlay} aria-label={`Play: ${title}`}>
-        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M8 5.5v13l11-6.5z" fill="currentColor" /></svg>
-      </button>
+      {!loaded && (
+        <button type="button" className="neo-video__play ui-plain" onClick={onPlay} aria-label={`Play: ${title}`} disabled={busy}>
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M8 5.5v13l11-6.5z" fill="currentColor" /></svg>
+        </button>
+      )}
     </div>
   );
 }

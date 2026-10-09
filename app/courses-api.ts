@@ -33,8 +33,13 @@ export type RefreshReport = {
 export type CourseSummary = { slug: string; name: string; freshness: Freshness; versions: { id: string; version: number; status: string; publishedAt: string | null }[]; blueprints: { draft: number; approved: number } };
 export type KeyClaim = { claim: string; sourceId: string | null; claimId?: string | null; quote?: string | null };
 export type Plan = {
-  title: string; outcome: string;
-  modules: { title: string; stage: string | null; lessons: { title: string; minutes: number | null; objectives: string[]; keyClaims: KeyClaim[] }[]; skills: { key: string; name: string }[] }[];
+  title: string; outcome: string; structure?: 2;
+  modules: {
+    title: string; stage: string | null; lessons: { title: string; minutes: number | null; objectives: string[]; keyClaims: KeyClaim[] }[]; skills: { key: string; name: string }[];
+    // C1: a v2 outline's module recipe and video briefs.
+    recipe?: { videos: number; quizzes: number; assignments: number; sandboxes: number; sequences: number; boosters: string[] };
+    videos?: { title: string; brief: { purpose?: string; points?: { text: string; sources?: { title?: string }[] }[]; targetMinutes?: number | null } }[];
+  }[];
 };
 export type Para = { text: string; refs: number[] };
 export type LessonBody = { summary: string; sections: { heading: string; paragraphs: Para[] }[]; takeaways: Para[] };
@@ -58,9 +63,9 @@ export type CourseDetail = {
   }[];
   modules: { id: string; position: number; title: string; stage: string | null; lessons: { id: string; title: string; minutes: number | null; objectives: string[]; keyClaims: KeyClaim[]; stale: boolean; versions: LessonVersion[] }[] }[];
 };
-export type LearnerCourse = { slug: string; name: string; version: number; modules: { title: string; lessons: { id: string; title: string; minutes: number | null; lastVerifiedOn: string | null; done: boolean; updated: boolean }[] }[] };
+export type LearnerCourse = { slug: string; name: string; version: number; modules: { title: string; pace?: string; lessons: { id: string; title: string; minutes: number | null; lastVerifiedOn: string | null; done: boolean; updated: boolean }[] }[] };
 export type LearnerLesson = {
-  lesson: { id: string; title: string; course: { slug: string; name: string }; version: { id: string; number: number; publishedAt: string; lastVerifiedOn: string | null; body: LessonBody; citations: Citation[]; uncited: number } };
+  lesson: { id: string; title: string; course: { slug: string; name: string }; review?: { by: "owner"; date: string } | { by: "reviewer" } | null; version: { id: string; number: number; publishedAt: string; lastVerifiedOn: string | null; body: LessonBody; citations: Citation[]; uncited: number } };
   progress: { status: string; completedAt: string | null } | null;
   /** L3: a newer published version than the one this learner studied. */
   update: { versionId: string; number: number; publishedAt: string; summary: string | null } | null;

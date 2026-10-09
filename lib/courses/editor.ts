@@ -259,7 +259,9 @@ export async function editLessonText(actor: Account, slug: string, lessonId: str
     changed.push("title");
   }
   if (body.summary !== undefined) { next.summary = text(body.summary, 600); changed.push("summary"); }
-  const entries = (v: unknown) => (v && typeof v === "object" && !Array.isArray(v) ? Object.entries(v as Record<string, unknown>) : []);
+  // Highest index first: removing an empty paragraph never shifts one still to be changed, and an added one goes at the end.
+  const rank = (k: string) => k.split(".").reduce((n, x) => n * 100 + Number(x), 0);
+  const entries = (v: unknown) => (v && typeof v === "object" && !Array.isArray(v) ? Object.entries(v as Record<string, unknown>).sort((a, b) => rank(b[0]) - rank(a[0])) : []);
   for (const [k, v] of entries(body.headings)) {
     const si = Number(k);
     const t = text(v, 200);
