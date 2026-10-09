@@ -3,6 +3,8 @@ import type { Account } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { tierOf } from "@/lib/billing";
 import { ATTORNEY, NO_ATTORNEY, clean, isUuid, refused, type Result } from "@/lib/courses/common";
+import { courseStatuses, queueTopics } from "@/lib/catalog";
+import { topicEstimate } from "@/lib/ai/config";
 import {
   QUESTIONS, SKILL_LIMIT_BASIC, checkPathAnswers, pickPlanOf, rankBusinesses, skillLimitOf, visibleTo,
   type Kind, type PathAnswers, type PickPlan,
@@ -22,11 +24,11 @@ import {
 export const NO_PROMISE = "Results vary. Nothing here promises income.";
 export const LOCK_NOTE = "Only the Owner can change this.";
 
-type TopicDb = { id: string; kind: Kind; slug: string; name: string; blurb: string; published: boolean; teen_hidden: boolean; has_course: boolean; sort_order: number };
+type TopicDb = { id: string; kind: Kind; slug: string; name: string; blurb: string; published: boolean; teen_hidden: boolean; has_course: boolean; sort_order: number; catalog_slug: string | null };
 type PickDb = { id: string; user_id: string; topic_id: string; kind: Kind; status: "active" | "paused"; locked: boolean; picked_at: string };
 type ProfileDb = { path_goal: string | null; path_hours: number | null; path_experience: string | null; path_style: string | null; path_camera: string | null; path_answered_at: string | null };
 
-const TOPIC_COLS = "id, kind, slug, name, blurb, published, teen_hidden, has_course, sort_order";
+const TOPIC_COLS = "id, kind, slug, name, blurb, published, teen_hidden, has_course, sort_order, catalog_slug";
 
 async function allTopics(): Promise<TopicDb[]> {
   const { data, error } = await getDb().from("topics").select(TOPIC_COLS).order("sort_order", { ascending: true });
@@ -59,7 +61,12 @@ async function answersOf(accountId: string): Promise<PathAnswers | null> {
   return "answers" in c ? c.answers : null;
 }
 
-const topicView = (t: TopicDb) => ({ slug: t.slug, name: t.name, blurb: t.blurb, hasCourse: t.has_course, sortOrder: t.sort_order });
+/** C1: a topic linked to a published course opens it (its first lesson); otherwise it shows "Course coming". */
+const topicView = (t: TopicDb, links: Map<string, { status: string; firstLessonId: string | null }> = new Map()) => {
+  const c = t.catalog_slug ? links.get(t.catalog_slug) : undefined;
+  const href = t.has_course && c?.status === "published" && c.firstLessonId ? `/learn/${c.firstLessonId}` : null;
+  return { slug: t.slug, name: t.name, blurb: t.blurb, hasCourse: t.has_course, courseHref: href, sortOrder: t.sort_order };
+};
 
 /** Everything the "Choose your path" screens show, after bringing the picks in line with the plan. */
 export async function getChooser(actor: Account) {
@@ -69,13 +76,14 @@ export async function getChooser(actor: Account) {
   await rpc<number>("reconcile_picks", { p_account: actor.id, p_plan: limits });
   const [topics, picks, answers] = await Promise.all([allTopics(), picksOf(actor.id), answersOf(actor.id)]);
   const visible = topics.filter((t) => visibleTo(t, actor.isMinor));
+  const links = await courseStatuses(visible.map((t) => t.catalog_slug).filter((x): x is string => !!x));
   const pickOf = (id: string) => picks.find((p) => p.topic_id === id) ?? null;
   const state = (t: TopicDb) => {
     const p = pickOf(t.id);
     return { picked: p?.status === "active", paused: p?.status === "paused", locked: !!p?.locked };
   };
-  const businesses = rankBusinesses(visible.filter((t) => t.kind === "business").map((t) => ({ ...topicView(t), ...state(t) })), answers);
-  const skills = visible.filter((t) => t.kind === "skill").map((t) => ({ ...topicView(t), ...state(t) }));
+  const businesses = rankBusinesses(visible.filter((t) => t.kind === "business").map((t) => ({ ...topicView(t, links), ...state(t) })), answers);
+  const skills = visible.filter((t) => t.kind === "skill").map((t) => ({ ...topicView(t, links), ...state(t) }));
   const business = businesses.find((b) => b.picked) ?? null;
   const skillsUsed = skills.filter((s) => s.picked).length;
   const limit = skillLimitOf(limits);
@@ -160,9 +168,12 @@ export async function listTopicsAdmin() {
   const interest = ((await db.from("topic_interest").select("topic_id, day, count")).data ?? []) as { topic_id: string; day: string; count: number }[];
   const active = ((await db.from("learner_picks").select("topic_id").eq("status", "active")).data ?? []) as { topic_id: string }[];
   const since = new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10);
+  const links = await courseStatuses(topics.map((t) => t.catalog_slug).filter((x): x is string => !!x));
   return {
     topics: topics.map((t) => ({
       id: t.id, kind: t.kind, slug: t.slug, name: t.name, blurb: t.blurb, published: t.published, teenHidden: t.teen_hidden, hasCourse: t.has_course, sortOrder: t.sort_order,
+      // C1: the one link to the catalog, and the course's status (none, drafting, in review, published).
+      catalogSlug: t.catalog_slug, course: t.catalog_slug ? links.get(t.catalog_slug) ?? { status: "none", label: "None", firstLessonId: null } : { status: "none", label: "None", firstLessonId: null },
       demand30: interest.filter((i) => i.topic_id === t.id && i.day >= since).reduce((n, i) => n + i.count, 0),
       demandAll: interest.filter((i) => i.topic_id === t.id).reduce((n, i) => n + i.count, 0),
       activePicks: active.filter((p) => p.topic_id === t.id).length,
@@ -217,6 +228,7 @@ export async function updateTopic(id: string, body: Record<string, unknown>): Pr
   const fields: Record<string, unknown> = {};
   if (body.name !== undefined) fields.name = clean(body.name, 80);
   if (body.blurb !== undefined) fields.blurb = clean(body.blurb, 300);
+  if (body.hasCourse !== undefined && t.catalog_slug) return refused(409, "This topic is linked to a course: it shows the course when the course is published, and \"Course coming\" otherwise.", A, target);
   for (const [k, col] of [["published", "published"], ["teenHidden", "teen_hidden"], ["hasCourse", "has_course"]] as const) {
     if (body[k] !== undefined) {
       if (typeof body[k] !== "boolean") return refused(400, "Use true or false.", A, target);
@@ -311,5 +323,45 @@ export async function ownerSetBusiness(body: Record<string, unknown>): Promise<R
       action: A, result: "Completed", target, previous: prev ? `${prev.name} (now paused, kept)` : "no business", next: r.result === "released" ? "released: the learner may choose again" : `${topicName}${plan === "pro" ? "" : " (locked)"}`,
       context: r.result === "released" ? "The Owner released the learner's business so they can choose again." : `The Owner changed the learner's business to "${topicName}".`,
     },
+  };
+}
+
+/**
+ * C1: the Owner (or a Course Admin) starts a topic's course from /admin/topics. The topic is linked to the catalog (one
+ * link: topics.catalog_slug) and queued for the existing steps (research, Blueprint, drafting) as a v2 course: 5 or 6
+ * modules with recipes, video briefs and the Owner's review. Body: { confirm?: true, expectedTotalUsd? }: first the
+ * estimate, then the same total confirmed. Until the course is published the topic shows "Course coming".
+ */
+export async function startTopicCourse(actor: Account, id: string, body: Record<string, unknown>): Promise<Result> {
+  const A = "catalog.queue";
+  if (actor.roleKey !== "owner" && actor.roleKey !== "courseAdmin") return refused(403, "Only the Owner or a Course Admin starts a course.", A);
+  if (!isUuid(id)) return refused(404, "No such topic.", A);
+  const db = getDb();
+  const t = (await db.from("topics").select(TOPIC_COLS).eq("id", id).maybeSingle()).data as TopicDb | null;
+  if (!t) return refused(404, "No such topic.", A);
+  const target = { type: "topic", id, label: t.name };
+  const slug = t.catalog_slug ?? (t.slug.slice(0, 40).replace(/-+$/, "") || "topic");
+  const existing = (await db.from("catalog_topics").select("slug").eq("slug", slug).maybeSingle()).data as { slug: string } | null;
+  if (!t.catalog_slug && existing) {
+    const other = (await db.from("topics").select("name").eq("catalog_slug", slug).maybeSingle()).data as { name: string } | null;
+    if (other) return refused(409, `The catalog topic "${slug}" is already linked to "${other.name}".`, A, target);
+  }
+  if (body.confirm !== true && !existing) {
+    const per = Math.round(topicEstimate() * 100) / 100;
+    return { ok: true, body: { quote: { topics: [{ slug, name: t.name, estimateUsd: per }], totalUsd: per, note: "Runs overnight inside the AI spend caps, and stops whenever a person is needed: source approval, Blueprint approval, review, then your approval of each module." } }, event: { action: A, result: "Completed", context: "" } };
+  }
+  if (!existing) {
+    const ins = await db.from("catalog_topics").insert({ slug, name: t.name, outcome: t.blurb || null, audience_level: "beginner", origin: "owner" });
+    if (ins.error && ins.error.code !== "23505") throw new Error(`catalog topic insert failed: ${ins.error.message}`);
+  }
+  if (!t.catalog_slug) {
+    const { error } = await db.from("topics").update({ catalog_slug: slug }).eq("id", id);
+    if (error) throw new Error(`topic link failed: ${error.message}`);
+  }
+  const r = await queueTopics(actor, { slugs: [slug], confirm: body.confirm === true, expectedTotalUsd: body.expectedTotalUsd, structure: 2 });
+  if (!r.ok || body.confirm !== true) return r;
+  return {
+    ...r,
+    event: { ...r.event, target, previous: t.catalog_slug ? `linked to ${slug}` : "not linked", next: `linked to ${slug}; course queued`, context: `Started the course for the ${t.kind} "${t.name}": linked to the catalog topic "${slug}" and queued (5 or 6 modules with recipes, video briefs and the Owner's review). ${r.event.context}` },
   };
 }

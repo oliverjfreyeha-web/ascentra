@@ -25,4 +25,6 @@ export const EXPECTED_TABLES = [
   "learner_interviews", "learner_paths", "learner_path_items", "course_requests",
   // L8
   "topics", "learner_picks", "topic_interest",
+  // C1
+  "booster_types", "video_slots", "video_uploads", "module_reviews",
 ].sort();

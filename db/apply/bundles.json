@@ -98,6 +98,12 @@
       "migrations": [
         "0019_topics_and_picks"
       ]
+    },
+    "C1": {
+      "requires": "0019_topics_and_picks",
+      "migrations": [
+        "0020_course_structure"
+      ]
     }
   }
 }

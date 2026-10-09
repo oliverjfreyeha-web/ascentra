@@ -11,6 +11,7 @@ import { allowancePause } from "@/lib/mentor/mentor";
 import { MAX_MESSAGE_CHARS, redactPersonalData, safetyResponse, safetySignal } from "@/lib/mentor/rules";
 import { MIN_MODULE_TYPES, PRACTICE_LABEL, TYPE_LABEL, grade, learnerContent, revealOf, type AnswerKey, type Content, type ItemType } from "./types";
 import { activitySelection } from "@/lib/path/path";
+import { SANDBOX_LABEL } from "@/lib/courses/structure";
 import { selectActivities } from "@/lib/path/rules";
 
 /**
@@ -23,7 +24,7 @@ import { selectActivities } from "@/lib/path/rules";
  * never writes the answer for the learner.
  */
 type Item = {
-  id: string; lesson_id: string; status: string; item_type: ItemType; grading: "code" | "feedback"; level: string; goal: string; interests: string[];
+  id: string; lesson_id: string; status: string; recipe_part?: string | null; item_type: ItemType; grading: "code" | "feedback"; level: string; goal: string; interests: string[];
   prompt: string; content: Content; answer_key: AnswerKey; explanation: string; citation: { sourceId: string; title: string; url: string | null; quote?: string };
 };
 const cite = (c: Item["citation"]) => ({ title: c.title, url: c.url ?? null, quote: c.quote ?? null });
@@ -55,7 +56,7 @@ export async function shownItems(actor: Account, lessonId: string) {
 
 /** The lesson's practice items as a learner sees them (never a key, never a reveal), with their own results and why. */
 export async function lessonActivities(actor: Account, lessonId: string) {
-  if (!(await publishedVersion(lessonId))) return { activities: [], selection: { mode: "all", personalized: false, canPersonalize: false, note: null } };
+  if (!(await publishedVersion(lessonId, actor))) return { activities: [], selection: { mode: "all", personalized: false, canPersonalize: false, note: null } };
   const db = getDb();
   const { items, why, selection } = await shownItems(actor, lessonId);
   const mine = items.length ? (((await db.from("activity_attempts").select("item_id, correct, graded_by, created_at").eq("account_id", actor.id).in("item_id", items.map((i) => i.id))).data ?? []) as
@@ -65,7 +66,10 @@ export async function lessonActivities(actor: Account, lessonId: string) {
     activities: items.map((i) => {
       const tries = mine.filter((m) => m.item_id === i.id);
       return {
-        id: i.id, type: i.item_type, typeLabel: TYPE_LABEL[i.item_type], graded: i.grading === "code", label: i.grading === "code" ? "Graded" : PRACTICE_LABEL,
+        // C1: a sandbox is practice with made-up data and no live services, and says so.
+        id: i.id, type: i.item_type, typeLabel: TYPE_LABEL[i.item_type], graded: i.grading === "code",
+        label: i.grading === "code" ? "Graded" : i.recipe_part === "sandbox" ? SANDBOX_LABEL : PRACTICE_LABEL,
+        part: i.recipe_part ?? null, simulated: i.recipe_part === "sandbox",
         level: i.level, goal: i.goal, interests: i.interests, prompt: i.prompt, content: learnerContent(i.item_type, i.content), why: why.get(i.id) ?? null,
         result: i.grading === "code" ? (tries.length ? { attempts: tries.length, correct: tries.some((t) => t.correct) } : null) : (tries.length ? { attempts: tries.length } : null),
       };
@@ -82,18 +86,18 @@ export async function lessonScore(actor: Account, lessonId: string) {
   return { graded: items.length, correct: new Set(right.map((r) => r.item_id)).size };
 }
 
-async function liveItem(id: string): Promise<{ item: Item; versionId: string } | null> {
+async function liveItem(id: string, actor?: Account): Promise<{ item: Item; versionId: string } | null> {
   if (!isUuid(id)) return null;
   const item = (await getDb().from("activity_items").select("*").eq("id", id).maybeSingle()).data as Item | null;
   if (!item || item.status !== "published") return null;
-  const found = await publishedVersion(item.lesson_id);
+  const found = await publishedVersion(item.lesson_id, actor);
   return found ? { item, versionId: found.v.id } : null;
 }
 
 /** Body: the answer for the type (code-graded), or nothing (practice). Graded at once; only code grading counts. */
 export async function attemptItem(actor: Account, id: string, body: Record<string, unknown>): Promise<Result> {
   const A = "learn.activity.attempt";
-  const live = await liveItem(id);
+  const live = await liveItem(id, actor);
   if (!live) return refused(404, "No such practice item.", A);
   const { item, versionId } = live;
   const db = getDb();
@@ -134,7 +138,7 @@ const FeedbackSchema = z.object({ feedback: z.string() });
 /** Body: { answer }. Practice items only; uses the Mentor allowance; never stored, never a grade. */
 export async function practiceFeedback(actor: Account, id: string, body: Record<string, unknown>, requestId?: string): Promise<Result> {
   const A = "learn.activity.feedback";
-  const live = await liveItem(id);
+  const live = await liveItem(id, actor);
   if (!live) return refused(404, "No such practice item.", A);
   const { item } = live;
   if (item.grading === "code") return refused(409, "This item is graded by code, against its answer key. AI feedback is for practice items only.", A);

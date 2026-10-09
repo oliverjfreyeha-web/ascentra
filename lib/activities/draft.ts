@@ -7,6 +7,9 @@ import { AI_MODELS, estimateUsd } from "@/lib/ai/config";
 import { ATTORNEY, clean, courseScope, isUuid, longestSharedRun, refused, type Result } from "@/lib/courses/common";
 import { MAX_COPIED_WORDS, type Citation, type LessonBody } from "@/lib/courses/lessons";
 import { approvedSources, passagesFor, renderContext, type CourseSource, type Passage } from "@/lib/courses/passages";
+import { findIncomeClaims } from "@/lib/courses/income";
+import { activeBoosters } from "@/lib/courses/owner-review";
+import { PART_LABEL, SANDBOX_LABEL, defaultPartOf, typeFits, type ItemPart, type Recipe } from "@/lib/courses/structure";
 import { ITEM_TYPES, LEVELS, checkItem, gradingOf, seededOrder, type AnswerKey, type Content, type ItemType } from "./types";
 
 /**
@@ -47,6 +50,8 @@ const PoolSchema = z.object({
     branches: z.array(z.object({ text: z.string(), outcome: z.string(), fit: z.enum(["strong", "workable", "weak"]) })).optional(),
     passageText: z.string().optional(), mistake: z.string().optional(), caseText: z.string().optional(), questions: z.array(z.string()).optional(),
     keyPoints: z.array(z.string()).optional(),
+    // C1: the module recipe part the item fills, and the learning booster it carries (v2 courses).
+    part: z.enum(["quiz", "assignment", "sandbox", "sequence", "booster"]).optional(), booster: z.string().optional(),
   })),
 });
 export type Pool = z.infer<typeof PoolSchema>;
@@ -55,13 +60,14 @@ export type DraftItem = {
   item_type: ItemType; grading: "code" | "feedback"; level: "beginner" | "intermediate"; idea_key: string; goal: string; interests: string[];
   prompt: string; content: Content; answer_key: AnswerKey; explanation: string;
   citation: { sourceId: string; title: string; url: string | null; quote: string; lastChecked: string | null };
+  recipe_part?: ItemPart; booster_key?: string | null;
 };
 
 const slugKey = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60);
 const list = (v: string[] | undefined, n: number, each = 300) => (v ?? []).map((x) => clean(x, each)).filter(Boolean).slice(0, n);
 
 /** The model's items as Draft rows: cited, complete, not copied, shown order shuffled. Pure: tested on its own. */
-export function toPoolItems(g: Pool, passages: Passage[], sources: CourseSource[]): { items: DraftItem[]; dropped: { reason: string; prompt: string }[] } {
+export function toPoolItems(g: Pool, passages: Passage[], sources: CourseSource[], recipe?: { boosters: { key: string; itemTypes: string[] }[] }): { items: DraftItem[]; dropped: { reason: string; prompt: string }[] } {
   const byN = new Map(passages.map((p) => [p.n, p]));
   const src = new Map(sources.map((s) => [s.id, s]));
   const items: DraftItem[] = [];
@@ -74,6 +80,7 @@ export function toPoolItems(g: Pool, passages: Passage[], sources: CourseSource[
     if (!p || !s) { drop("no passage to cite"); continue; }
     const text = [prompt, it.explanation, it.sampleAnswer, it.back, ...(it.options ?? [])].filter(Boolean).join(" ");
     if (ATTORNEY.test(text)) { drop("calls something attorney-approved"); continue; }
+    if (findIncomeClaims([text, it.caseText, it.passageText, ...(it.keyPoints ?? [])].filter(Boolean).join(" ")).length) { drop("reads as a promise of income or results"); continue; }
     if (Math.max(0, ...passages.map((x) => longestSharedRun(text, x.text))) > MAX_COPIED_WORDS) { drop("copies a source too closely"); continue; }
     const seed = `${it.ideaKey}:${i}`;
     let content: Content = {};
@@ -111,10 +118,20 @@ export function toPoolItems(g: Pool, passages: Passage[], sources: CourseSource[
       goal: clean(it.goal, 300) || "Practice this lesson", interests: list(it.interests, 3, 40).map(slugKey).filter(Boolean),
       prompt, content, answer_key: key, explanation: clean(it.explanation, 2000),
       citation: { sourceId: s.id, title: s.title, url: s.url, quote: p.quote, lastChecked: s.lastChecked },
+      ...(recipe ? partOf(it.type, it.part, it.booster, recipe.boosters) : {}),
     });
     if (items.length >= MAX_ITEMS) break;
   }
   return { items, dropped };
+}
+
+/** Where a v2 item sits in the recipe: the part the model gave if the type fits, else the type's usual part. Pure. */
+export function partOf(type: ItemType, part: ItemPart | undefined, booster: string | undefined, boosters: { key: string; itemTypes: string[] }[]): { recipe_part: ItemPart; booster_key: string | null } {
+  if (part === "booster") {
+    const b = boosters.find((x) => x.key === booster);
+    if (b && typeFits(type, "booster", b.itemTypes)) return { recipe_part: "booster", booster_key: b.key };
+  } else if (part && typeFits(type, part)) return { recipe_part: part, booster_key: null };
+  return { recipe_part: defaultPartOf(type), booster_key: null };
 }
 
 type LessonRow = { id: string; module_id: string; title: string; objectives: string[]; content: { blueprintId?: string } };
@@ -163,19 +180,31 @@ export async function draftPool(actor: Account, slug: string, lessonId: string, 
   const passages = await passagesFor(sources);
   if (!passages.length) return refused(422, "The lesson's sources have no passages to work from yet.", A, target);
 
+  // C1: a v2 module's recipe says which parts and boosters its practice fills.
+  const mod = (await db.from("modules").select("recipe").eq("id", place.lesson.module_id).maybeSingle()).data as { recipe: Partial<Recipe> | null } | null;
+  const recipe = mod?.recipe && Array.isArray(mod.recipe.boosters) ? mod.recipe as Recipe : null;
+  const boosters = recipe ? (await activeBoosters()).filter((b) => recipe.boosters.includes(b.key)) : [];
+  const recipeLines = recipe ? [
+    "This module follows a recipe. Give each item a part: quiz (code-graded types), assignment (short_answer, case_teardown, mini_project),",
+    `sandbox (${SANDBOX_LABEL.toLowerCase()}: build_it, branching_scenario or spot_the_mistake, with made-up data only, never a live service),`,
+    "sequence (an interactive sequence: ordering, branching_scenario or build_it), or booster (with the booster's key).",
+    `The module wants: ${(["quizzes", "assignments", "sandboxes", "sequences"] as const).map((k) => `${PART_LABEL[k]} ${recipe[k] ?? 1}`).join(", ")}.`,
+    boosters.length ? `Boosters to include (key: what it is; types that carry it):\n${boosters.map((b) => `- ${b.key}: ${b.name}. ${b.description} (${b.itemTypes.join(", ")})`).join("\n")}` : "",
+    "Never promise or imply income, earnings or results.",
+  ].filter(Boolean).join("\n") : "";
   const lines = [text.body.summary, ...text.body.sections.flatMap((s) => [s.heading, ...s.paragraphs.map((p) => p.text)])].filter(Boolean).join("\n").slice(0, 6000);
   let pool: Pool;
   try {
     pool = await structured("activities.draft", {
       system: POOL_SYSTEM, cachedContext: renderContext(sources, passages),
-      user: [`Lesson: ${place.lesson.title}`, place.lesson.objectives?.length ? `Objectives:\n${place.lesson.objectives.map((o) => `- ${o}`).join("\n")}` : "", `Lesson text:\n${lines}`].filter(Boolean).join("\n"),
+      user: [`Lesson: ${place.lesson.title}`, place.lesson.objectives?.length ? `Objectives:\n${place.lesson.objectives.map((o) => `- ${o}`).join("\n")}` : "", `Lesson text:\n${lines}`, recipeLines].filter(Boolean).join("\n"),
       schema: PoolSchema, maxTokens: 12_000, timeoutMs: 180_000, estimateUsd: estimateUsd("activityPool"), accountId: actor.id, requestId,
     });
   } catch (err) {
     if (!(err instanceof AiUnavailable)) throw err;
     return refused(err.code === "ai_off" ? 503 : err.code === "cap_reached" ? 429 : 502, err.message, A, target);
   }
-  const { items, dropped } = toPoolItems(pool, passages, sources);
+  const { items, dropped } = toPoolItems(pool, passages, sources, recipe ? { boosters } : undefined);
   if (!items.length) return refused(502, "The model didn't propose any usable items. Nothing was saved.", A, target);
   const published = existing.filter((e) => e.status === "published");
   const rows = items.map((it) => {

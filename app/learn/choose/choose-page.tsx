@@ -120,6 +120,8 @@ function Badges({ t }: { t: ChoiceTopic }) {
     <span className="choose__badges">
       {!t.hasCourse && <span className="ui-badge">Course coming</span>}
       {t.paused && <span className="ui-badge">Set aside</span>}
+      {/* C1: a picked topic whose course is published opens it. */}
+      {t.picked && t.courseHref && <Link href={t.courseHref} className="choose__open">Open the course<span className="sr-only">: {t.name}</span></Link>}
     </span>
   );
 }

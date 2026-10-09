@@ -41,6 +41,7 @@ export function LearnList() {
           {c.modules.map((m, i) => (
             <div key={i} className="ui-module">
               <h3>{m.title}</h3>
+              {m.pace && <p className="muted small">Recommended pace: {m.pace.toLowerCase()}, at your own speed.</p>}
               <ul className="ui-rows">
                 {m.lessons.map((l) => (
                   <li key={l.id} data-done={l.done || undefined}>

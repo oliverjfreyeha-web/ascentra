@@ -38,7 +38,7 @@ describe("the L2 bundle on the live L1 database", () => {
   const status = async (id: string) => (await q("select status from public.lesson_versions where id = $1", [id])).rows[0].status;
 
   it("applies in one go; verify.sql says L2 is applied (L3 not yet)", async () => {
-    expect((await q(readSql("db/verify.sql"))).rows[0].table_name).toMatch(/^PROBLEM: 17 missing.*L2 applied, L3 NOT applied, L4 NOT applied, L5 NOT applied, L6 NOT applied, L7 NOT applied, L8 NOT applied$/);
+    expect((await q(readSql("db/verify.sql"))).rows[0].table_name).toMatch(/^PROBLEM: 21 missing.*L2 applied, L3 NOT applied, L4 NOT applied, L5 NOT applied, L6 NOT applied, L7 NOT applied, L8 NOT applied, C1 NOT applied$/);
   });
 
   it("a course blueprint needs its plan; once approved it can't be changed", async () => {

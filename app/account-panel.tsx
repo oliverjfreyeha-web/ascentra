@@ -81,6 +81,11 @@ export function AccountPanel() {
           <Link href="/admin/catalog">Topic catalog</Link> ·{" "}
         </>
       )}
+      {me?.roleKey === "owner" && (
+        <>
+          <Link href="/admin/review">Owner review</Link> ·{" "}
+        </>
+      )}
       {me && ["owner", "courseAdmin"].includes(me.roleKey) && (
         <>
           <Link href="/admin/course-requests">Course requests</Link> ·{" "}
