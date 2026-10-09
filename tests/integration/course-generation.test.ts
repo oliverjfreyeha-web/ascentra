@@ -184,7 +184,7 @@ describe("L2 on the real database", () => {
 
     // 6. A learner reads it: citations and "last verified"; the paragraph with no source is marked.
     const courses = learnerCoursesFrom((await call(learnCoursesRoute, "GET", "/api/v1/learn/courses", "learner")).body);
-    expect(courses).toEqual([expect.objectContaining({ slug, modules: [{ title: "Speed to lead", lessons: [expect.objectContaining({ id: lessonId, title: "Why minutes matter", done: false })] }] })]);
+    expect(courses).toEqual([expect.objectContaining({ slug, modules: [{ title: "Speed to lead", pace: "About 1 week", lessons: [expect.objectContaining({ id: lessonId, title: "Why minutes matter", done: false })] }] })]);
     const lesson = learnerLessonFrom((await call(learnLessonRoute, "GET", `/api/v1/learn/lessons/${lessonId}`, "learner", undefined, { id: lessonId })).body);
     expect(lesson).not.toBeNull();
     expect(lesson!.lesson.version).toMatchObject({ id: versionId, number: 1, uncited: 1, lastVerifiedOn: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/) });
