@@ -29,9 +29,10 @@ function starSets(): string[] {
  * stars, clouds, mist, lit windows, foliage in front of the lights, and fireflies. The sky follows the visitor's clock.
  * Everything visual is decorative (aria-hidden, pointer-events: none); the words and links are ordinary HTML.
  */
-export function Hall() {
+/** `preloadImage` (D5): off when the Hall is not the visitor's chosen scene, so its picture is not fetched early. */
+export function Hall({ preloadImage = true }: { preloadImage?: boolean } = {}) {
   const allowQuery = phaseQueryAllowed(process.env.NODE_ENV, process.env.VERCEL_ENV);
-  preload(`${HALL.base}-1344.avif`, { as: "image", fetchPriority: "high", imageSrcSet: srcSet("avif"), imageSizes: SIZES, type: "image/avif" });
+  if (preloadImage) preload(`${HALL.base}-1344.avif`, { as: "image", fetchPriority: "high", imageSrcSet: srcSet("avif"), imageSizes: SIZES, type: "image/avif" });
   const timings = windowTimings();
   const stars = starSets();
   const basic = PLANS.basic;

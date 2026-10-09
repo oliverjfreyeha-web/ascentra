@@ -284,3 +284,8 @@ html { font-size: clamp(100%, calc(100% + (100vw - 1920px) * 0.0026), 131.25%); 
 .ui-tabs.has-indicator .ui-tab[aria-selected="true"]:focus-visible { box-shadow: var(--focus-ring); }
 /* Scroll boxes contain their own screen-reader-only labels (so nothing pokes out sideways on phones). */
 .table-wrap, .ui-table-wrap { position: relative; }
+
+/* D5 · Appearance panel (app/account/appearance-panel.tsx): three small groups of pressed-state buttons. */
+.ui-appearance { display: grid; gap: var(--space-5); }
+.ui-appearance__label { margin: 0 0 var(--space-2); font-size: var(--text-sm); font-weight: var(--weight-semibold); }
+.ui-appearance .ui-btn[aria-pressed="true"] { color: var(--color-on-accent); background: var(--color-accent); border-color: var(--color-accent); }

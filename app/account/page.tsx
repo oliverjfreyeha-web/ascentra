@@ -4,6 +4,7 @@ import { SignOut } from "../sign-out";
 import { BillingPanel } from "./billing-panel";
 import { DevicesPanel } from "./devices-panel";
 import { PrivacyCenter } from "./privacy-center";
+import { AppearancePanel } from "./appearance-panel";
 import { SiteFooter } from "../ui/site-footer";
 import { Reveal } from "../ui/reveal";
 
@@ -21,6 +22,7 @@ export default function AccountPage() {
       <BillingPanel />
       <PrivacyCenter />
       <div className="ui-block"><DevicesPanel /></div>
+      <section className="ui-block" id="appearance" aria-labelledby="appearance-h"><AppearancePanel /></section>
       <section className="ui-block ui-clerk">
         <h2>Sign-in methods</h2>
         <UserProfile routing="hash" />
