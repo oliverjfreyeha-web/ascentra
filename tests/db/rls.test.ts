@@ -29,11 +29,15 @@ describe("row-level security is on for every table", () => {
     expect(rows.filter((r) => !r.rls).map((r) => r.table_name)).toEqual([]);
   });
 
-  it("grants anon nothing, and authenticated only SELECT on accounts (safe columns) and profiles", async () => {
+  it("grants anon nothing, and authenticated only SELECT on accounts (safe columns), profiles, and (L8) topics and their own picks", async () => {
     const { rows } = await db.client.query(`
       select grantee, table_name, privilege_type from information_schema.role_table_grants
-      where table_schema = 'public' and grantee in ('anon', 'authenticated')`);
-    expect(rows).toEqual([{ grantee: "authenticated", table_name: "profiles", privilege_type: "SELECT" }]);
+      where table_schema = 'public' and grantee in ('anon', 'authenticated') order by table_name`);
+    expect(rows).toEqual([
+      { grantee: "authenticated", table_name: "learner_picks", privilege_type: "SELECT" },
+      { grantee: "authenticated", table_name: "profiles", privilege_type: "SELECT" },
+      { grantee: "authenticated", table_name: "topics", privilege_type: "SELECT" },
+    ]);
     const cols = await db.client.query(`
       select column_name from information_schema.column_privileges
       where table_schema = 'public' and table_name = 'accounts' and grantee = 'authenticated' order by column_name`);
@@ -42,11 +46,11 @@ describe("row-level security is on for every table", () => {
     );
   });
 
-  it("has policies only on the identity tables and the insert-only tables", async () => {
+  it("has policies only on the identity tables, the insert-only tables, and (L8) topics and picks", async () => {
     const { rows } = await db.client.query(
       "select distinct tablename from pg_policies where schemaname = 'public' order by tablename",
     );
-    expect(rows.map((r) => r.tablename)).toEqual(["accounts", "audit_events", "consent_records", "profiles"]);
+    expect(rows.map((r) => r.tablename)).toEqual(["accounts", "audit_events", "consent_records", "learner_picks", "profiles", "topics"]);
   });
 });
 
@@ -78,8 +82,8 @@ describe("a learner calling Supabase directly (bypassing the API)", () => {
     expect(r.error).toMatch(/permission denied/);
   });
 
-  it("cannot read any other table", async () => {
-    for (const t of EXPECTED_TABLES.filter((t) => t !== "accounts" && t !== "profiles")) {
+  it("cannot read any other table (L8's topics and picks have their own rules, in topics-picks.test.ts)", async () => {
+    for (const t of EXPECTED_TABLES.filter((t) => !["accounts", "profiles", "topics", "learner_picks"].includes(t))) {
       const r = await asRole(db.client, "authenticated", ann, `select 1 from public.${t} limit 1`);
       expect(r.error, t).toMatch(/permission denied/);
     }

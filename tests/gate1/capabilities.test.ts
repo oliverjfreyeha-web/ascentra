@@ -96,6 +96,11 @@ const GLOBAL: Record<string, RoleKey[]> = {
   // L7: the anonymous course-request queue.
   "course_requests.view": ["owner", "courseAdmin"],
   "course_requests.manage": ["owner", "courseAdmin"],
+  // L8: the topics learners pick from (Owner and authorized staff); a learner's business (the Owner only).
+  "topics.view": ["owner", "superAdmin", "courseAdmin"],
+  "topics.manage": ["owner", "superAdmin", "courseAdmin"],
+  "picks.inspect": ["owner"],
+  "picks.override": ["owner"],
   // L4: the safety review queue.
   "safety.view": ["owner", "superAdmin"],
   "safety.review": ["owner", "superAdmin"],
@@ -139,6 +144,8 @@ const SENSITIVE = new Set([
   "privacy.export", "privacy.delete.request", "billing.refund", "billing.credit",
   // L2: publishing a lesson version.
   "courses.release",
+  // L8: changing a learner's locked business.
+  "picks.override",
 ]);
 
 /** F5: actions that must carry a reason (role and invite changes, ownership, publishing, archiving and
@@ -160,6 +167,8 @@ const REASON = new Set([
   "safety.review",
   // L7: deciding a course request.
   "course_requests.manage",
+  // L8: changing a learner's locked business.
+  "picks.override",
 ]);
 
 function ctx(role: RoleKey, { verified = true, courses }: { verified?: boolean; courses?: string[] } = {}): AuthContext {

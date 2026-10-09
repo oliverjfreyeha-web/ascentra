@@ -4,6 +4,7 @@
 // accounts (one Owner) and role_assignments (one open invite per email, one live role per account).
 import { randomUUID } from "node:crypto";
 import { ageGroup, ageOn, parseDob, usToday } from "@/lib/age";
+import { applyPause, applyPick, reconcile, type PickPlan, type PickRow, type TopicRow } from "@/lib/picks/rules";
 
 type Row = Record<string, unknown>;
 type Err = { code: string; message: string } | null;
@@ -358,7 +359,53 @@ export function createFakeDb(tables: Record<string, Row[]> = {}) {
     else data.course_requests.push(row = { id: randomUUID(), topic: a.p_topic, topic_key: a.p_key, level: a.p_level, request_count: 1, status: "open", decided_at: null, decision_note: null, last_requested_at: now, created_at: now });
     return { data: row.id, error: null };
   }
+  // L8: the pick functions (0019), with the same rules (lib/picks/rules.ts), one learner at a time.
+  function picksFn(fn: string, a: Record<string, unknown>) {
+    if (!["trial", "basic", "pro"].includes(String(a.p_plan))) return { data: null, error: { code: "23514", message: "ASCENTRA: picks need a plan: trial, basic or pro." } };
+    const plan = a.p_plan as PickPlan;
+    const account = data.accounts.find((r) => r.id === a.p_account);
+    if (!account) return { data: fn === "reconcile_picks" ? 0 : { result: fn === "pause_pick" ? "not_picked" : "no_account" }, error: null };
+    data.learner_picks ??= [];
+    const topics = (data.topics ?? []) as unknown as TopicRow[];
+    const mine = data.learner_picks.filter((r) => r.user_id === a.p_account) as unknown as PickRow[];
+    const minor = account.is_minor === true;
+    const now = new Date(Date.now() + data.learner_picks.length).toISOString();
+    const store = (before: number) => { for (const p of mine.slice(before)) data.learner_picks.push({ id: randomUUID(), ...p } as unknown as Row); };
+    if (fn === "reconcile_picks") return { data: reconcile(mine, topics, plan, minor), error: null };
+    if (fn === "pause_pick") return { data: applyPause(mine, topics, String(a.p_topic), plan, minor), error: null };
+    if (fn === "pick_topic") {
+      if (account.status !== "active") return { data: { result: "no_account" }, error: null };
+      const n = mine.length;
+      const r = applyPick(mine, topics, String(a.p_topic), String(a.p_account), plan, minor, now);
+      store(n);
+      if (r.result === "picked" && !r.has_course) {
+        data.topic_interest ??= [];
+        const t = usToday();
+        const day = `${t.y}-${String(t.m).padStart(2, "0")}-${String(t.d).padStart(2, "0")}`;
+        const row = data.topic_interest.find((x) => x.topic_id === a.p_topic && x.day === day);
+        if (row) row.count = Number(row.count) + 1; else data.topic_interest.push({ id: randomUUID(), topic_id: a.p_topic, day, count: 1 });
+      }
+      return { data: r, error: null };
+    }
+    // owner_set_business
+    reconcile(mine, topics, plan, minor);
+    const current = mine.find((p) => p.kind === "business" && p.status === "active");
+    if (a.p_topic == null) {
+      if (!current) return { data: { result: "unchanged", previous: null, next: null }, error: null };
+      Object.assign(current, { status: "paused", locked: false });
+      return { data: { result: "released", previous: current.topic_id, next: null }, error: null };
+    }
+    const t = topics.find((x) => x.id === a.p_topic);
+    if (!t || t.kind !== "business" || !t.published || (t.teen_hidden && minor)) return { data: { result: "not_available" }, error: null };
+    if (current?.topic_id === t.id) return { data: { result: "unchanged", previous: t.id, next: t.id }, error: null };
+    if (current) Object.assign(current, { status: "paused", locked: false });
+    const existing = mine.find((p) => p.topic_id === t.id);
+    if (existing) Object.assign(existing, { status: "active", picked_at: now, locked: plan !== "pro" });
+    else data.learner_picks.push({ id: randomUUID(), user_id: a.p_account, topic_id: t.id, kind: "business", status: "active", locked: plan !== "pro", picked_at: now });
+    return { data: { result: "changed", previous: current?.topic_id ?? null, next: t.id }, error: null };
+  }
   const rpc = async (fn: string, args: Record<string, unknown> = {}) =>
+    ["pick_topic", "pause_pick", "reconcile_picks", "owner_set_business"].includes(fn) ? picksFn(fn, args) :
     fn === "request_course" ? requestCourse(args) :
     fn === "publish_module_activities" ? publishModuleActivities(args) :
     fn === "count_mentor_message" ? countMentorMessage(args) :

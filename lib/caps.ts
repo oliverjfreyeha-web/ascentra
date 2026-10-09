@@ -152,6 +152,11 @@ export const CAPABILITIES = {
   // ---- Course requests (L7): anonymous requests for topics with no published course, in a Course Admin queue ----
   "course_requests.view": { scope: "global", from: "L7: record an anonymous request (topic and level only) in a Course Admin queue" },
   "course_requests.manage": { scope: "global", from: "L7: the Course Admin queue: mark a request planned or dismissed", reason: true },
+  // ---- Pick your path (L8): the Owner and authorized staff manage the topics; only the Owner changes a learner's business ----
+  "topics.view": { scope: "global", from: "L8: /admin/topics for the Owner and authorized staff, with anonymous demand counts" },
+  "topics.manage": { scope: "global", from: "L8: add, edit, publish/unpublish, set teen_hidden and has_course, reorder (every change audited)" },
+  "picks.inspect": { scope: "global", from: "L8: the Owner looks up a learner's picks to change their business" },
+  "picks.override": { scope: "global", from: "L8: a locked business: only the Owner can change it, audited with a reason", sensitive: true, reason: true },
   // ---- Mentor safety (L4): the review queue holds no conversation text ----
   "safety.view": { scope: "global", from: "L4: a review queue for the Owner and Super Admin (categories and actions, never conversation text)" },
   "safety.review": { scope: "global", from: "L4: safety checks with SafetyEvent records and a review queue for the Owner and Super Admin", reason: true },
@@ -179,6 +184,8 @@ export const OWNER_ONLY_CAPS = [
   "billing.credit",
   "sources.open_list.edit",
   "courses.refresh.configure",
+  "picks.inspect",
+  "picks.override",
 ] as const satisfies readonly Cap[];
 
 /** Held by no role. Listed so tests can prove it. */
@@ -199,7 +206,7 @@ const SUPER_ADMIN: Cap[] = [
   "support.appeal.decide", "security.suspend",
   "sources.library.view", "sources.search", "ai.status",
   "sources.research", "courses.view", "courses.build", "courses.release", "courses.refresh.run",
-  "safety.view", "safety.review",
+  "safety.view", "safety.review", "topics.view", "topics.manage",
 ];
 
 /** Every signed-in Account manages its own devices and can answer a safeguard step. */
@@ -225,7 +232,7 @@ export const ROLE_CAPS: Record<RoleKey, readonly Cap[]> = {
     "courses.edit.assigned", "courses.publish.assigned", "courses.archive.assigned", "courses.restore.assigned",
     "sources.flag.assigned", "access.basic", "sources.library.view", "sources.search",
     "sources.research", "courses.view", "courses.build", "courses.release", "courses.refresh.run", "catalog.view", "catalog.queue",
-    "course_requests.view", "course_requests.manage", ...SELF_SECURITY,
+    "course_requests.view", "course_requests.manage", "topics.view", "topics.manage", ...SELF_SECURITY,
   ],
   reviewer: [
     "self.view", "learn",

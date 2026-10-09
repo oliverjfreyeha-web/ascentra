@@ -92,6 +92,12 @@
       "migrations": [
         "0018_interview_and_path"
       ]
+    },
+    "L8": {
+      "requires": "0018_interview_and_path",
+      "migrations": [
+        "0019_topics_and_picks"
+      ]
     }
   }
 }

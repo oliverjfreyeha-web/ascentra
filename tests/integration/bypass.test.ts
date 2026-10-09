@@ -69,7 +69,7 @@ describe("calling the database directly", () => {
     }
     expect((await rest("accounts?id=not.is.null", stack.anonKey, { method: "PATCH", body: JSON.stringify({ role: "owner" }) })).status).toBe(401);
     expect((await rest("audit_events?seq=gt.0", stack.anonKey, { method: "DELETE" })).status).toBe(401);
-    for (const fn of ["audit_verify_chain", "claim_device_slot"]) {
+    for (const fn of ["audit_verify_chain", "claim_device_slot", "pick_topic", "owner_set_business", "reconcile_picks"]) {
       expect((await rest(`rpc/${fn}`, stack.anonKey, { method: "POST", body: "{}" })).status, fn).toBeGreaterThanOrEqual(400);
     }
   });
@@ -80,7 +80,14 @@ describe("calling the database directly", () => {
     expect(acc).toEqual([{ id: ROLE_ID.learner, email: "learner@example.com", role: "learner" }]);
     const prof = await (await rest("profiles?select=account_id", t)).json();
     expect(prof).toEqual([{ account_id: ROLE_ID.learner }]);
-    for (const table of EXPECTED_TABLES.filter((x) => x !== "accounts" && x !== "profiles")) {
+    // L8: published topics and their own picks are readable; nothing else, and neither is writable.
+    expect((await (await rest("topics?select=slug&published=eq.false", t)).json())).toEqual([]);
+    expect((await (await rest("topics?select=slug", t)).json()).length).toBeGreaterThan(0);
+    const picks = (await (await rest("learner_picks?select=user_id", t)).json()) as { user_id: string }[];
+    expect(picks.every((p) => p.user_id === ROLE_ID.learner)).toBe(true);
+    expect((await rest("learner_picks", t, { method: "POST", body: JSON.stringify({ user_id: ROLE_ID.learner, topic_id: ROLE_ID.learner, kind: "skill" }) })).status).toBeGreaterThanOrEqual(400);
+    expect((await rest("topics?slug=eq.copywriting", t, { method: "PATCH", body: JSON.stringify({ published: false }) })).status).toBeGreaterThanOrEqual(400);
+    for (const table of EXPECTED_TABLES.filter((x) => !["accounts", "profiles", "topics", "learner_picks"].includes(x))) {
       // PostgREST: 403 "permission denied" for a signed-in role (401 is for anon).
       expect((await rest(`${table}?select=*&limit=1`, t)).status, table).toBe(403);
     }
@@ -90,7 +97,7 @@ describe("calling the database directly", () => {
     expect((await rest(`profiles?account_id=eq.${ROLE_ID.learner}`, t, { method: "PATCH", body: JSON.stringify({ display_name: "x" }) })).status).toBeGreaterThanOrEqual(400);
     expect((await rest("audit_events?seq=gt.0", t, { method: "DELETE" })).status).toBeGreaterThanOrEqual(400);
     expect((await rest("role_assignments", t, { method: "POST", body: JSON.stringify({ account_id: ROLE_ID.learner, role: "super_admin", assigned_by_account_id: ROLE_ID.learner }) })).status).toBeGreaterThanOrEqual(400);
-    for (const fn of ["audit_verify_chain", "claim_device_slot"]) {
+    for (const fn of ["audit_verify_chain", "claim_device_slot", "pick_topic", "owner_set_business", "reconcile_picks"]) {
       expect((await rest(`rpc/${fn}`, t, { method: "POST", body: "{}" })).status, fn).toBeGreaterThanOrEqual(400);
     }
     expect((await q("select role from public.accounts where id = $1", [ROLE_ID.learner])).rows[0].role).toBe("learner");
