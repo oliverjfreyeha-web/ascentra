@@ -10,8 +10,35 @@ import type { Citation, LessonBody } from "./lessons";
  * is never returned here, to anyone (teens included), whatever their role. Progress records the version studied.
  * L3: when a lesson a learner studied has a newer published version, they keep seeing the version they studied, with
  * an "updated" notice and its summary, and can switch to the new one; their progress carries over.
+ * C1: an unpublished course is hidden from learners who haven't started it (those who have keep access and progress);
+ * a course linked to a topic hidden from teens is never shown to a teen; each lesson says who reviewed it (the Owner,
+ * with the date of the recorded approval, or an ASCENTRA reviewer) and which video slots are approved.
  */
 type Version = { id: string; lesson_id: string; version: number; title: string; body: LessonBody; citations: Citation[]; uncited_count: number; last_verified_on: string | null; published_at: string; change_summary: string | null };
+
+/** C1: the academies a teen never sees: those linked to a topic hidden from teens (topics.catalog_slug). */
+export async function teenHiddenSlugs(): Promise<Set<string>> {
+  const rows = ((await getDb().from("topics").select("catalog_slug, teen_hidden").eq("teen_hidden", true)).data ?? []) as { catalog_slug: string | null }[];
+  return new Set(rows.map((r) => r.catalog_slug).filter((x): x is string => !!x));
+}
+
+/** C1: whether this learner has started any of these course versions (an unpublished course stays open to them). */
+async function startedAny(accountId: string, courseIds: string[]): Promise<boolean> {
+  if (!courseIds.length) return false;
+  const db = getDb();
+  const mods = ((await db.from("modules").select("id").in("course_id", courseIds)).data ?? []) as { id: string }[];
+  if (!mods.length) return false;
+  const rec = ((await db.from("progress_records").select("id").eq("account_id", accountId).in("module_id", mods.map((m) => m.id)).limit(1)).data ?? []) as unknown[];
+  return rec.length > 0;
+}
+
+/** C1: may this learner open this course? Not when it's hidden from teens (for a teen), or unpublished and not started. */
+export async function canOpenCourse(actor: Pick<Account, "id" | "isMinor">, academy: { id: string; slug: string }, unpublished: boolean, hidden?: Set<string>): Promise<boolean> {
+  if (actor.isMinor && (hidden ?? (await teenHiddenSlugs())).has(academy.slug)) return false;
+  if (!unpublished) return true;
+  const versions = ((await getDb().from("courses").select("id").eq("academy_id", academy.id)).data ?? []) as { id: string }[];
+  return startedAny(actor.id, versions.map((v) => v.id));
+}
 
 export async function learnerCourses(actor: Account) {
   const db = getDb();
@@ -19,13 +46,18 @@ export async function learnerCourses(actor: Account) {
     { id: string; lesson_id: string; course_id: string; version: number; title: string; last_verified_on: string | null }[];
   if (!published.length) return [];
   const courseIds = [...new Set(published.map((v) => v.course_id))];
-  const courses = ((await db.from("courses").select("id, academy_id, version, status").in("id", courseIds)).data ?? []) as { id: string; academy_id: string; version: number; status: string }[];
+  const courses = ((await db.from("courses").select("id, academy_id, version, status, unpublished_at").in("id", courseIds)).data ?? []) as { id: string; academy_id: string; version: number; status: string; unpublished_at?: string | null }[];
   const live = courses.filter((c) => c.status === "published" || c.status === "restored");
-  const academies = live.length ? (((await db.from("academies").select("id, slug, name").in("id", [...new Set(live.map((c) => c.academy_id))])).data ?? []) as { id: string; slug: string; name: string }[])
-    .filter((a) => a.slug !== OWNER_ACADEMY_SLUG) : [];
+  const hidden = await teenHiddenSlugs();
+  const academies: { id: string; slug: string; name: string }[] = [];
+  for (const a of live.length ? (((await db.from("academies").select("id, slug, name").in("id", [...new Set(live.map((c) => c.academy_id))])).data ?? []) as { id: string; slug: string; name: string }[]) : []) {
+    if (a.slug === OWNER_ACADEMY_SLUG) continue;
+    const latestLive = live.filter((c) => c.academy_id === a.id).sort((x, y) => y.version - x.version)[0];
+    if (await canOpenCourse(actor, a, !!latestLive?.unpublished_at, hidden)) academies.push(a);
+  }
   const lessonIds = published.map((v) => v.lesson_id);
   const lessons = ((await db.from("lessons").select("id, module_id, position, title, minutes").in("id", lessonIds)).data ?? []) as { id: string; module_id: string; position: number; title: string; minutes: number | null }[];
-  const modules = lessons.length ? (((await db.from("modules").select("id, course_id, position, title").in("id", [...new Set(lessons.map((l) => l.module_id))])).data ?? []) as { id: string; course_id: string; position: number; title: string }[]) : [];
+  const modules = lessons.length ? (((await db.from("modules").select("id, course_id, position, title, recommended_pace").in("id", [...new Set(lessons.map((l) => l.module_id))])).data ?? []) as { id: string; course_id: string; position: number; title: string; recommended_pace?: string | null }[]) : [];
   const done = ((await db.from("progress_records").select("lesson_id, lesson_version_id, status").eq("account_id", actor.id)).data ?? []) as { lesson_id: string | null; lesson_version_id: string | null; status: string }[];
   return academies.map((a) => {
     // The latest live version of this course.
@@ -33,7 +65,7 @@ export async function learnerCourses(actor: Account) {
     return {
       slug: a.slug, name: a.name, version: course.version,
       modules: modules.filter((m) => m.course_id === course.id).sort((x, y) => x.position - y.position).map((m) => ({
-        title: m.title,
+        title: m.title, pace: m.recommended_pace ?? null,
         lessons: lessons.filter((l) => l.module_id === m.id).sort((x, y) => x.position - y.position).map((l) => {
           const v = published.find((p) => p.lesson_id === l.id)!;
           const mine = done.filter((d) => d.lesson_id === l.id && d.lesson_version_id);
@@ -51,17 +83,36 @@ export async function learnerCourses(actor: Account) {
 
 const VERSION_COLUMNS = "id, lesson_id, course_id, version, title, body, citations, uncited_count, last_verified_on, published_at, status, change_summary";
 
-export async function publishedVersion(lessonId: string): Promise<{ v: Version; course: { slug: string; name: string } } | null> {
+export async function publishedVersion(lessonId: string, actor?: Pick<Account, "id" | "isMinor">): Promise<{ v: Version; course: { slug: string; name: string } } | null> {
   if (!isUuid(lessonId)) return null;
   const db = getDb();
   const v = (((await db.from("lesson_versions").select(VERSION_COLUMNS)
     .eq("lesson_id", lessonId).eq("status", "published").limit(1)).data ?? []) as (Version & { course_id: string; status: string })[])[0];
   if (!v || v.status !== "published") return null;
-  const course = (await db.from("courses").select("academy_id, status").eq("id", v.course_id).maybeSingle()).data as { academy_id: string; status: string } | null;
+  const course = (await db.from("courses").select("academy_id, status, unpublished_at").eq("id", v.course_id).maybeSingle()).data as { academy_id: string; status: string; unpublished_at?: string | null } | null;
   if (!course || (course.status !== "published" && course.status !== "restored")) return null;
-  const academy = (await db.from("academies").select("slug, name").eq("id", course.academy_id).maybeSingle()).data as { slug: string; name: string } | null;
+  const academy = (await db.from("academies").select("id, slug, name").eq("id", course.academy_id).maybeSingle()).data as { id: string; slug: string; name: string } | null;
   if (!academy || academy.slug === OWNER_ACADEMY_SLUG) return null;
-  return { v, course: academy };
+  // C1: for a learner, the course must be open to them (teen rule; an unpublished course only for those who started it).
+  if (actor && !(await canOpenCourse(actor, academy, !!course.unpublished_at))) return null;
+  return { v, course: { slug: academy.slug, name: academy.name } };
+}
+
+/**
+ * C1: who reviewed the version a learner reads. "owner" only with the Owner's recorded approval of this exact version
+ * (the date is that record's, written with its audit entry); "reviewer" with only a Reviewer's verification.
+ */
+export async function reviewLabelOf(lessonId: string, versionId: string): Promise<{ by: "owner"; date: string } | { by: "reviewer" } | null> {
+  const db = getDb();
+  const lesson = (await db.from("lessons").select("module_id").eq("id", lessonId).maybeSingle()).data as { module_id: string } | null;
+  if (lesson) {
+    const approvals = ((await db.from("module_reviews").select("decision, lesson_version_ids, decided_at, seq").eq("module_id", lesson.module_id).eq("decision", "approved")).data ?? []) as
+      { lesson_version_ids: string[]; decided_at: string; seq: number }[];
+    const mine = approvals.filter((r) => (r.lesson_version_ids ?? []).includes(versionId)).sort((a, b) => a.seq - b.seq)[0];
+    if (mine) return { by: "owner", date: mine.decided_at };
+  }
+  const v = (await db.from("lesson_versions").select("verified_by_account_id").eq("id", versionId).maybeSingle()).data as { verified_by_account_id: string | null } | null;
+  return v?.verified_by_account_id ? { by: "reviewer" } : null;
 }
 
 const view = (v: Version) => ({ id: v.id, number: v.version, publishedAt: v.published_at, lastVerifiedOn: v.last_verified_on, body: v.body, citations: v.citations, uncited: v.uncited_count });
@@ -71,7 +122,7 @@ const view = (v: Version) => ({ id: v.id, number: v.version, publishedAt: v.publ
  * when a newer version is published; or the current one with `view: "current"`. Never a Draft or one in Review.
  */
 export async function learnerLesson(actor: Account, lessonId: string, opts: { view?: string | null } = {}) {
-  const found = await publishedVersion(lessonId);
+  const found = await publishedVersion(lessonId, actor);
   if (!found) return null;
   const { v, course } = found;
   const db = getDb();
@@ -91,7 +142,7 @@ export async function learnerLesson(actor: Account, lessonId: string, opts: { vi
     }
   }
   return {
-    lesson: { id: lessonId, title: shown.title, course, version: view(shown) },
+    lesson: { id: lessonId, title: shown.title, course, version: view(shown), review: await reviewLabelOf(lessonId, shown.id) },
     progress: progress ? { status: progress.status, completedAt: progress.completed_at } : null,
     update,
   };
@@ -100,7 +151,7 @@ export async function learnerLesson(actor: Account, lessonId: string, opts: { vi
 /** Body: { versionId, status: "in_progress" | "complete" }. The version must be the one published now. */
 export async function recordProgress(actor: Account, lessonId: string, body: Record<string, unknown>): Promise<Result> {
   const A = "learn.progress";
-  const found = await publishedVersion(lessonId);
+  const found = await publishedVersion(lessonId, actor);
   if (!found) return refused(404, "No such lesson.", A);
   if (body.versionId !== found.v.id) return refused(409, "This lesson has a newer version. Reload it.", A);
   let status = body.status === "complete" ? "complete" : body.status === "in_progress" ? "in_progress" : null;

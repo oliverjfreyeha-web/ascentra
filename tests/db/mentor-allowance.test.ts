@@ -21,7 +21,7 @@ describe("the L5 bundle on the live L4 database", () => {
   afterAll(() => db.drop());
 
   it("applies in one go; verify.sql says L5 is applied (L6 not yet); the live subscription has no add-on", async () => {
-    expect((await q(readSql("db/verify.sql"))).rows[0].table_name).toMatch(/^PROBLEM: 11 missing.*L5 applied, L6 NOT applied, L7 NOT applied, L8 NOT applied$/);
+    expect((await q(readSql("db/verify.sql"))).rows[0].table_name).toMatch(/^PROBLEM: 15 missing.*L5 applied, L6 NOT applied, L7 NOT applied, L8 NOT applied, C1 NOT applied$/);
     expect((await q("select mentor_addon_cents from public.subscriptions where id = $1", [sub])).rows[0].mentor_addon_cents).toBe(0);
   });
 

@@ -1,4 +1,4 @@
--- Run in the Supabase SQL Editor after applying the migrations (F3, F4, F5, F6, B1, B2, B3, B4, L1, L2, L3, L4, L5, L6, L7 and L8).
+-- Run in the Supabase SQL Editor after applying the migrations (F3, F4, F5, F6, B1, B2, B3, B4, L1, L2, L3, L4, L5, L6, L7, L8 and C1).
 -- The first row is the verdict. The rest lists every expected table with whether it exists and
 -- whether row-level security is on, then any other table in public (which should not exist).
 with expected(table_name) as (values
@@ -31,7 +31,9 @@ with expected(table_name) as (values
   -- L7: the interview, the personalized path, and the anonymous course requests.
   ('learner_interviews'), ('learner_paths'), ('learner_path_items'), ('course_requests'),
   -- L8: topics to pick, learners' picks, anonymous demand per topic per day.
-  ('topics'), ('learner_picks'), ('topic_interest')
+  ('topics'), ('learner_picks'), ('topic_interest'),
+  -- C1: learning boosters, video slots and uploads, the Owner's module reviews.
+  ('booster_types'), ('video_slots'), ('video_uploads'), ('module_reviews')
 ),
 public_tables as (
   select c.relname as table_name, c.relrowsecurity as rls_on
@@ -189,9 +191,20 @@ l8 as (
     case when to_regclass('public.topics') is null then false
          else (xpath('/row/n/text()', query_to_xml('select (count(*) filter (where kind = ''business'') >= 24
            and count(*) filter (where kind = ''skill'') >= 16)::int as n from public.topics', false, true, '')))[1]::text = '1' end as seeded
+),
+c1 as (
+  select
+    exists (select 1 from private.schema_migrations where version = '0020_course_structure') as recorded,
+    exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'courses' and column_name = 'owner_review_required') as owner_review,
+    exists (select 1 from pg_trigger where tgrelid = to_regclass('public.lesson_versions') and tgname = 'a_owner_review_lessons')
+      and exists (select 1 from pg_trigger where tgrelid = to_regclass('public.activity_items') and tgname = 'a_owner_review_items') as owner_gate,
+    exists (select 1 from pg_trigger where tgrelid = to_regclass('public.module_reviews') and tgname = 'reject_update_delete') as reviews_kept,
+    exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'topics' and column_name = 'catalog_slug') as topic_link,
+    (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public'
+       and p.proname in ('accept_video_upload', 'new_course_version', 'reorder_modules', 'reorder_lessons')) = 4 as editor
 )
 select 0 as sort,
-       case when (select count(*) from report where expected and table_exists and rls_on) = 69
+       case when (select count(*) from report where expected and table_exists and rls_on) = 73
              and not exists (select 1 from report where not expected)
              and (select triggers from insert_only) = 4
              and (select owner_triggers from f4) = 2 and (select invite_columns from f4) and (select recorded from f4)
@@ -216,7 +229,9 @@ select 0 as sort,
              and (select recorded from l7) and (select published_only from l7) and (select anonymous from l7)
              and (select recorded from l8) and (select plan_rules from l8) and (select one_business from l8)
              and (select functions_only from l8) and (select anonymous from l8) and (select answers from l8) and (select seeded from l8)
-            then 'OK: all 69 tables exist with row-level security on; audit_events and consent_records are insert-only; F4 admin invites and Owner protections are in place; F5 audit chain is in place; F6 devices, sessions and safeguards are in place; B1 billing is in place; B2 age rules and sign-up are in place; B3 Guardians are in place; B4 notices and privacy requests are in place; L1 source library is in place; L2 course generation and review are in place; L3 freshness cycle is in place; L4 Mentor and safety checks are in place; L5 Mentor allowance is in place; L6 topic catalog and activity library are in place; L7 interview and personalized path are in place; L8 topics and picks are in place'
+             and (select recorded from c1) and (select owner_review from c1) and (select owner_gate from c1) and (select reviews_kept from c1)
+             and (select topic_link from c1) and (select editor from c1)
+            then 'OK: all 73 tables exist with row-level security on; audit_events and consent_records are insert-only; F4 admin invites and Owner protections are in place; F5 audit chain is in place; F6 devices, sessions and safeguards are in place; B1 billing is in place; B2 age rules and sign-up are in place; B3 Guardians are in place; B4 notices and privacy requests are in place; L1 source library is in place; L2 course generation and review are in place; L3 freshness cycle is in place; L4 Mentor and safety checks are in place; L5 Mentor allowance is in place; L6 topic catalog and activity library are in place; L7 interview and personalized path are in place; L8 topics and picks are in place; C1 course structure and Owner review are in place'
             else 'PROBLEM: ' || (select count(*) from report where expected and not table_exists) || ' missing, '
                  || (select count(*) from report where table_exists and not rls_on) || ' without RLS, '
                  || (select count(*) from report where not expected) || ' unexpected, '
@@ -260,6 +275,9 @@ select 0 as sort,
                  || ', L8 ' || case when (select recorded from l8) and (select plan_rules from l8) and (select one_business from l8)
                                          and (select functions_only from l8) and (select anonymous from l8) and (select answers from l8)
                                          and (select seeded from l8)
+                                    then 'applied' else 'NOT applied' end
+                 || ', C1 ' || case when (select recorded from c1) and (select owner_review from c1) and (select owner_gate from c1)
+                                         and (select reviews_kept from c1) and (select topic_link from c1) and (select editor from c1)
                                     then 'applied' else 'NOT applied' end
                  || case when (select staff_never_minor from b2) then '' else ', an Owner or admin is marked minor or pending' end
        end as table_name,
