@@ -145,7 +145,7 @@ test("three browsers are trusted; a fourth is asked to replace one; replacing wo
   await signInWithPassword(d, S().learnerA);
   await expect(d.getByRole("heading", { name: "Replace a trusted device?" })).toBeVisible({ timeout: 20_000 });
   expect((await d.request.get("/api/v1/me", { headers: rid("untrusted") })).status()).toBe(403);
-  await d.getByRole("button", { name: "Replace this one" }).first().click();
+  await d.getByRole("button", { name: /^Replace this device/ }).first().click();
   await expect(d.getByText(/Signed in as TEST/i)).toBeVisible({ timeout: 20_000 });
   // Pause: c was open before d started.
   await c.reload();

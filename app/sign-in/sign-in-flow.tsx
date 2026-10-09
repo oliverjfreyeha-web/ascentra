@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { SignIn, useAuth, useSignIn } from "@clerk/nextjs";
 
-// Passkey first. Password with a second factor, and recovery through a verified email
+// Passkey first. Password (plus a second factor where the account has one), and recovery through a verified email
 // ("Forgot password?"), are handled by Clerk's own form behind the fallback link.
 export function SignInFlow() {
   const { isLoaded } = useAuth();
@@ -18,14 +18,14 @@ export function SignInFlow() {
     setMessage(null);
     const { error } = await signIn.passkey({ flow: "discoverable" });
     if (error) {
-      setMessage("That passkey didn't work. Try again, or use your password and second factor.");
+      setMessage("That passkey didn't work. Try again, or use your password.");
       return;
     }
     if (signIn.status === "complete") {
       await signIn.finalize();
       router.replace("/");
     } else {
-      setMessage("Sign-in needs another step. Use your password and second factor.");
+      setMessage("Sign-in needs another step. Use your password.");
       setFallback(true);
     }
   }
@@ -55,7 +55,7 @@ export function SignInFlow() {
       )}
       <p className="muted">
         <button type="button" className="link" onClick={() => setFallback(true)}>
-          Use password and a second factor
+          Use your password
         </button>
       </p>
       <p className="muted">

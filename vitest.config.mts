@@ -9,5 +9,5 @@ export default defineConfig({
       "server-only": fileURLToPath(new URL("./tests/server-only-stub.ts", import.meta.url)),
     },
   },
-  test: { include: ["tests/unit/**/*.test.ts", "tests/gate1/**/*.test.ts"], environment: "node" },
+  test: { include: ["tests/unit/**/*.test.{ts,tsx}", "tests/gate1/**/*.test.ts"], environment: "node" },
 });

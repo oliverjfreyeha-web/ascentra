@@ -191,6 +191,17 @@ describe("checkout", () => {
     expect(db.data.billing_customers).toEqual([expect.objectContaining({ account_id: LEARNER, processor_customer_id: "cus_learner" })]);
   });
 
+  // R1: during sign-up the plan step lives on /welcome; Stripe brings the learner back there. From Account, back to Account.
+  it("returns to /welcome when checkout starts from the sign-up plan step, and to /account otherwise", async () => {
+    await call(checkoutRoute, "POST", "/api/v1/billing/checkout", { ...AGREE, plan: "basic", returnTo: "welcome" });
+    expect(calls.checkout.at(-1)).toMatchObject({ success_url: "https://ascentra.test/welcome?billing=success", cancel_url: "https://ascentra.test/welcome?billing=canceled" });
+    calls.checkout.length = 0;
+    db.data.subscriptions = [];
+    db.data.consent_records = [];
+    await call(checkoutRoute, "POST", "/api/v1/billing/checkout", { ...AGREE, plan: "pro", returnTo: "https://evil.example" });
+    expect(calls.checkout.at(-1)).toMatchObject({ success_url: "https://ascentra.test/account?billing=success" });
+  });
+
   it("Pro: charged today, no trial", async () => {
     const res = await call(checkoutRoute, "POST", "/api/v1/billing/checkout", { ...AGREE, plan: "pro" });
     expect(await res.json()).toMatchObject({ trial: false });

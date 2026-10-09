@@ -1,11 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth, useClerk } from "@clerk/nextjs";
 import { call } from "../call";
 import { SignOut } from "../sign-out";
+import { BillingPanel } from "../account/billing-panel";
+import { loadFailure } from "./load-failure";
 
 type Progress = "none" | "invited" | "joined" | "verified" | "agreed" | "failed";
 type State =
@@ -14,8 +16,15 @@ type State =
   | { state: "guardian_signup"; teenName: string }
   | { state: "paused"; since: string | null }
   | { state: "second_factor" }
+  | { state: "interview"; next: string }
+  | { state: "plan" }
   | { state: "ready"; home: string }
   | { state: "not_open"; reason: string };
+
+/** Shown when Continue is pressed without confirming US residence (the server's own check says the same). */
+export const US_CONFIRM = "Confirm that you live in the United States to continue.";
+/** The existing US-only message (lib/registration.ts US_ONLY says the same to anyone who sends it anyway). */
+export const US_ONLY_TEXT = "ASCENTRA is available in the United States only, so we can't create an account for you. Nothing you entered was saved.";
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const pad = (s: string, n: number) => s.trim().padStart(n, "0");
@@ -34,7 +43,7 @@ export function WelcomeFlow() {
   const load = useCallback(async () => {
     const r = await call("GET", "/api/registration");
     if (r._status === 200) setS(r as unknown as State);
-    else setFailed(r._status === 401 ? null : "Couldn't load your account. Reload the page to try again.");
+    else setFailed(loadFailure(r._status));
   }, []);
 
   useEffect(() => {
@@ -44,7 +53,16 @@ export function WelcomeFlow() {
 
   useEffect(() => {
     if (s?.state === "ready") router.replace(s.home);
+    // R1: step 3 is "Choose your path"; it sends them back here when it's done.
+    if (s?.state === "interview") router.replace(s.next);
   }, [s, router]);
+
+  // R1: back from Stripe Checkout during sign-up. Stripe confirms by webhook a moment later: look again a few times.
+  useEffect(() => {
+    if (!isSignedIn || new URLSearchParams(window.location.search).get("billing") !== "success") return;
+    const t = [3000, 8000, 15000, 30000].map((ms) => setTimeout(() => void load(), ms));
+    return () => t.forEach(clearTimeout);
+  }, [isSignedIn, load]);
 
   if (!isLoaded) return null;
   if (!isSignedIn) {
@@ -54,8 +72,9 @@ export function WelcomeFlow() {
       </p>
     );
   }
-  if (failed) return <p role="alert">{failed}</p>;
-  if (!s || s.state === "ready") return <p className="muted">Checking your account…</p>;
+  if (failed) return <section><p role="alert">{failed}</p><p><SignOut /></p></section>;
+  if (!s || s.state === "ready" || s.state === "interview") return <p className="muted">Checking your account…</p>;
+  if (s.state === "plan") return <PlanStep />;
   if (s.state === "dob") return <DobStep onDone={setS} onRefused={() => void signOut({ redirectUrl: "/not-available" }).catch(() => router.replace("/not-available"))} />;
   if (s.state === "guardian") return <GuardianStep s={s} onDone={setS} />;
   if (s.state === "guardian_signup") return <GuardianSignup teenName={s.teenName} onDone={setS} />;
@@ -73,16 +92,19 @@ export function WelcomeFlow() {
     );
   }
   if (s.state === "second_factor") {
+    // R1: only the Owner, administrators and Guardians get here. A learner's second factor is optional.
     return (
       <section>
-        <h1>One more step: a second factor</h1>
+        <h1>Your role needs a second factor</h1>
         <p>
-          This account needs a second factor before anything else works (a password always needs one, and so does every
-          administrator). Add an authenticator app under <Link href="/account">Account → Sign-in methods</Link>, then come
-          back here. It can take a few seconds to register.
+          Owner, administrator and Guardian accounts must have a second factor before anything works, because they manage
+          other people&apos;s access, consent or payments. Add an authenticator app: open{" "}
+          <Link href="/account#sign-in-methods">Account → Sign-in methods</Link>, choose <b>Security</b>, then add an
+          authenticator app. Then come back here. It can take a few seconds to register.
         </p>
         <p>
-          <button type="button" className="primary" onClick={() => void load()}>I&apos;ve added it</button> · <SignOut />
+          <Link href="/account#sign-in-methods" className="ui-btn ui-btn--primary">Add a second factor</Link>{" "}
+          <button type="button" onClick={() => void load()}>I&apos;ve added it</button> · <SignOut />
         </p>
       </section>
     );
@@ -96,19 +118,39 @@ export function WelcomeFlow() {
   );
 }
 
+/** R1: step 4 for an adult: choose Basic or Pro (Basic can start with the 14-day trial). The billing panel is the same as on Account. */
+function PlanStep() {
+  return (
+    <section aria-labelledby="plan-step-h">
+      <h1 id="plan-step-h">Choose your plan</h1>
+      <p className="muted">Last step. Your answers and picks are saved. Choose a plan to start learning; you can change or cancel it later from Account.</p>
+      <BillingPanel returnTo="welcome" />
+      <p className="small"><SignOut /></p>
+    </section>
+  );
+}
+
 function DobStep({ onDone, onRefused }: { onDone: (s: State) => void; onRefused: () => void }) {
   const [m, setM] = useState("");
   const [d, setD] = useState("");
   const [y, setY] = useState("");
   const [us, setUs] = useState(false);
+  const [notUs, setNotUs] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const usBox = useRef<HTMLInputElement>(null);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
     setError(null);
     if (!m || !/^\d{1,2}$/.test(d.trim()) || !/^\d{4}$/.test(y.trim())) {
       setError("Enter a real date, like March 4 2001.");
+      return;
+    }
+    // R1: never move on silently. The server still checks this (US_ONLY); this only says so before sending.
+    if (!us) {
+      setError(US_CONFIRM);
+      usBox.current?.focus();
       return;
     }
     setBusy(true);
@@ -143,12 +185,17 @@ function DobStep({ onDone, onRefused }: { onDone: (s: State) => void; onRefused:
       </fieldset>
       <p>
         <label className="ui-consent">
-          <input type="checkbox" checked={us} onChange={(e) => setUs(e.target.checked)} /> I live in the United States
+          <input ref={usBox} type="checkbox" checked={us} onChange={(e) => { setUs(e.target.checked); setNotUs(false); if (e.target.checked) setError(null); }}
+            aria-describedby={error === US_CONFIRM ? "dob-error" : undefined} aria-invalid={error === US_CONFIRM} /> I live in the United States
         </label>
       </p>
-      {error && <p role="alert">{error}</p>}
+      {notUs && <p role="alert" className="notice">{US_ONLY_TEXT}</p>}
+      {error && <p role="alert" id="dob-error">{error}</p>}
       <p className="ui-actions">
         <button type="submit" className="primary" disabled={busy}>Continue</button> · <SignOut />
+      </p>
+      <p className="small">
+        <button type="button" className="link" onClick={() => { setUs(false); setError(null); setNotUs(true); }}>I don&apos;t live in the United States</button>
       </p>
     </form>
   );

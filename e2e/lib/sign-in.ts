@@ -3,13 +3,13 @@ import { setupClerkTestingToken } from "@clerk/testing/playwright";
 import { freshTotp } from "./totp";
 
 /**
- * Signs in through ASCENTRA's own sign-in page: "Use password and a second factor", then Clerk's form
+ * Signs in through ASCENTRA's own sign-in page: "Use your password", then Clerk's form
  * (email, password, authenticator code). Clerk's testing token only bypasses bot protection.
  */
 export async function signInWithPassword(page: Page, u: { email: string; password: string; totpSecret?: string }) {
   await setupClerkTestingToken({ page });
   await page.goto("/sign-in");
-  await page.getByRole("button", { name: "Use password and a second factor" }).click();
+  await page.getByRole("button", { name: "Use your password" }).click();
   await page.locator("input[name=identifier]").fill(u.email);
   await page.getByRole("button", { name: /^Continue$/ }).click();
   await page.locator("input[name=password]").fill(u.password);

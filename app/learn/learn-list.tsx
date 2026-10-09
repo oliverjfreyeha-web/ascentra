@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useOnboardingGuard } from "../onboarding";
 import { call } from "../call";
 import { learnerCoursesFrom, type LearnerCourse } from "../courses-api";
 import { pathFrom } from "../path-api";
@@ -9,6 +10,7 @@ import { Loading } from "../ui/loading";
 
 /** L2: published courses and lessons only (the API never returns a Draft or a version in Review). */
 export function LearnList() {
+  useOnboardingGuard();
   const [courses, setCourses] = useState<LearnerCourse[] | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
   // L7: after a plan or the trial starts, invite the learner to the interview (skippable; redoable from My path).

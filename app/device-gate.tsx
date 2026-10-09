@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useAuth, useClerk, useReverification } from "@clerk/nextjs";
-import { call, when, type ApiResult } from "./call";
+import { DEVICE_EVENT, call, when, type ApiResult } from "./call";
 
 type Device = { id: string; name: string; kind: string; region: string | null; trustedAt: string | null; lastSeenAt: string | null };
 type Enforcement = {
@@ -15,6 +16,8 @@ type Beat = ApiResult & {
   deviceLimit: number;
   enforcement: Enforcement;
   device: ({ trusted: true } & Device) | { trusted: false; name: string; why: "full" | "limited" } | null;
+  /** R1: set when this request added the browser as a trusted device. */
+  added?: { name: string; count: number } | null;
   devices?: Device[];
   session: null | {
     state: "active" | "paused" | "ended"; conflict: boolean; notice: string | null;
@@ -32,18 +35,39 @@ export function DeviceGate({ children }: { children: ReactNode }) {
   const { isLoaded, isSignedIn } = useAuth();
   const { signOut } = useClerk();
   const [beat, setBeat] = useState<Beat | "none" | "error" | null>(null);
+  const [added, setAdded] = useState<{ name: string; count: number } | null>(null);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pathname = usePathname();
 
   const send = useCallback(async () => {
     try {
       const r = (await call("POST", "/api/v1/session")) as Beat;
       if (r._status === 401) setBeat("none");
       else if (r._status >= 400) setBeat("error");
-      else setBeat(r);
+      else {
+        setBeat(r);
+        if (r.added) setAdded(r.added);
+      }
     } catch {
       setBeat("error");
     }
   }, []);
+
+  // R1: the first check can run before the account exists (right after sign-up) or is allowed in, so it registers
+  // nothing. Check again on every page change until this browser is trusted, and whenever a page found it wasn't
+  // (app/call.ts). Before this, a new browser could reach Account with "not one of your trusted devices" and no way on.
+  const trusted = typeof beat === "object" && beat?.device?.trusted === true;
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- a fresh device check for the new page
+    if (isLoaded && isSignedIn && !trusted) void send();
+    // Only the page changing should re-run this, not each heartbeat.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
+  useEffect(() => {
+    const again = () => void send();
+    window.addEventListener(DEVICE_EVENT, again);
+    return () => window.removeEventListener(DEVICE_EVENT, again);
+  }, [send]);
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -87,6 +111,13 @@ export function DeviceGate({ children }: { children: ReactNode }) {
   // One tree shape whatever the heartbeat said, so a heartbeat never remounts the page (and loses its state).
   return (
     <>
+      {added && (
+        <div className="notice banner" role="status">
+          This browser ({added.name}) is now one of your trusted devices: {added.count} of {live?.deviceLimit ?? 3}.{" "}
+          <Link href="/account#devices">Manage devices</Link>{" · "}
+          <button type="button" className="link" onClick={() => setAdded(null)}>OK</button>
+        </div>
+      )}
       {live?.session?.conflict && <OtherDeviceBanner beat={live} onDone={send} />}
       {e?.noticeUnread && <NoticeBanner enforcement={e} onDone={send} />}
       {children}
@@ -212,9 +243,15 @@ function NotTrusted({ beat, onDone }: { beat: Beat; onDone: () => void }) {
       <section className="notice" role="alert">
         <h1>Replace a trusted device?</h1>
         <p>
-          You already have {beat.deviceLimit} trusted devices. To use ASCENTRA on <b>{d.name}</b>, replace one. You&apos;ll be
-          asked for your second factor first. The replaced device is signed out and will need a new sign-in.
+          You already have {beat.deviceLimit} trusted devices, the most an account can have. To use ASCENTRA in this browser
+          (<b>{d.name}</b>), replace one of them:
         </p>
+        <ol>
+          <li>Choose the device you use least (it&apos;s marked below) and select <b>Replace this device</b>.</li>
+          <li>Confirm it&apos;s you: your password, and your authenticator code if you use one.</li>
+          <li>This browser becomes trusted. The replaced device is signed out and needs a new sign-in.</li>
+        </ol>
+        <p className="muted">A private window counts as a new device each time it&apos;s opened.</p>
         <ul className="services">
           {devices.map((x) => (
             <li key={x.id} className="row">
@@ -231,9 +268,9 @@ function NotTrusted({ beat, onDone }: { beat: Beat; onDone: () => void }) {
                   if (r._status >= 400) setMessage(r.reason ?? "That didn't work.");
                   else onDone();
                 } catch {
-                  setMessage("The second-factor check was cancelled. Nothing changed.");
+                  setMessage("The check was cancelled. Nothing changed.");
                 }
-              }}>Replace this one</button>
+              }}>Replace this device<span className="sr-only">: {x.name}</span></button>
             </li>
           ))}
         </ul>

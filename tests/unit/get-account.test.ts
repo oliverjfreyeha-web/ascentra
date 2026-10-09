@@ -58,8 +58,33 @@ describe("getAccount", () => {
     expect(await getAccount()).toBeNull();
   });
 
-  it("refuses a password without a second factor", async () => {
-    store.row = { ...owner, role: "learner", two_factor_enabled: false };
+  // R1: the second factor is optional for learners, and still required for the Owner, admins and Guardians.
+  it("accepts a learner with a password and no second factor (adult or teen)", async () => {
+    store.row = { ...owner, email: "sam@example.com", role: "learner", two_factor_enabled: false, is_minor: false };
+    expect((await getAccount())?.roleKey).toBe("learner");
+    store.row = { ...owner, email: "teen@example.com", role: "learner", two_factor_enabled: false, is_minor: true };
+    expect(await getAccount()).toMatchObject({ roleKey: "learner", isMinor: true });
+  });
+
+  it("still refuses the Owner, an admin and a Guardian with a password and no second factor", async () => {
+    store.row = { ...owner, two_factor_enabled: false };
+    expect(await getAccount()).toBeNull();
+    store.row = { ...admin, two_factor_enabled: false };
+    store.assignment = activeCourseAdmin;
+    expect(await getAccount()).toBeNull();
+    store.assignment = null;
+    store.row = { ...owner, email: "pat@example.com", role: "guardian", two_factor_enabled: false };
+    expect(await getAccount()).toBeNull();
+    // With one, the Guardian and the admin are fine.
+    store.row = { ...owner, email: "pat@example.com", role: "guardian", two_factor_enabled: true };
+    expect((await getAccount())?.roleKey).toBe("guardian");
+    store.row = { ...admin };
+    store.assignment = activeCourseAdmin;
+    expect((await getAccount())?.roleKey).toBe("courseAdmin");
+  });
+
+  it("refuses a passkey-only Guardian without a second factor", async () => {
+    store.row = { ...owner, email: "pat@example.com", role: "guardian", password_enabled: false, two_factor_enabled: false };
     expect(await getAccount()).toBeNull();
   });
 

@@ -284,10 +284,22 @@ describe("Choose your path (learner)", () => {
     expect(db.data.learner_picks).toHaveLength(0);
   });
 
-  it("no plan: the topics show, but nothing is saved", async () => {
+  // R1: the interview comes before the plan, so a learner with no plan yet has the Basic and trial limits.
+  it("no plan yet: picks are saved with the Basic and trial limits (3 skills, 1 business that locks)", async () => {
     db.data.entitlements = [];
-    expect((await chooser()).planNote).toBe("Choose a plan or start the free trial to save picks.");
-    expect((await pickR("copywriting")).status).toBe(403);
+    const c = await chooser();
+    expect(c.plan).toBeNull();
+    expect(c.skillCounter).toBe("0 of 3 skills used");
+    expect(c.planNote).toMatch(/^Until you choose a plan: up to 3 skills/);
+    for (const s of ["copywriting", "negotiation", "public-speaking"]) expect((await pickR(s)).status).toBe(201);
+    expect((await pickR("time-management")).status).toBe(409);
+    expect((await pickR("seo-services")).status).toBe(201);
+    expect((await chooser()).business).toMatchObject({ slug: "seo-services", locked: true });
+    expect((await pickR("newsletter")).status).toBe(403);
+    // Choosing Pro afterwards applies Pro's rules as before: the business unlocks, more skills fit.
+    db.data.entitlements = [{ id: "e2", account_id: LEARNER, tier: "pro", valid_from: "2026-01-01T00:00:00Z", valid_until: null }];
+    expect((await chooser()).business).toMatchObject({ locked: false });
+    expect((await pickR("time-management")).status).toBe(201);
   });
 
   it("a topic with no course still saves the pick and adds anonymous demand for the day; one with a course doesn't", async () => {

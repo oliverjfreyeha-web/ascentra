@@ -63,7 +63,7 @@ const rest = (path: string, key: string, init: RequestInit = {}) =>
 describe("the sign-up step on the real database", () => {
   it("creates an active adult and a pending teen; the database accepts both", async () => {
     as("user_int_adult", "int.adult@example.com");
-    expect((await post(registrationRoute, { dateOfBirth: yearsAgo(30), usResident: true })).body).toEqual({ state: "ready", home: "/account" });
+    expect((await post(registrationRoute, { dateOfBirth: yearsAgo(30), usResident: true })).body).toEqual({ state: "interview", next: "/learn/choose?onboarding=1" });
     expect(await row("user_int_adult")).toMatchObject({ role: "learner", status: "active", is_minor: false, dob: yearsAgo(30) });
 
     as("user_int_teen", "int.teen@example.com");

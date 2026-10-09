@@ -45,6 +45,12 @@ async function rpc<T>(fn: string, args: Record<string, unknown>): Promise<T> {
 }
 
 export const planFor = async (actor: Pick<Account, "id" | "roleKey">): Promise<PickPlan | null> => pickPlanOf((await tierOf(actor)).tier);
+/**
+ * R1: the limits that apply to picks. The interview comes before the plan step, so a learner with no plan yet gets the
+ * Basic and trial limits (up to 3 skills, 1 business that locks); once they choose a plan, that plan's rules apply.
+ */
+export const limitsFor = async (actor: Pick<Account, "id" | "roleKey">): Promise<PickPlan> => (await planFor(actor)) ?? "trial";
+export const NO_PLAN_NOTE = "Until you choose a plan: up to 3 skills (you can swap them) and 1 business, the Basic and free-trial limits. Once chosen, your business is locked; only the Owner can change it.";
 
 async function answersOf(accountId: string): Promise<PathAnswers | null> {
   const p = (await getDb().from("profiles").select("path_goal, path_hours, path_experience, path_style, path_camera, path_answered_at").eq("account_id", accountId).maybeSingle()).data as ProfileDb | null;
@@ -58,8 +64,9 @@ const topicView = (t: TopicDb) => ({ slug: t.slug, name: t.name, blurb: t.blurb,
 /** Everything the "Choose your path" screens show, after bringing the picks in line with the plan. */
 export async function getChooser(actor: Account) {
   const plan = await planFor(actor);
+  const limits = plan ?? "trial";
   // A plan change (e.g. Pro to Basic) is applied here, by the database: extra skills paused, the business locked.
-  if (plan) await rpc<number>("reconcile_picks", { p_account: actor.id, p_plan: plan });
+  await rpc<number>("reconcile_picks", { p_account: actor.id, p_plan: limits });
   const [topics, picks, answers] = await Promise.all([allTopics(), picksOf(actor.id), answersOf(actor.id)]);
   const visible = topics.filter((t) => visibleTo(t, actor.isMinor));
   const pickOf = (id: string) => picks.find((p) => p.topic_id === id) ?? null;
@@ -71,14 +78,14 @@ export async function getChooser(actor: Account) {
   const skills = visible.filter((t) => t.kind === "skill").map((t) => ({ ...topicView(t), ...state(t) }));
   const business = businesses.find((b) => b.picked) ?? null;
   const skillsUsed = skills.filter((s) => s.picked).length;
-  const limit = skillLimitOf(plan);
+  const limit = skillLimitOf(limits);
   return {
     plan, questions: QUESTIONS, answers, businesses, skills,
     business: business ? { slug: business.slug, name: business.name, locked: business.locked, lockNote: business.locked ? LOCK_NOTE : null } : null,
     skillsUsed, skillLimit: limit,
     skillCounter: limit === null ? `${skillsUsed} skill${skillsUsed === 1 ? "" : "s"} chosen (no limit on Pro)` : `${skillsUsed} of ${limit} skills used`,
     note: NO_PROMISE,
-    planNote: !plan ? "Choose a plan or start the free trial to save picks."
+    planNote: !plan ? NO_PLAN_NOTE
       : plan === "pro" ? "Pro: as many skills as you like, and one business at a time. You can switch business; your progress is kept."
         : `${plan === "trial" ? "Free trial" : "Basic"}: up to ${SKILL_LIMIT_BASIC} skills (you can swap them) and 1 business. Once chosen, your business is locked; only the Owner can change it.`,
   };
@@ -111,8 +118,7 @@ const NOT_AVAILABLE = "That topic isn't available.";
 /** Body: { slug }. Picks a business or a skill; the database applies the plan's limits atomically. */
 export async function pick(actor: Account, body: Record<string, unknown>): Promise<Result> {
   const A = "learn.picks.pick";
-  const plan = await planFor(actor);
-  if (!plan) return refused(403, "Choose a plan or start the free trial to save picks.", A);
+  const plan = await limitsFor(actor);
   const t = await topicBySlug(body.slug);
   // Teens never see a teen_hidden topic: the same answer as for one that doesn't exist.
   if (!t || !visibleTo(t, actor.isMinor)) return refused(404, NOT_AVAILABLE, A);
@@ -135,8 +141,7 @@ export async function pick(actor: Account, body: Record<string, unknown>): Promi
 /** Body: { slug }. Sets a pick aside (paused, kept). A locked business can't be set aside. */
 export async function pause(actor: Account, body: Record<string, unknown>): Promise<Result> {
   const A = "learn.picks.pause";
-  const plan = await planFor(actor);
-  if (!plan) return refused(403, "Choose a plan or start the free trial to save picks.", A);
+  const plan = await limitsFor(actor);
   const t = await topicBySlug(body.slug);
   if (!t) return refused(404, "That isn't one of your picks.", A);
   const target = { type: "topic", id: t.id, label: t.name };
@@ -269,7 +274,7 @@ export async function lookupLearner(email: string | null) {
   const a = await learnerByEmail(email);
   if (!a || a.role !== "learner") return { found: false as const };
   const plan = await planFor({ id: a.id, roleKey: "learner" });
-  if (plan) await rpc<number>("reconcile_picks", { p_account: a.id, p_plan: plan });
+  await rpc<number>("reconcile_picks", { p_account: a.id, p_plan: plan ?? "trial" });
   const [topics, picks] = await Promise.all([allTopics(), picksOf(a.id)]);
   const name = (id: string) => topics.find((t) => t.id === id);
   return {
@@ -288,8 +293,7 @@ export async function ownerSetBusiness(body: Record<string, unknown>): Promise<R
   const a = (await db.from("accounts").select("id, email, role, is_minor").eq("id", body.accountId).maybeSingle()).data as { id: string; email: string; role: string; is_minor: boolean } | null;
   if (!a || a.role !== "learner") return refused(404, "No such learner.", A);
   const target = { type: "account", id: a.id, label: a.email };
-  const plan = await planFor({ id: a.id, roleKey: "learner" });
-  if (!plan) return refused(409, "This learner has no plan or trial, so they have no picks to change.", A, target);
+  const plan = await limitsFor({ id: a.id, roleKey: "learner" });
   let topicId: string | null = null;
   let topicName = "none (the learner may choose again)";
   if (body.slug !== null) {
