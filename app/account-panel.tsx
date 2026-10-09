@@ -82,9 +82,14 @@ export function AccountPanel() {
           <Link href="/admin/course-requests">Course requests</Link> ·{" "}
         </>
       )}
+      {me && ["owner", "superAdmin", "courseAdmin"].includes(me.roleKey) && (
+        <>
+          <Link href="/admin/topics">Topics</Link> ·{" "}
+        </>
+      )}
       {me && me.roleKey !== "guardian" && (
         <>
-          <Link href="/learn">Learn</Link> · <Link href="/learn/path">My path</Link> ·{" "}
+          <Link href="/learn">Learn</Link> · <Link href="/learn/path">My path</Link> · <Link href="/learn/choose">Choose your path</Link> ·{" "}
         </>
       )}
       {(me?.roleKey === "owner" || me?.roleKey === "superAdmin" || me?.roleKey === "support") && (

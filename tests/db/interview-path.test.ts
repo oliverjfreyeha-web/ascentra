@@ -40,8 +40,8 @@ describe("the L7 bundle on the live L6 database", () => {
   });
   afterAll(() => db.drop());
 
-  it("applies in one go; verify.sql is OK with 66 tables", async () => {
-    expect((await q(readSql("db/verify.sql"))).rows[0].table_name).toMatch(/^OK: all 66 tables.*L7 interview and personalized path are in place$/);
+  it("applies in one go; verify.sql finds L7 in place (and L8 not yet applied)", async () => {
+    expect((await q(readSql("db/verify.sql"))).rows[0].table_name).toMatch(/^PROBLEM: 3 missing.*L7 applied, L8 NOT applied$/);
   });
 
   it("the interview is answered in full or skipped, with short list values only", async () => {

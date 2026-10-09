@@ -1,0 +1,33 @@
+/*
+ * L8 · Choose your path. A D5 glass panel per step (glass.css), with solid topic cards inside it so the text on them
+ * reads the same on every scene (never glass on glass). Dark only: Black Iris and Frozen through the existing tokens.
+ */
+.choose { display: grid; gap: var(--space-4); }
+.choose__note { margin: 0; padding: var(--space-2) var(--space-3); border-left: 2px solid var(--color-accent); background: rgb(8 8 19 / 0.72); font-size: var(--text-sm); }
+.choose__steps { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
+.choose__step { display: inline-flex; align-items: center; gap: var(--space-2); min-height: 2.75rem; padding: 0 var(--space-4); border: 1px solid var(--color-line-strong);
+  border-radius: var(--radius-pill); background: rgb(8 8 19 / 0.78); color: var(--color-text); font: inherit; font-size: var(--text-sm); cursor: pointer; }
+.choose__step[aria-current="step"] { border-color: var(--color-accent); background: rgb(160 189 219 / 0.16); }
+.choose__step:disabled { cursor: not-allowed; opacity: 0.6; }
+.choose__step:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.choose__num { display: inline-grid; place-items: center; width: 1.5rem; height: 1.5rem; border-radius: 50%; border: 1px solid currentColor; font-family: var(--font-mono); font-size: var(--text-xs); }
+.choose__status { margin: 0; }
+.choose__panel { padding: var(--space-5); border-radius: var(--radius-lg); }
+.choose__panel > h2 { margin-top: 0; }
+.choose__panel > h2:focus { outline: none; }
+.choose__panel > h2:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 4px; }
+.choose__grid { display: grid; gap: var(--space-3); grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr)); margin: var(--space-3) 0; padding: 0; list-style: none; }
+.choose__card { display: grid; gap: var(--space-2); align-content: start; padding: var(--space-4); border: 1px solid var(--color-line); border-radius: var(--radius-md); background: rgb(8 8 19 / 0.82); }
+.choose__card[data-picked] { border-color: var(--color-accent); box-shadow: inset 0 0 0 1px rgb(160 189 219 / 0.35); }
+.choose__card h3 { margin: 0; font-size: var(--text-md); }
+.choose__card p { margin: 0; }
+.choose__card button { justify-self: start; }
+.choose__badges { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.choose__badges:empty { display: none; }
+.choose__picked, .choose__lock { display: inline-flex; align-items: center; gap: var(--space-1); font-size: var(--text-sm); color: var(--color-accent); }
+.choose__current { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.choose__counter { font-size: var(--text-lg); margin: 0; }
+@media (max-width: 40rem) {
+  .choose__panel { padding: var(--space-4); }
+  .choose__step { padding: 0 var(--space-3); }
+}

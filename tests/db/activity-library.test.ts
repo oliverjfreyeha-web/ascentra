@@ -41,7 +41,7 @@ describe("the L6 bundle on the live L5 database", () => {
   const approve = (id: string, by = reviewer) => q("update public.activity_items set status = 'approved', reviewed_by_account_id = $2, reviewed_at = now() where id = $1", [id, by]);
 
   it("applies in one go; verify.sql says L6 is applied (L7 not yet); the catalog holds the Academy Blueprint's topics", async () => {
-    expect((await q(readSql("db/verify.sql"))).rows[0].table_name).toMatch(/^PROBLEM: 4 missing.*L6 applied, L7 NOT applied$/);
+    expect((await q(readSql("db/verify.sql"))).rows[0].table_name).toMatch(/^PROBLEM: 7 missing.*L6 applied, L7 NOT applied, L8 NOT applied$/);
     expect((await q("select slug from public.catalog_topics order by slug")).rows.map((r) => r.slug)).toEqual(["content", "creator", "ecom", "mkt", "sales"]);
   });
 

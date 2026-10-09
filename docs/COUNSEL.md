@@ -12,3 +12,10 @@ A running list of questions for a lawyer before launch. Nothing on the site clai
 
 ## Statements
 - D5 · Any user-facing statements about performance or motion, for example "Motion is simplified on this device" in the Appearance panel and the Motion setting descriptions.
+
+## Choose your path (L8)
+- L8 · Business topics, side hustles, e-commerce and Amazon topics: confirm they carry no income, earnings or results claims. The site shows "Results vary. Nothing here promises income." on every screen that lists topics, and the topics admin refuses wording like "guaranteed", "passive income" or a dollar amount. Counsel to confirm the wording and whether more disclaimers are needed.
+- L8 · Amazon (FBA), Shopify and online marketplaces have their own age rules and adult requirements for seller accounts. Amazon FBA, online reselling and flipping, and dropshipping are hidden from teens (14 to 17). Shopify stores and print on demand are shown to teens: counsel to confirm that is right, or whether they should also be hidden or carry an adult-account note.
+- L8 · Affiliate marketing needs disclosure language (for example FTC endorsement rules) wherever it is taught. It is hidden from teens for now; counsel to supply the disclosure wording before a course is published.
+- L8 · Teen visibility: five businesses are hidden from teens (online coaching and consulting, Amazon FBA, dropshipping, online reselling and flipping, affiliate marketing). Counsel to confirm this list, and the rule that a teen never sees or picks a hidden topic (the Owner can't assign one either).
+- L8 · Whether a Guardian's Privacy Center download of a teen's data should include the teen's five answers and picks. For now it does not (the same rule as the L7 interview).

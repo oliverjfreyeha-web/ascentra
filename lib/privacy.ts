@@ -155,6 +155,13 @@ export async function exportData(account: Account, body: Record<string, unknown>
     path: subject === account.id
       ? { path: await one("learner_paths", "account_id", "method, note, activity_mode, built_at"), courses: await one("learner_path_items", "account_id", "academy_id, position, reason") }
       : { note: "Private to the teen; not included in a Guardian's download (counsel placeholder)." },
+    // L8: the five "Choose your path" answers and the business and skill picks, under the same rule as the interview.
+    pathPicks: subject === account.id
+      ? {
+        answers: (await one("profiles", "account_id", "path_goal, path_hours, path_experience, path_style, path_camera, path_answered_at"))[0] ?? null,
+        picks: await one("learner_picks", "user_id", "topic_id, kind, status, locked, picked_at"),
+      }
+      : { note: "Private to the teen; not included in a Guardian's download (counsel placeholder)." },
   };
   const { error } = await db.from("privacy_requests").insert({
     account_id: subject, requested_by_account_id: account.id, kind: "export", status: "completed",

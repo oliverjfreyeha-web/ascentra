@@ -23,4 +23,6 @@ export const EXPECTED_TABLES = [
   "catalog_topics", "catalog_jobs", "activity_items", "activity_attempts",
   // L7
   "learner_interviews", "learner_paths", "learner_path_items", "course_requests",
+  // L8
+  "topics", "learner_picks", "topic_interest",
 ].sort();
