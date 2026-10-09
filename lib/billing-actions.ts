@@ -137,8 +137,9 @@ export async function startCheckout(args: {
     customer_update: { address: "auto", name: "auto" },
     custom_text: { submit: { message: addon > 0 ? `${renewalSummary(plan, trial)} ${addonRenewalLine(addon)}${trial ? " It is first charged when the trial ends." : ""}` : renewalSummary(plan, trial) } },
     metadata: { account_id: account.id, beneficiary_account_id: beneficiary, plan, consent_record_id: consentId, allowed_country: ALLOWED_COUNTRY, ...addonMeta },
-    success_url: `${origin}${forTeen ? "/guardian" : "/account"}?billing=success`,
-    cancel_url: `${origin}${forTeen ? "/guardian" : "/account"}?billing=canceled`,
+    // R1: an adult choosing their plan during sign-up comes back to /welcome (it moves on once Stripe confirms).
+    success_url: `${origin}${forTeen ? "/guardian" : body.returnTo === "welcome" ? "/welcome" : "/account"}?billing=success`,
+    cancel_url: `${origin}${forTeen ? "/guardian" : body.returnTo === "welcome" ? "/welcome" : "/account"}?billing=canceled`,
   });
 
   return {

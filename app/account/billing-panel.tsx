@@ -32,7 +32,7 @@ const STATUS_LABEL = { trialing: "Trial", active: "Active", past_due: "Payment f
 const TIER_LABEL = { none: "No plan", trial: "Trial (Basic features)", basic: "Basic", pro: "Pro", full: "Full access (Owner)" } as const;
 
 /** Account → Billing: current plan, trial end, next charge, checkout for a new plan, and Stripe's portal. */
-export function BillingPanel() {
+export function BillingPanel({ returnTo }: { returnTo?: "welcome" } = {}) {
   const [data, setData] = useState<Billing | null>(null);
   const [addonInfo, setAddonInfo] = useState<MentorAddonInfo | null>(null);
   const [addon, setAddon] = useState<AddonCents>(0);
@@ -77,6 +77,8 @@ export function BillingPanel() {
     const r = await call("POST", "/api/v1/billing/checkout", {
       plan, agreed, termsVersion: data.terms.version, usResident: us,
       mentorAddonCents: addon, addonAgreed, addonTermsVersion: addonInfo?.terms.version,
+      // R1: during sign-up, Stripe brings them back to /welcome, which moves on once the plan is confirmed.
+      ...(returnTo ? { returnTo } : {}),
     });
     if (r._status === 200 && typeof r.url === "string") {
       window.location.assign(r.url);

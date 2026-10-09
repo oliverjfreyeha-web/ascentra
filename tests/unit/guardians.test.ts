@@ -230,7 +230,8 @@ describe("the Guardian, from the teen's invitation to an active teen", () => {
     expect(audit("guardian.teen.activate")).toHaveLength(1);
 
     signIn("user_teen", "user_teen@example.com");
-    expect((await registrationRoute.GET().then(json)).body).toEqual({ state: "ready", home: "/account" });
+    // R1: once active, the teen does the interview next (their Guardian has the plan), then lands on the learner home.
+    expect((await registrationRoute.GET().then(json)).body).toEqual({ state: "interview", next: "/learn/choose?onboarding=1" });
     expect(await getAccount()).toMatchObject({ roleKey: "learner", isMinor: true });
     const overview = await api(overviewRoute, "GET", "/api/v1/guardian", "user_mom");
     expect(overview.body.teens).toEqual([expect.objectContaining({ id: teenId, status: "active", link: "verified", subscription: expect.objectContaining({ plan: "trial" }) })]);

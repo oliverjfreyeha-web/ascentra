@@ -72,8 +72,9 @@ export type Extras = {
   audit: (e: Omit<AuditInput, "actor" | "requestId" | "reason" | "deviceId"> & { reason?: string | null; deviceId?: string | null }) => Promise<void>;
 };
 
+// R1: the old text ("Open ASCENTRA in this browser to add it") was wrong for someone already in the browser.
 export const DEVICE_NOT_TRUSTED =
-  "This device isn't one of your trusted devices. Open ASCENTRA in this browser to add it, or replace one of your devices.";
+  "This browser isn't one of your trusted devices yet. ASCENTRA adds it automatically while you have fewer than 3; if all 3 are in use, reload the page to choose one to replace.";
 
 type Opts = {
   target?: (req: Request, params: Record<string, string | string[]>) => Target;

@@ -206,7 +206,7 @@ test.describe("devices and sessions", () => {
     expect(await (await devD.request.get("/api/v1/me")).json()).toMatchObject({ error: "device_not_trusted" });
     // The first listed is the oldest: the Owner's first browser.
     const api = watchApi(devD, "/api/v1/devices/replace");
-    await devD.getByRole("button", { name: "Replace this one" }).first().click();
+    await devD.getByRole("button", { name: /^Replace this device/ }).first().click();
     await answerReverification(devD, state().owner, devD.getByText(/Signed in as .*\(Owner\)/));
     await expectDone(devD, devD.getByText(/Signed in as .*\(Owner\)/), api);
     expect(await ownerDevices()).toBe(3);

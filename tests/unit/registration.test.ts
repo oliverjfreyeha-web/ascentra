@@ -110,11 +110,11 @@ describe("the sign-up step", () => {
     expect(await getAccount()).toBeNull();
   });
 
-  it("18 or older: an active adult learner who can go to checkout; the date of birth is kept, never in the audit log", async () => {
+  it("18 or older: an active adult learner, sent on to the interview (R1); the date of birth is kept, never in the audit log", async () => {
     newClerkUser("user_adult_1", "Adult@Example.com");
     const dob = yearsAgo(30);
     const r = await signUp(dob);
-    expect(r).toEqual({ status: 201, body: { state: "ready", home: "/account" } });
+    expect(r).toEqual({ status: 201, body: { state: "interview", next: "/learn/choose?onboarding=1" } });
     expect(accountOf("user_adult_1")).toMatchObject({
       role: "learner", status: "active", is_minor: false, date_of_birth: dob, email: "adult@example.com",
     });
@@ -125,20 +125,21 @@ describe("the sign-up step", () => {
     const [event] = audit("registration.adult");
     expect(event).toMatchObject({ actor_role: "learner", result: "completed", new_value: "adult learner, active" });
     expect(JSON.stringify(db.data.audit_events)).not.toContain(dob);
-    expect(await state()).toEqual({ status: 200, body: { state: "ready", home: "/account" } });
+    expect(await state()).toEqual({ status: 200, body: { state: "interview", next: "/learn/choose?onboarding=1" } });
   });
 
   it("exactly 18 today is an adult; one day short of 18 is a teen", async () => {
     newClerkUser("user_18", "eighteen@example.com");
-    expect((await signUp(yearsAgo(18))).body).toEqual({ state: "ready", home: "/account" });
+    expect((await signUp(yearsAgo(18))).body).toEqual({ state: "interview", next: "/learn/choose?onboarding=1" });
     newClerkUser("user_17", "seventeen@example.com");
     expect((await signUp(yearsAgo(18, 1))).body).toEqual({ state: "guardian", guardianEmail: null, progress: "none", emailSent: false });
   });
 
-  it("an adult with a password but no second factor is told to add one before anything works", async () => {
+  // R1: the second factor is optional for learners.
+  it("an adult with a password and no second factor goes straight on to the interview, and the API lets them in", async () => {
     newClerkUser("user_adult_2", "nofactor@example.com", { twoFactorEnabled: false });
-    expect((await signUp(yearsAgo(40))).body).toEqual({ state: "second_factor" });
-    expect(await getAccount()).toBeNull();
+    expect((await signUp(yearsAgo(40))).body).toEqual({ state: "interview", next: "/learn/choose?onboarding=1" });
+    expect(await getAccount()).toMatchObject({ roleKey: "learner", isMinor: false });
   });
 
   it("14 to 17: a pending teen (is_minor) who can't learn, pay or message, and lands on the Guardian step", async () => {
@@ -357,5 +358,84 @@ describe("someone the API refuses for another reason", () => {
     newClerkUser(clerkIdOf("learner"), "learner@example.com");
     expect((await state()).body.state).toBe("not_open");
     expect((await signUp(yearsAgo(30))).status).toBe(409);
+  });
+});
+
+// ============ R1: the sign-up order ============
+
+describe("R1: account → date of birth → interview → plan → learner home", () => {
+  const INTERVIEW = { state: "interview", next: "/learn/choose?onboarding=1" };
+  const answer = (accountId: string) => {
+    const p = db.data.profiles.find((x) => x.account_id === accountId)!;
+    Object.assign(p, { path_goal: "start", path_hours: 5, path_experience: "none", path_style: "build", path_camera: "no", path_answered_at: new Date().toISOString() });
+  };
+  const pickBusiness = (accountId: string) => {
+    db.data.learner_picks ??= [];
+    db.data.learner_picks.push({ id: `p_${accountId}`, user_id: accountId, topic_id: "t_biz", kind: "business", status: "active", locked: true, picked_at: new Date().toISOString() });
+  };
+  const live = (accountId: string, tier: string) => {
+    db.data.entitlements ??= [];
+    db.data.entitlements.push({ id: `e_${accountId}`, account_id: accountId, tier, valid_from: "2026-01-01T00:00:00Z", valid_until: null });
+  };
+
+  it("an adult resumes at the next unfinished step, every time: interview, then plan, then the learner home", async () => {
+    newClerkUser("user_r1_adult", "r1@example.com", { twoFactorEnabled: false });
+    expect((await signUp(yearsAgo(25))).body).toEqual(INTERVIEW);
+    const id = accountOf("user_r1_adult")!.id as string;
+    // Leaving and coming back: still the interview.
+    expect((await state()).body).toEqual(INTERVIEW);
+    // Answers alone aren't enough: a business is part of the step.
+    answer(id);
+    expect((await state()).body).toEqual(INTERVIEW);
+    pickBusiness(id);
+    // Interview done, no plan yet: the plan step, never a dead end.
+    expect((await state()).body).toEqual({ state: "plan" });
+    expect((await state()).body).toEqual({ state: "plan" });
+    // The trial starts: the learner home, and the plan step doesn't come back.
+    live(id, "trial");
+    expect((await state()).body).toEqual({ state: "ready", home: "/" });
+  });
+
+  it("someone whose trial ended isn't sent back to the plan step (they change plans from Account)", async () => {
+    newClerkUser("user_r1_lapsed", "lapsed@example.com");
+    await signUp(yearsAgo(30));
+    const id = accountOf("user_r1_lapsed")!.id as string;
+    answer(id);
+    pickBusiness(id);
+    db.data.subscriptions ??= [];
+    db.data.subscriptions.push({ id: "sub_old", payer_account_id: id, beneficiary_account_id: id, plan: "trial", status: "ended", created_at: "2026-01-01T00:00:00Z" });
+    expect((await state()).body).toEqual({ state: "ready", home: "/" });
+  });
+
+  it("a teen waits for the Guardian, then does the interview and goes to the learner home: never the plan step", async () => {
+    newClerkUser("user_r1_teen", "r1teen@example.com");
+    expect((await signUp(yearsAgo(15))).body).toMatchObject({ state: "guardian" });
+    const teen = accountOf("user_r1_teen")!;
+    // The Guardian verified, agreed and paid (B3): the account is active.
+    teen.status = "active";
+    expect((await state()).body).toEqual(INTERVIEW);
+    answer(teen.id as string);
+    pickBusiness(teen.id as string);
+    expect((await state()).body).toEqual({ state: "ready", home: "/" });
+  });
+
+  it("the Owner and staff are never sent through the learner steps", async () => {
+    newClerkUser(clerkIdOf("owner"), TEST_ENV.OWNER_EMAIL);
+    expect((await state()).body).toEqual({ state: "ready", home: "/account" });
+    newClerkUser(clerkIdOf("courseAdmin"), "courseadmin@example.com");
+    expect((await state()).body).toEqual({ state: "ready", home: "/account" });
+  });
+
+  it("the Owner, an admin and a Guardian without a second factor are still stopped at the second-factor step", async () => {
+    accountOf(clerkIdOf("owner"))!.two_factor_enabled = false;
+    newClerkUser(clerkIdOf("owner"), TEST_ENV.OWNER_EMAIL);
+    expect((await state()).body).toEqual({ state: "second_factor" });
+    accountOf(clerkIdOf("guardian"))!.two_factor_enabled = false;
+    newClerkUser(clerkIdOf("guardian"), "guardian@example.com");
+    expect((await state()).body).toEqual({ state: "second_factor" });
+    // A learner is never stopped there.
+    accountOf(clerkIdOf("learner"))!.two_factor_enabled = false;
+    newClerkUser(clerkIdOf("learner"), "learner@example.com");
+    expect((await state()).body.state).not.toBe("second_factor");
   });
 });

@@ -33,6 +33,8 @@ export const POST = withCap("self.view", async (req, _ctx, account, x) => {
     res = ok({
       ...base,
       device: { trusted: true, ...summarize(reg.device, reg.device.id) },
+      // R1: a short notice when this request added the browser ("now one of your trusted devices: 2 of 3").
+      added: reg.registered ? { name: reg.device.name, count: names.size } : null,
       session: {
         ...session,
         notice: session.conflict || session.state === "paused" ? OTHER_DEVICE_NOTICE : null,

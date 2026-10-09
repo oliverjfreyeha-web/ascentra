@@ -11,6 +11,7 @@ import { accountRefusal } from "@/lib/auth";
 import { ageGroup, ageOn, isoDate, parseDob, usToday } from "@/lib/age";
 import { createRateLimiter } from "@/lib/rate-limit";
 import { claimInvitation, consentsOf, invitationFor, lastLinkOfTeen, openLinkOfTeen, sendGuardianInvitation, teenFirstName, type LinkRow } from "@/lib/guardians";
+import { latestSubscription, tierOf } from "@/lib/billing";
 
 /**
  * B2: the sign-up step. After Clerk sign-up, a Clerk user has no ASCENTRA account until they give their date
@@ -21,6 +22,9 @@ import { claimInvitation, consentsOf, invitationFor, lastLinkOfTeen, openLinkOfT
  * The Owner and invited admins never come through here: their accounts are made by the Clerk webhook.
  * B3: a Guardian comes through here from the invitation email a teen asked for; their account is a Guardian
  * account for that teen only (lib/guardians.ts takes it from there).
+ * R1: the order for a learner is account → date of birth and US → "Choose your path" (the five questions and a
+ * business) → plan and the 14-day trial (adults only; a teen's Guardian chooses and pays) → the learner home. The
+ * server works out the next unfinished step every time, so leaving and coming back resumes where they were.
  */
 
 /** What the person sees after a refusal for age. No hint to try again. */
@@ -38,6 +42,8 @@ export type RegistrationState =
   | { state: "guardian_signup"; teenName: string }
   | { state: "paused"; since: string | null }
   | { state: "second_factor" }
+  | { state: "interview"; next: string }
+  | { state: "plan" }
   | { state: "ready"; home: string }
   | { state: "not_open"; reason: string };
 
@@ -88,12 +94,43 @@ async function teenProgress(teenId: string): Promise<Extract<RegistrationState, 
   return { state: "guardian", guardianEmail: link.invited_email, progress, emailSent: !!link.clerk_invitation_id || !!link.guardian_account_id };
 }
 
+/** Where the "Choose your path" step lives, and the learner home. */
+export const INTERVIEW_PATH = "/learn/choose?onboarding=1";
+export const LEARNER_HOME = "/";
+
+/** R1: the interview step is done once the five answers are saved and a business is picked. */
+export async function interviewDone(accountId: string): Promise<boolean> {
+  const db = getDb();
+  const p = (await db.from("profiles").select("path_answered_at").eq("account_id", accountId).maybeSingle()).data as { path_answered_at: string | null } | null;
+  if (!p?.path_answered_at) return false;
+  const { data, error } = await db.from("learner_picks").select("id").eq("user_id", accountId).eq("kind", "business").eq("status", "active").limit(1);
+  if (error) throw new Error(`picks lookup failed: ${error.message}`);
+  return (data ?? []).length > 0;
+}
+
+/**
+ * R1: the plan step is done once the learner has a plan (or the trial), or has ever started one: someone whose trial
+ * ended isn't sent back to the plan step; they change plans from Account.
+ */
+async function planDone(row: AccountRow): Promise<boolean> {
+  if ((await tierOf({ id: row.id, roleKey: "learner" })).tier !== "none") return true;
+  return !!(await latestSubscription(row.id));
+}
+
 async function stateOfAccount(row: AccountRow, ownerEmail: string): Promise<RegistrationState> {
   if (isWaitingTeen(row)) return teenProgress(row.id);
   if (row.role === "learner" && row.status === "paused") return { state: "paused", since: (await lastLinkOfTeen(row.id))?.withdrawn_at ?? null };
   const refusal = accountRefusal(row, row.role === "admin" ? await findLiveAssignment(row.id) : null, ownerEmail);
-  if (!refusal) return { state: "ready", home: row.role === "guardian" ? "/guardian" : "/account" };
-  // A learner with a password, or the Owner or an admin (an invited admin's role starts once it's on).
+  if (!refusal) {
+    if (row.role === "learner") {
+      if (!(await interviewDone(row.id))) return { state: "interview", next: INTERVIEW_PATH };
+      // A teen's plan is the Guardian's: an active teen goes straight to the learner home.
+      if (!row.is_minor && !(await planDone(row))) return { state: "plan" };
+      return { state: "ready", home: LEARNER_HOME };
+    }
+    return { state: "ready", home: row.role === "guardian" ? "/guardian" : "/account" };
+  }
+  // R1: only the Owner, an admin (an invited admin's role starts once it's on) or a Guardian. Never a learner.
   if (refusal === "second_factor_missing") return { state: "second_factor" };
   return { state: "not_open", reason: "This account doesn't have access." };
 }

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { call } from "../../call";
 import { chooserFrom, type ChoiceTopic, type Chooser, type PathAnswers } from "../../picks-api";
 import { Glass } from "../../ui/glass";
@@ -13,10 +14,14 @@ import "./choose.css";
  * L8: "Choose your path" in three steps: five short questions, a business (the 5 best matches first, then "See all"),
  * and skills up to the plan's limit with a plain counter. Every limit is checked on the server; this page only shows
  * the answer. Nothing here promises income.
+ * R1: during sign-up (?onboarding=1) this is step 3 of 4; "Continue" goes back to /welcome, where the server says
+ * what comes next (the plan, for an adult; the learner home, for a teen).
  */
 const STEPS = ["Your answers", "Your business", "Your skills"] as const;
 
 export function ChoosePage() {
+  const onboarding = useSearchParams().get("onboarding") === "1";
+  const router = useRouter();
   const [data, setData] = useState<Chooser | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [step, setStep] = useState(0);
@@ -65,13 +70,13 @@ export function ChoosePage() {
           </li>
         ))}
       </ol>
-      <p className="small muted">{data.planNote}{!data.plan && <> <Link href="/account">Plans and the free trial</Link></>}</p>
+      <p className="small muted">{data.planNote}{!data.plan && !onboarding && <> <Link href="/account">Plans and the free trial</Link></>}</p>
       {message && <p role="status" className="choose__status">{message}</p>}
       <Glass as="section" className="choose__panel" aria-labelledby="choose-step">
         <h2 id="choose-step" ref={head} tabIndex={-1}>{step + 1}. {STEPS[step]}</h2>
         {step === 0 && <Questions data={data} busy={busy} onSave={async (a) => { if (await send("PUT", "/api/v1/learn/picks/answers", a, "Saved. Here are your best matches.")) setStep(1); }} />}
         {step === 1 && <Businesses data={data} busy={busy} onPick={(t) => void send("POST", "/api/v1/learn/picks", { slug: t.slug }, `Picked: ${t.name}.`)} onNext={() => setStep(2)} />}
-        {step === 2 && <Skills data={data} busy={busy}
+        {step === 2 && <Skills data={data} busy={busy} onboarding={onboarding} onContinue={() => router.push("/welcome")}
           onPick={(t) => void send("POST", "/api/v1/learn/picks", { slug: t.slug }, `Picked: ${t.name}.`)}
           onPause={(t) => void send("POST", "/api/v1/learn/picks/pause", { slug: t.slug }, `Set aside: ${t.name}. It's kept; you can pick it again.`)} />}
       </Glass>
@@ -145,7 +150,7 @@ function Businesses({ data, busy, onPick, onNext }: { data: Chooser; busy: boole
               {t.picked ? (
                 <p className="choose__picked">{t.locked ? <><Icon name="lock" size={16} /> Your business. {current?.lockNote}</> : "Your business"}</p>
               ) : (
-                <button type="button" disabled={busy || lockedOther || !data.plan} onClick={() => onPick(t)}
+                <button type="button" disabled={busy || lockedOther} onClick={() => onPick(t)}
                   aria-describedby={lockedOther ? "choose-lock-note" : undefined}>
                   {current && !current.locked ? `Switch to ${t.name}` : `Pick ${t.name}`}
                 </button>
@@ -163,7 +168,9 @@ function Businesses({ data, busy, onPick, onNext }: { data: Chooser; busy: boole
   );
 }
 
-function Skills({ data, busy, onPick, onPause }: { data: Chooser; busy: boolean; onPick: (t: ChoiceTopic) => void; onPause: (t: ChoiceTopic) => void }) {
+function Skills({ data, busy, onPick, onPause, onboarding, onContinue }: {
+  data: Chooser; busy: boolean; onPick: (t: ChoiceTopic) => void; onPause: (t: ChoiceTopic) => void; onboarding: boolean; onContinue: () => void;
+}) {
   const full = data.skillLimit !== null && data.skillsUsed >= data.skillLimit;
   return (
     <>
@@ -177,11 +184,16 @@ function Skills({ data, busy, onPick, onPause }: { data: Chooser; busy: boolean;
             <Badges t={t} />
             {t.picked
               ? <button type="button" disabled={busy} onClick={() => onPause(t)}>Set aside {t.name}</button>
-              : <button type="button" disabled={busy || full || !data.plan} onClick={() => onPick(t)}>Pick {t.name}</button>}
+              : <button type="button" disabled={busy || full} onClick={() => onPick(t)}>Pick {t.name}</button>}
           </li>
         ))}
       </ul>
-      <p className="small"><Link href="/learn">Back to Learn</Link></p>
+      {onboarding ? (
+        <p className="ui-actions">
+          <button type="button" className="primary" disabled={busy || !data.business} onClick={onContinue} aria-describedby={data.business ? undefined : "choose-need-business"}>Continue</button>
+          {!data.business && <span id="choose-need-business" className="small muted">Pick a business first (step 2). Skills are optional.</span>}
+        </p>
+      ) : <p className="small"><Link href="/learn">Back to Learn</Link></p>}
     </>
   );
 }

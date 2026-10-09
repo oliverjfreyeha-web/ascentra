@@ -50,7 +50,7 @@ export function DevicesPanel() {
   return (
     <>
       {message && <p role="status">{message}</p>}
-      <section aria-labelledby="devices-h">
+      <section aria-labelledby="devices-h" id="devices">
         <h2 id="devices-h">Trusted devices <span className="muted">{data.devices.length} of {data.deviceLimit}</span></h2>
         <ul className="services">
           {data.devices.map((d) => (

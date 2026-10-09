@@ -36,6 +36,11 @@ jobs:
         run: npm run lint
       - name: Unit tests
         run: npm test
+      # R1: shared form controls in a real browser with the app's stylesheets (no server, no secrets).
+      - name: Component tests (Chromium)
+        run: |
+          npx playwright install --with-deps chromium
+          npx playwright test -c playwright.components.config.ts
       - name: SQL Editor bundle is up to date
         run: node scripts/bundle-migrations.mjs --check
       - name: Database tests (Postgres 17)

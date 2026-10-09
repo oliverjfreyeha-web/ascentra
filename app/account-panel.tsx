@@ -7,6 +7,8 @@ import { useAuth } from "@clerk/nextjs";
 import { ROLE_LABEL } from "@/lib/caps";
 import { SignOut } from "./sign-out";
 import { meFrom, type Me } from "./me";
+import { useOnboardingGuard } from "./onboarding";
+import { ProtectTip } from "./ui/protect-tip";
 
 // Who is signed in, read only through /api/v1/me. A Clerk session the API refuses goes to /welcome, which says why
 // (the sign-up step, a teen waiting for their Guardian, a missing second factor, or no access).
@@ -15,6 +17,7 @@ export function AccountPanel() {
   const router = useRouter();
   const [me, setMe] = useState<Me | null>(null);
   const [failed, setFailed] = useState(false);
+  useOnboardingGuard();
 
   useEffect(() => {
     if (!isSignedIn) return;
@@ -55,6 +58,7 @@ export function AccountPanel() {
     );
   }
   return (
+    <>
     <p className="muted">
       {me ? `Signed in as ${me.displayName} (${ROLE_LABEL[me.roleKey]}) · ` : failed ? "Couldn't load your account. " : "Checking your account… "}
       {me?.roleKey === "owner" && (
@@ -104,5 +108,8 @@ export function AccountPanel() {
       )}
       <Link href="/account">Account and devices</Link> · <SignOut />
     </p>
+    {/* R1: a learner's second factor is optional; suggested once here, never required. */}
+    {me?.roleKey === "learner" && <ProtectTip where="home" />}
+    </>
   );
 }

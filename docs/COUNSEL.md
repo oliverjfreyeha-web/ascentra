@@ -19,3 +19,7 @@ A running list of questions for a lawyer before launch. Nothing on the site clai
 - L8 · Affiliate marketing needs disclosure language (for example FTC endorsement rules) wherever it is taught. It is hidden from teens for now; counsel to supply the disclosure wording before a course is published.
 - L8 · Teen visibility: five businesses are hidden from teens (online coaching and consulting, Amazon FBA, dropshipping, online reselling and flipping, affiliate marketing). Counsel to confirm this list, and the rule that a teen never sees or picks a hidden topic (the Owner can't assign one either).
 - L8 · Whether a Guardian's Privacy Center download of a teen's data should include the teen's five answers and picks. For now it does not (the same rule as the L7 interview).
+
+## Sign-up and sign-in (R1)
+- R1 · Second factor is optional for learners and required for Owner, admins and Guardians. Learners (adults and teens 14 to 17) are now allowed in with a password alone; the app recommends an authenticator app on the Account page and once on the learner home, and never requires it. Counsel to confirm this is acceptable, in particular for teen accounts.
+- R1 · Sign-up order is now: account → date of birth and US residence → the "Choose your path" questions and picks → plan and 14-day trial. The interview answers are collected before any plan or payment. Counsel to confirm nothing in the Automatic Renewal Terms or the privacy notices needs to change for this order.

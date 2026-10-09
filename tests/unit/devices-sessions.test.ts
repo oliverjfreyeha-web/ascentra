@@ -179,6 +179,31 @@ describe("trusted devices", () => {
     expect(devices(ID.learner)).toHaveLength(1);
   });
 
+  // R1: a new browser is added on its first page while a slot is free, with a short notice (count of 3); past the
+  // limit the person gets the replace screen. The old "Open ASCENTRA in this browser to add it" text is gone.
+  it("adds a new browser automatically with a notice (1 of 3, 2 of 3, 3 of 3), then holds the fourth", async () => {
+    const list = [browser("learner"), browser("learner", UA.iphone), browser("learner", UA.mac)];
+    for (const [i, x] of list.entries()) {
+      expect((await beat(x)).body.added).toEqual({ name: x.ua === UA.iphone ? "Safari on iPhone" : x.ua === UA.mac ? "Safari on Mac" : "Chrome on Windows", count: i + 1 });
+      at(clock / 60_000 - T0.getTime() / 60_000 + 5);
+      // Later heartbeats don't repeat the notice.
+      expect((await beat(x)).body.added).toBeNull();
+    }
+    const fourth = browser("learner", UA.windows);
+    expect((await beat(fourth)).body).toMatchObject({ device: { trusted: false, why: "full" }, devices: expect.any(Array) });
+    expect((await send(fourth, meRoute.GET, "GET")).body.reason).toBe(
+      "This browser isn't one of your trusted devices yet. ASCENTRA adds it automatically while you have fewer than 3; if all 3 are in use, reload the page to choose one to replace.",
+    );
+  });
+
+  it("a learner with a password and no second factor gets a trusted device on their first page (R1)", async () => {
+    const row = db.data.accounts.find((a) => a.id === ID.learner)!;
+    row.two_factor_enabled = false;
+    const b = browser("learner");
+    expect((await beat(b)).body).toMatchObject({ device: { trusted: true }, added: { count: 1 } });
+    expect((await send(b, meRoute.GET, "GET")).status).toBe(200);
+  });
+
   it("refuses a fourth device until one is replaced, after a second-factor check", async () => {
     const [a, b, c] = [browser("learner"), browser("learner", UA.iphone), browser("learner", UA.mac)];
     for (const x of [a, b, c]) {

@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { ChoosePage } from "./choose-page";
 import { SiteFooter } from "../../ui/site-footer";
@@ -9,7 +10,7 @@ export default function ChooseYourPathPage() {
       <header className="ui-page-head">
         <h1>Choose your path</h1>
       </header>
-      <ChoosePage />
+      <Suspense><ChoosePage /></Suspense>
       <SiteFooter />
     </main>
   );
