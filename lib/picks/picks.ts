@@ -4,9 +4,10 @@ import { getDb } from "@/lib/db";
 import { tierOf } from "@/lib/billing";
 import { ATTORNEY, NO_ATTORNEY, clean, isUuid, refused, type Result } from "@/lib/courses/common";
 import { courseStatuses, queueTopics } from "@/lib/catalog";
+import { cardFacts, checkFacts, overlapNote, type FactsRow } from "./topic-facts";
 import { topicEstimate } from "@/lib/ai/config";
 import {
-  QUESTIONS, SKILL_LIMIT_BASIC, checkPathAnswers, pickPlanOf, rankBusinesses, skillLimitOf, visibleTo,
+  KIND_LABEL, QUESTIONS, SKILL_LIMIT_BASIC, checkPathAnswers, isMainKind, pickPlanOf, rankBusinesses, skillLimitOf, visibleTo,
   type Kind, type PathAnswers, type PickPlan,
 } from "./rules";
 
@@ -24,11 +25,19 @@ import {
 export const NO_PROMISE = "Results vary. Nothing here promises income.";
 export const LOCK_NOTE = "Only the Owner can change this.";
 
-type TopicDb = { id: string; kind: Kind; slug: string; name: string; blurb: string; published: boolean; teen_hidden: boolean; has_course: boolean; sort_order: number; catalog_slug: string | null };
+type TopicDb = { id: string; kind: Kind; slug: string; name: string; blurb: string; published: boolean; teen_hidden: boolean; has_course: boolean; sort_order: number; catalog_slug: string | null } & Partial<FactsRow>;
 type PickDb = { id: string; user_id: string; topic_id: string; kind: Kind; status: "active" | "paused"; locked: boolean; picked_at: string };
 type ProfileDb = { path_goal: string | null; path_hours: number | null; path_experience: string | null; path_style: string | null; path_camera: string | null; path_answered_at: string | null };
 
 const TOPIC_COLS = "id, kind, slug, name, blurb, published, teen_hidden, has_course, sort_order, catalog_slug";
+// C2: the card facts, read separately so a database without C2 still serves the L8 screens.
+const FACT_COLS = "id, cost_low, cost_high, cost_items, cost_sources, cost_checked_on, outlook_label, outlook_sources, outlook_checked_on, difficulty, risk_notes, teaches_skill_ids";
+async function withFacts(topics: TopicDb[]): Promise<TopicDb[]> {
+  const { data, error } = await getDb().from("topics").select(FACT_COLS);
+  if (error) return topics;
+  const byId = new Map(((data ?? []) as (FactsRow & { id: string })[]).map((f) => [f.id, f]));
+  return topics.map((t) => ({ ...byId.get(t.id), ...t }));
+}
 
 async function allTopics(): Promise<TopicDb[]> {
   const { data, error } = await getDb().from("topics").select(TOPIC_COLS).order("sort_order", { ascending: true });
@@ -65,7 +74,8 @@ async function answersOf(accountId: string): Promise<PathAnswers | null> {
 const topicView = (t: TopicDb, links: Map<string, { status: string; firstLessonId: string | null }> = new Map()) => {
   const c = t.catalog_slug ? links.get(t.catalog_slug) : undefined;
   const href = t.has_course && c?.status === "published" && c.firstLessonId ? `/learn/${c.firstLessonId}` : null;
-  return { slug: t.slug, name: t.name, blurb: t.blurb, hasCourse: t.has_course, courseHref: href, sortOrder: t.sort_order };
+  // C2: businesses and side hustles show the cost to start and the outlook (or "Estimate coming"); skills don't.
+  return { slug: t.slug, name: t.name, blurb: t.blurb, hasCourse: t.has_course, courseHref: href, sortOrder: t.sort_order, ...(t.kind !== "skill" ? { facts: cardFacts(t) } : {}) };
 };
 
 /** Everything the "Choose your path" screens show, after bringing the picks in line with the plan. */
@@ -74,7 +84,7 @@ export async function getChooser(actor: Account) {
   const limits = plan ?? "trial";
   // A plan change (e.g. Pro to Basic) is applied here, by the database: extra skills paused, the business locked.
   await rpc<number>("reconcile_picks", { p_account: actor.id, p_plan: limits });
-  const [topics, picks, answers] = await Promise.all([allTopics(), picksOf(actor.id), answersOf(actor.id)]);
+  const [topics, picks, answers] = await Promise.all([allTopics().then(withFacts), picksOf(actor.id), answersOf(actor.id)]);
   const visible = topics.filter((t) => visibleTo(t, actor.isMinor));
   const links = await courseStatuses(visible.map((t) => t.catalog_slug).filter((x): x is string => !!x));
   const pickOf = (id: string) => picks.find((p) => p.topic_id === id) ?? null;
@@ -83,19 +93,24 @@ export async function getChooser(actor: Account) {
     return { picked: p?.status === "active", paused: p?.status === "paused", locked: !!p?.locked };
   };
   const businesses = rankBusinesses(visible.filter((t) => t.kind === "business").map((t) => ({ ...topicView(t, links), ...state(t) })), answers);
-  const skills = visible.filter((t) => t.kind === "skill").map((t) => ({ ...topicView(t, links), ...state(t) }));
+  const sideHustles = rankBusinesses(visible.filter((t) => t.kind === "side_hustle").map((t) => ({ ...topicView(t, links), ...state(t) })), answers);
+  // C2: a skill the learner's business or side-hustle course already teaches carries a note (never a block).
+  const taught = new Set(topics.filter((t) => isMainKind(t.kind) && pickOf(t.id)?.status === "active").flatMap((t) => t.teaches_skill_ids ?? []));
+  const skills = visible.filter((t) => t.kind === "skill").map((t) => ({ ...topicView(t, links), ...state(t), overlapNote: overlapNote(t.id, taught) }));
   const business = businesses.find((b) => b.picked) ?? null;
+  const sideHustle = sideHustles.find((b) => b.picked) ?? null;
   const skillsUsed = skills.filter((s) => s.picked).length;
   const limit = skillLimitOf(limits);
   return {
-    plan, questions: QUESTIONS, answers, businesses, skills,
+    plan, questions: QUESTIONS, answers, businesses, sideHustles, skills,
     business: business ? { slug: business.slug, name: business.name, locked: business.locked, lockNote: business.locked ? LOCK_NOTE : null } : null,
+    sideHustle: sideHustle ? { slug: sideHustle.slug, name: sideHustle.name, locked: sideHustle.locked, lockNote: sideHustle.locked ? LOCK_NOTE : null } : null,
     skillsUsed, skillLimit: limit,
     skillCounter: limit === null ? `${skillsUsed} skill${skillsUsed === 1 ? "" : "s"} chosen (no limit on Pro)` : `${skillsUsed} of ${limit} skills used`,
     note: NO_PROMISE,
     planNote: !plan ? NO_PLAN_NOTE
-      : plan === "pro" ? "Pro: as many skills as you like, and one business at a time. You can switch business; your progress is kept."
-        : `${plan === "trial" ? "Free trial" : "Basic"}: up to ${SKILL_LIMIT_BASIC} skills (you can swap them) and 1 business. Once chosen, your business is locked; only the Owner can change it.`,
+      : plan === "pro" ? "Pro: as many skills as you like, one business and one side hustle at a time. You can switch either; your progress is kept."
+        : `${plan === "trial" ? "Free trial" : "Basic"}: up to ${SKILL_LIMIT_BASIC} skills (you can swap them), 1 business and, if you like, 1 side hustle. Once chosen, each one is locked; only the Owner can change it.`,
   };
 }
 
@@ -123,7 +138,7 @@ async function topicBySlug(slug: unknown): Promise<TopicDb | null> {
 
 const NOT_AVAILABLE = "That topic isn't available.";
 
-/** Body: { slug }. Picks a business or a skill; the database applies the plan's limits atomically. */
+/** Body: { slug }. Picks a business, a side hustle or a skill; the database applies the plan's limits atomically. */
 export async function pick(actor: Account, body: Record<string, unknown>): Promise<Result> {
   const A = "learn.picks.pick";
   const plan = await limitsFor(actor);
@@ -134,14 +149,14 @@ export async function pick(actor: Account, body: Record<string, unknown>): Promi
   const r = await rpc<{ result: string; used?: number; limit?: number; previous?: string | null }>("pick_topic", { p_account: actor.id, p_topic: t.id, p_plan: plan });
   if (r.result === "not_available" || r.result === "no_account") return refused(404, NOT_AVAILABLE, A, target);
   if (r.result === "limit") return refused(409, `You're using ${r.used} of ${r.limit} skills. Set one aside to pick another, or Pro allows more.`, A, target);
-  if (r.result === "locked") return refused(403, `Your business is locked. ${LOCK_NOTE}`, A, target);
+  if (r.result === "locked") return refused(403, `Your ${KIND_LABEL[t.kind]} is locked. ${LOCK_NOTE}`, A, target);
   if (r.result === "already") return { ok: true, body: await getChooser(actor), event: { action: A, result: "Completed", target, previous: "picked", next: "picked", context: `Already picked: ${t.name}.` } };
   const prev = r.previous ? (await getDb().from("topics").select("name").eq("id", r.previous).maybeSingle()).data as { name: string } | null : null;
   return {
     ok: true, status: 201, body: await getChooser(actor),
     event: {
-      action: A, result: "Completed", target, previous: prev ? `business: ${prev.name} (now paused, kept)` : "not picked", next: `${t.kind}: ${t.name}${t.kind === "business" && plan !== "pro" ? " (locked)" : ""}`,
-      context: `Picked the ${t.kind} "${t.name}" on ${plan === "pro" ? "Pro" : plan === "trial" ? "the free trial" : "Basic"}.${t.has_course ? "" : " No course yet: counted as anonymous demand."}`,
+      action: A, result: "Completed", target, previous: prev ? `${KIND_LABEL[t.kind]}: ${prev.name} (now paused, kept)` : "not picked", next: `${KIND_LABEL[t.kind]}: ${t.name}${isMainKind(t.kind) && plan !== "pro" ? " (locked)" : ""}`,
+      context: `Picked the ${KIND_LABEL[t.kind]} "${t.name}" on ${plan === "pro" ? "Pro" : plan === "trial" ? "the free trial" : "Basic"}.${t.has_course ? "" : " No course yet: counted as anonymous demand."}`,
     },
   };
 }
@@ -155,8 +170,8 @@ export async function pause(actor: Account, body: Record<string, unknown>): Prom
   const target = { type: "topic", id: t.id, label: t.name };
   const r = await rpc<{ result: string }>("pause_pick", { p_account: actor.id, p_topic: t.id, p_plan: plan });
   if (r.result === "not_picked") return refused(404, "That isn't one of your picks.", A, target);
-  if (r.result === "locked") return refused(403, `Your business is locked. ${LOCK_NOTE}`, A, target);
-  return { ok: true, body: await getChooser(actor), event: { action: A, result: "Completed", target, previous: "picked", next: "set aside (kept)", context: `Set aside the ${t.kind} "${t.name}".` } };
+  if (r.result === "locked") return refused(403, `Your ${KIND_LABEL[t.kind]} is locked. ${LOCK_NOTE}`, A, target);
+  return { ok: true, body: await getChooser(actor), event: { action: A, result: "Completed", target, previous: "picked", next: "set aside (kept)", context: `Set aside the ${KIND_LABEL[t.kind]} "${t.name}".` } };
 }
 
 // ============ Admin: topics ============
@@ -164,7 +179,7 @@ export async function pause(actor: Account, body: Record<string, unknown>): Prom
 /** Every topic with its anonymous demand (last 30 days and all time) and how many learners have it active. */
 export async function listTopicsAdmin() {
   const db = getDb();
-  const topics = await allTopics();
+  const topics = await withFacts(await allTopics());
   const interest = ((await db.from("topic_interest").select("topic_id, day, count")).data ?? []) as { topic_id: string; day: string; count: number }[];
   const active = ((await db.from("learner_picks").select("topic_id").eq("status", "active")).data ?? []) as { topic_id: string }[];
   const since = new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10);
@@ -174,6 +189,16 @@ export async function listTopicsAdmin() {
       id: t.id, kind: t.kind, slug: t.slug, name: t.name, blurb: t.blurb, published: t.published, teenHidden: t.teen_hidden, hasCourse: t.has_course, sortOrder: t.sort_order,
       // C1: the one link to the catalog, and the course's status (none, drafting, in review, published).
       catalogSlug: t.catalog_slug, course: t.catalog_slug ? links.get(t.catalog_slug) ?? { status: "none", label: "None", firstLessonId: null } : { status: "none", label: "None", firstLessonId: null },
+      // C2: the card facts as entered (for editing), and what the card shows.
+      ...(t.kind !== "skill" ? {
+        facts: {
+          costLow: t.cost_low == null ? null : Number(t.cost_low), costHigh: t.cost_high == null ? null : Number(t.cost_high), costItems: (t.cost_items ?? []).map((i) => i.label),
+          costSources: t.cost_sources ?? [], costCheckedOn: t.cost_checked_on ?? null, outlookLabel: t.outlook_label ?? null, outlookSources: t.outlook_sources ?? [],
+          outlookCheckedOn: t.outlook_checked_on ?? null, difficulty: t.difficulty ?? null, riskNotes: t.risk_notes ?? null,
+          teachesSkills: topics.filter((x) => (t.teaches_skill_ids ?? []).includes(x.id)).map((x) => x.slug),
+        },
+        card: cardFacts(t),
+      } : {}),
       demand30: interest.filter((i) => i.topic_id === t.id && i.day >= since).reduce((n, i) => n + i.count, 0),
       demandAll: interest.filter((i) => i.topic_id === t.id).reduce((n, i) => n + i.count, 0),
       activePicks: active.filter((p) => p.topic_id === t.id).length,
@@ -194,7 +219,7 @@ const slugOf = (s: string) => s.toLowerCase().normalize("NFKD").replace(/[^a-z0-
 /** Body: { kind, name, blurb?, slug?, published?, teenHidden?, hasCourse? }. New topics start unpublished unless set. */
 export async function createTopic(body: Record<string, unknown>): Promise<Result> {
   const A = "topics.manage";
-  if (body.kind !== "business" && body.kind !== "skill") return refused(400, "Choose business or skill.", A);
+  if (body.kind !== "business" && body.kind !== "side_hustle" && body.kind !== "skill") return refused(400, "Choose business, side hustle or skill.", A);
   const name = clean(body.name, 80), blurb = clean(body.blurb, 300);
   const problem = checkTopicText(name, blurb);
   if (problem) return refused(400, problem, A);
@@ -216,7 +241,11 @@ export async function createTopic(body: Record<string, unknown>): Promise<Result
 const describe = (t: { published: boolean; teen_hidden: boolean; has_course: boolean }) =>
   `${t.published ? "published" : "unpublished"}, ${t.teen_hidden ? "hidden from teens" : "shown to teens"}, ${t.has_course ? "has a course" : "course coming"}`;
 
-/** Body: any of { name, blurb, published, teenHidden, hasCourse }. The kind and slug never change (picks rely on them). */
+/**
+ * Body: any of { name, blurb, published, teenHidden, hasCourse }, and for businesses and side hustles (C2) the card facts
+ * (costLow, costHigh, costItems, costSources, costCheckedOn, outlookLabel, outlookSources, outlookCheckedOn, difficulty,
+ * riskNotes) and teachesSkills (skill slugs). The kind and slug never change (picks rely on them).
+ */
 export async function updateTopic(id: string, body: Record<string, unknown>): Promise<Result> {
   const A = "topics.manage";
   if (!isUuid(id)) return refused(404, "No such topic.", A);
@@ -235,6 +264,16 @@ export async function updateTopic(id: string, body: Record<string, unknown>): Pr
       fields[col] = body[k];
     }
   }
+  const facts = checkFacts(t.kind, body);
+  if ("problem" in facts) return refused(400, facts.problem, A, target);
+  Object.assign(fields, facts.fields);
+  if (body.teachesSkills !== undefined) {
+    if (t.kind === "skill") return refused(400, "A skill doesn't list skills.", A, target);
+    const slugs = Array.isArray(body.teachesSkills) ? body.teachesSkills.filter((x): x is string => typeof x === "string") : [];
+    const skills = (await allTopics()).filter((x) => x.kind === "skill" && slugs.includes(x.slug));
+    if (skills.length !== new Set(slugs).size) return refused(400, "Choose skills from the list.", A, target);
+    fields.teaches_skill_ids = skills.map((x) => x.id);
+  }
   if (!Object.keys(fields).length) return refused(400, "Nothing to change.", A, target);
   const problem = checkTopicText(String(fields.name ?? t.name), String(fields.blurb ?? t.blurb));
   if (problem) return refused(400, problem, A, target);
@@ -246,6 +285,8 @@ export async function updateTopic(id: string, body: Record<string, unknown>): Pr
     after.published !== t.published ? (after.published ? "published" : "unpublished") : null,
     after.teen_hidden !== t.teen_hidden ? (after.teen_hidden ? "hidden from teens" : "shown to teens") : null,
     after.has_course !== t.has_course ? (after.has_course ? "has a course" : "course coming") : null,
+    Object.keys(facts.fields).length ? `card facts edited (${Object.keys(facts.fields).join(", ")})` : null,
+    fields.teaches_skill_ids !== undefined ? "skills it teaches edited" : null,
   ].filter(Boolean);
   return {
     ok: true, body: await listTopicsAdmin(),
@@ -256,7 +297,7 @@ export async function updateTopic(id: string, body: Record<string, unknown>): Pr
 /** Body: { kind, order: [slug, ...] } with every topic of that kind. */
 export async function reorderTopics(body: Record<string, unknown>): Promise<Result> {
   const A = "topics.manage";
-  if (body.kind !== "business" && body.kind !== "skill") return refused(400, "Choose business or skill.", A);
+  if (body.kind !== "business" && body.kind !== "side_hustle" && body.kind !== "skill") return refused(400, "Choose business, side hustle or skill.", A);
   const topics = (await allTopics()).filter((t) => t.kind === body.kind);
   const order = Array.isArray(body.order) ? body.order : [];
   if (order.length !== topics.length || !topics.every((t) => order.includes(t.slug))) return refused(400, `Send every ${body.kind} topic, in the new order.`, A);
@@ -294,6 +335,7 @@ export async function lookupLearner(email: string | null) {
     picks: picks.map((p) => ({ slug: name(p.topic_id)?.slug ?? "", name: name(p.topic_id)?.name ?? "(removed)", kind: p.kind, status: p.status, locked: p.locked, pickedAt: p.picked_at }))
       .sort((x, y) => (x.kind === y.kind ? 0 : x.kind === "business" ? -1 : 1) || (x.status === y.status ? 0 : x.status === "active" ? -1 : 1)),
     businesses: topics.filter((t) => t.kind === "business" && visibleTo(t, a.is_minor)).map((t) => ({ slug: t.slug, name: t.name })),
+    sideHustles: topics.filter((t) => t.kind === "side_hustle" && visibleTo(t, a.is_minor)).map((t) => ({ slug: t.slug, name: t.name })),
   };
 }
 
@@ -301,6 +343,10 @@ export async function lookupLearner(email: string | null) {
 export async function ownerSetBusiness(body: Record<string, unknown>): Promise<Result> {
   const A = "picks.override";
   if (!isUuid(body.accountId)) return refused(400, "Choose a learner.", A);
+  // C2: a side hustle too (body.kind "side_hustle"); a business when not given, as in L8.
+  const kind = body.kind === undefined || body.kind === "business" ? "business" : body.kind === "side_hustle" ? "side_hustle" : null;
+  if (!kind) return refused(400, "Choose a business or a side hustle.", A);
+  const label = KIND_LABEL[kind];
   const db = getDb();
   const a = (await db.from("accounts").select("id, email, role, is_minor").eq("id", body.accountId).maybeSingle()).data as { id: string; email: string; role: string; is_minor: boolean } | null;
   if (!a || a.role !== "learner") return refused(404, "No such learner.", A);
@@ -310,18 +356,20 @@ export async function ownerSetBusiness(body: Record<string, unknown>): Promise<R
   let topicName = "none (the learner may choose again)";
   if (body.slug !== null) {
     const t = await topicBySlug(body.slug);
-    if (!t || t.kind !== "business" || !visibleTo(t, a.is_minor)) return refused(404, a.is_minor ? "That business isn't available to this learner (teens can't have it)." : "That business isn't available.", A, target);
+    if (!t || t.kind !== kind || !visibleTo(t, a.is_minor)) return refused(404, a.is_minor ? `That ${label} isn't available to this learner (teens can't have it).` : `That ${label} isn't available.`, A, target);
     topicId = t.id; topicName = t.name;
   }
-  const r = await rpc<{ result: string; previous: string | null }>("owner_set_business", { p_account: a.id, p_topic: topicId, p_plan: plan });
-  if (r.result === "not_available") return refused(404, "That business isn't available to this learner.", A, target);
-  if (r.result === "unchanged") return refused(409, "Nothing to change: that is already the learner's business.", A, target);
+  const r = kind === "business"
+    ? await rpc<{ result: string; previous: string | null }>("owner_set_business", { p_account: a.id, p_topic: topicId, p_plan: plan })
+    : await rpc<{ result: string; previous: string | null }>("owner_set_pick", { p_account: a.id, p_kind: kind, p_topic: topicId, p_plan: plan });
+  if (r.result === "not_available") return refused(404, `That ${label} isn't available to this learner.`, A, target);
+  if (r.result === "unchanged") return refused(409, `Nothing to change: that is already the learner's ${label}.`, A, target);
   const prev = r.previous ? (await db.from("topics").select("name").eq("id", r.previous).maybeSingle()).data as { name: string } | null : null;
   return {
     ok: true, body: await lookupLearner(a.email),
     event: {
-      action: A, result: "Completed", target, previous: prev ? `${prev.name} (now paused, kept)` : "no business", next: r.result === "released" ? "released: the learner may choose again" : `${topicName}${plan === "pro" ? "" : " (locked)"}`,
-      context: r.result === "released" ? "The Owner released the learner's business so they can choose again." : `The Owner changed the learner's business to "${topicName}".`,
+      action: A, result: "Completed", target, previous: prev ? `${prev.name} (now paused, kept)` : `no ${label}`, next: r.result === "released" ? "released: the learner may choose again" : `${topicName}${plan === "pro" ? "" : " (locked)"}`,
+      context: r.result === "released" ? `The Owner released the learner's ${label} so they can choose again.` : `The Owner changed the learner's ${label} to "${topicName}".`,
     },
   };
 }
@@ -358,7 +406,9 @@ export async function startTopicCourse(actor: Account, id: string, body: Record<
     const { error } = await db.from("topics").update({ catalog_slug: slug }).eq("id", id);
     if (error) throw new Error(`topic link failed: ${error.message}`);
   }
-  const r = await queueTopics(actor, { slugs: [slug], confirm: body.confirm === true, expectedTotalUsd: body.expectedTotalUsd, structure: 2 });
+  // C2: the course size (Compact, Standard or Large); Standard when not chosen.
+  const sizeTier = typeof body.sizeTier === "string" && ["compact", "standard", "large"].includes(body.sizeTier) ? body.sizeTier : "standard";
+  const r = await queueTopics(actor, { slugs: [slug], confirm: body.confirm === true, expectedTotalUsd: body.expectedTotalUsd, structure: 2, sizeTier });
   if (!r.ok || body.confirm !== true) return r;
   return {
     ...r,

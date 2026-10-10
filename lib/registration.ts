@@ -12,6 +12,7 @@ import { ageGroup, ageOn, isoDate, parseDob, usToday } from "@/lib/age";
 import { createRateLimiter } from "@/lib/rate-limit";
 import { claimInvitation, consentsOf, invitationFor, lastLinkOfTeen, openLinkOfTeen, sendGuardianInvitation, teenFirstName, type LinkRow } from "@/lib/guardians";
 import { latestSubscription, tierOf } from "@/lib/billing";
+import { isStateCode } from "@/lib/progress/config";
 
 /**
  * B2: the sign-up step. After Clerk sign-up, a Clerk user has no ASCENTRA account until they give their date
@@ -98,12 +99,12 @@ async function teenProgress(teenId: string): Promise<Extract<RegistrationState, 
 export const INTERVIEW_PATH = "/learn/choose?onboarding=1";
 export const LEARNER_HOME = "/";
 
-/** R1: the interview step is done once the five answers are saved and a business is picked. */
+/** R1: the interview step is done once the five answers are saved and a business is picked (C2: or a side hustle). */
 export async function interviewDone(accountId: string): Promise<boolean> {
   const db = getDb();
   const p = (await db.from("profiles").select("path_answered_at").eq("account_id", accountId).maybeSingle()).data as { path_answered_at: string | null } | null;
   if (!p?.path_answered_at) return false;
-  const { data, error } = await db.from("learner_picks").select("id").eq("user_id", accountId).eq("kind", "business").eq("status", "active").limit(1);
+  const { data, error } = await db.from("learner_picks").select("id").eq("user_id", accountId).in("kind", ["business", "side_hustle"]).eq("status", "active").limit(1);
   if (error) throw new Error(`picks lookup failed: ${error.message}`);
   return (data ?? []).length > 0;
 }
@@ -149,7 +150,7 @@ export async function registrationState(clerkUserId: string, ownerEmail: string)
 const learnerActor = (id: string, label: string, teen: boolean): AuditActor =>
   ({ accountId: id, label: `${label} (Learner${teen ? ", waiting for Guardian" : ""})`, role: "learner" });
 
-/** The sign-up step. Body: { dateOfBirth: "YYYY-MM-DD", usResident: true }. */
+/** The sign-up step. Body: { dateOfBirth: "YYYY-MM-DD", usResident: true, usState?, timeZone? }. */
 export async function register(clerkUserId: string, body: Record<string, unknown>, ownerEmail: string, now = new Date()): Promise<Result> {
   if (await findAccountByClerkId(clerkUserId)) return fail(409, DOB_ALREADY_SET);
   const identity = await clerkIdentity(clerkUserId);
@@ -188,6 +189,10 @@ export async function register(clerkUserId: string, body: Record<string, unknown
   if (error) throw new Error(`learner insert failed: ${error.message}`);
   const id = data.id as string;
   await upsertProfile(id, identity);
+  // C2: the learner's state (private) and time zone, asked on the same step. Optional here so a client that doesn't
+  // send them still works; the page asks for the state, and real-world missions for teens depend on it.
+  if (isStateCode(body.usState)) await db.from("account_regions").insert({ account_id: id, state_code: body.usState });
+  if (typeof body.timeZone === "string" && /^[A-Za-z_]+(\/[A-Za-z0-9_+-]+){0,2}$/.test(body.timeZone)) await db.from("profiles").update({ time_zone: body.timeZone }).eq("account_id", id);
   await recordAudit({
     actor: learnerActor(id, identity.displayName, teen),
     action: teen ? "registration.teen" : "registration.adult",

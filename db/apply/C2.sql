@@ -241,6 +241,9 @@ create table public.course_notice_views (
   unique (account_id, academy_id, notice_kind)
 );
 
+-- A course queued from /admin/topics ("Start course") carries its size tier to the Blueprint step.
+alter table public.catalog_jobs add column size_tier text check (size_tier in ('compact', 'standard', 'large'));
+
 -- ============ Importance labels, Notebook notes, mission types ============
 
 alter table public.activity_items
@@ -254,8 +257,8 @@ alter table public.video_slots
 -- A quiz's score (0 to 1) on code-graded attempts: 80% or more counts the item as done.
 alter table public.activity_attempts add column score numeric(5, 4) check (score between 0 and 1);
 
--- The label, note and mission type are set while the item is a Draft. In a course that needs the Owner's review, an
--- item is approved only with a label, and a "Very important" one only with its Notebook note.
+-- The label, note and mission type are set while the item is a Draft. In a C2 course (one with a size tier), an item is
+-- approved only with a label, and a "Very important" one only with its Notebook note. Older courses are unchanged.
 create function private.activity_item_label_rules() returns trigger
 language plpgsql
 security definer
@@ -266,7 +269,7 @@ begin
     raise exception 'ASCENTRA: an item''s importance, Notebook note and mission type are set while it is a Draft.' using errcode = 'check_violation';
   end if;
   if new.status = 'approved' and old.status <> 'approved'
-     and exists (select 1 from public.courses c where c.id = new.course_id and c.owner_review_required) then
+     and exists (select 1 from public.courses c where c.id = new.course_id and c.size_tier is not null) then
     if new.importance is null then
       raise exception 'ASCENTRA: label this item (should know, important or very important) before approving it.' using errcode = 'check_violation';
     end if;
@@ -297,15 +300,15 @@ revoke all on function private.video_slot_label_rules() from public;
 create trigger video_slot_label_rules before update on public.video_slots
   for each row execute function private.video_slot_label_rules();
 
--- The Owner approves a module only when every video and practice item in it has its label (and "Very important" ones
--- their note). Runs before module_review_rules (name order).
+-- In a C2 course (one with a size tier), the Owner approves a module only when every video and practice item in it has
+-- its label (and "Very important" ones their note). Runs before module_review_rules (name order).
 create function private.module_review_labels() returns trigger
 language plpgsql
 security definer
 set search_path = ''
 as $$
 begin
-  if new.decision = 'approved' then
+  if new.decision = 'approved' and exists (select 1 from public.courses c where c.id = new.course_id and c.size_tier is not null) then
     if exists (select 1 from public.video_slots s where s.module_id = new.module_id
                  and (s.importance is null or (s.importance = 'very_important' and s.notebook_note is null)))
        or exists (select 1 from public.activity_items i where i.module_id = new.module_id and i.status in ('draft', 'approved', 'published')
@@ -608,7 +611,8 @@ end $$;
 
 -- ============ New course versions and Blueprints carry the C2 fields ============
 
--- As in C1, with the size tier (and its module count) for a v2 plan: plan.sizeTier, standard when not given.
+-- As in C1, with the size tier (and its module count) for a v2 plan that names one (plan.sizeTier). A v2 plan without a
+-- tier keeps C1's rule (5 or 6 modules) and C1's behaviour.
 create or replace function public.approve_course_blueprint(p_blueprint uuid, p_actor uuid) returns uuid
 language plpgsql
 security definer
@@ -639,8 +643,11 @@ begin
   end if;
   v2 := coalesce(bp.plan ->> 'structure', '1') = '2';
   n_modules := jsonb_array_length(coalesce(bp.plan -> 'modules', '[]'));
-  tier := case when v2 then coalesce(bp.plan ->> 'sizeTier', 'standard') end;
-  if v2 then
+  tier := case when v2 then bp.plan ->> 'sizeTier' end;
+  if v2 and tier is null and n_modules not between 5 and 6 then
+    raise exception 'ASCENTRA: a course has 5 or 6 modules (this outline has %).', n_modules using errcode = 'check_violation';
+  end if;
+  if tier is not null then
     if tier not in ('compact', 'standard', 'large') then
       raise exception 'ASCENTRA: the course size is compact, standard or large.' using errcode = 'check_violation';
     end if;

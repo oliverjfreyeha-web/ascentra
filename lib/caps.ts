@@ -162,6 +162,10 @@ export const CAPABILITIES = {
   "courses.publish_course": { scope: "global", from: "C1: the Owner publishes or unpublishes a whole course (unpublishing keeps learners' progress)", sensitive: true, reason: true },
   "courses.videos": { scope: "global", from: "C1: video slots: the Owner uploads, replaces and approves the videos they make" },
   "courses.boosters": { scope: "global", from: "C1: the Owner edits the list of learning boosters" },
+  // ---- C2: the leaderboard, the community links, teen real-world missions ----
+  "leaderboard.moderate": { scope: "global", from: "C2: nicknames go through a filter and the Owner can remove one", reason: true },
+  "community.manage": { scope: "global", from: "C2: an Owner-managed Community links setting (Discord and the Owner's social links)" },
+  "missions.allowlist": { scope: "global", from: "C2: a state allow-list per mission type, off for teens until the Owner turns it on", reason: true },
   // ---- Mentor safety (L4): the review queue holds no conversation text ----
   "safety.view": { scope: "global", from: "L4: a review queue for the Owner and Super Admin (categories and actions, never conversation text)" },
   "safety.review": { scope: "global", from: "L4: safety checks with SafetyEvent records and a review queue for the Owner and Super Admin", reason: true },
@@ -195,6 +199,9 @@ export const OWNER_ONLY_CAPS = [
   "courses.publish_course",
   "courses.videos",
   "courses.boosters",
+  "leaderboard.moderate",
+  "community.manage",
+  "missions.allowlist",
 ] as const satisfies readonly Cap[];
 
 /** Held by no role. Listed so tests can prove it. */

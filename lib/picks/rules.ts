@@ -9,7 +9,12 @@
 
 export const SKILL_LIMIT_BASIC = 3;
 export type PickPlan = "trial" | "basic" | "pro";
-export type Kind = "business" | "skill";
+export type Kind = "business" | "side_hustle" | "skill";
+/** C2: the kinds that are one-at-a-time and lock on Basic and the trial: a business and a side hustle. */
+export const MAIN_KINDS = ["business", "side_hustle"] as const;
+export type MainKind = (typeof MAIN_KINDS)[number];
+export const isMainKind = (k: unknown): k is MainKind => k === "business" || k === "side_hustle";
+export const KIND_LABEL: Record<Kind, string> = { business: "business", side_hustle: "side hustle", skill: "skill" };
 
 /** The plan that sets the pick limits: the trial and Basic share them; Pro (and the Owner's full access) has Pro's. */
 export function pickPlanOf(tier: string): PickPlan | null {
@@ -138,7 +143,7 @@ export type PickResult =
   | { result: "picked"; kind: Kind; previous: string | null; has_course: boolean }
   | { result: "already"; kind: Kind }
   | { result: "limit"; limit: number; used: number }
-  | { result: "locked"; current?: string }
+  | { result: "locked"; kind?: Kind; current?: string }
   | { result: "not_available" } | { result: "no_account" } | { result: "paused"; kind: Kind } | { result: "not_picked" };
 
 export const visibleTo = (t: Pick<TopicRow, "published" | "teen_hidden">, minor: boolean) => t.published && !(t.teen_hidden && minor);
@@ -153,7 +158,7 @@ export function reconcile(picks: PickRow[], topics: TopicRow[], plan: PickPlan, 
   if (plan === "pro") { for (const p of picks) p.locked = false; return paused; }
   const skills = picks.filter((p) => p.kind === "skill" && p.status === "active").sort((a, b) => b.picked_at.localeCompare(a.picked_at));
   for (const p of skills.slice(SKILL_LIMIT_BASIC)) { p.status = "paused"; paused++; }
-  for (const p of picks) if (p.kind === "business" && p.status === "active") p.locked = true;
+  for (const p of picks) if (isMainKind(p.kind) && p.status === "active") p.locked = true;
   return paused;
 }
 
@@ -169,14 +174,14 @@ export function applyPick(picks: PickRow[], topics: TopicRow[], topicId: string,
     const used = picks.filter((p) => p.kind === "skill" && p.status === "active").length;
     if (plan !== "pro" && used >= SKILL_LIMIT_BASIC) return { result: "limit", limit: SKILL_LIMIT_BASIC, used };
   } else {
-    const current = picks.find((p) => p.kind === "business" && p.status === "active");
+    const current = picks.find((p) => p.kind === t.kind && p.status === "active");
     if (current) {
-      if (plan !== "pro") return { result: "locked", current: current.topic_id };
+      if (plan !== "pro") return { result: "locked", kind: t.kind, current: current.topic_id };
       Object.assign(current, { status: "paused", locked: false });
       previous = current.topic_id;
     }
   }
-  const locked = t.kind === "business" && plan !== "pro";
+  const locked = t.kind !== "skill" && plan !== "pro";
   if (existing) Object.assign(existing, { status: "active", picked_at: now, locked });
   else picks.push({ user_id: userId, topic_id: topicId, kind: t.kind, status: "active", locked, picked_at: now });
   return { result: "picked", kind: t.kind, previous, has_course: t.has_course };

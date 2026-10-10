@@ -13,6 +13,8 @@ import { MIN_MODULE_TYPES, PRACTICE_LABEL, TYPE_LABEL, grade, learnerContent, re
 import { activitySelection } from "@/lib/path/path";
 import { SANDBOX_LABEL } from "@/lib/courses/structure";
 import { selectActivities } from "@/lib/path/rules";
+import { activityGate, recordCompletion } from "@/lib/progress/progress";
+import { quizPassed, quizScore } from "@/lib/progress/rules";
 
 /**
  * L6: practice items inside a lesson, for learners. Only PUBLISHED items of a lesson that is published in a live course
@@ -24,7 +26,8 @@ import { selectActivities } from "@/lib/path/rules";
  * never writes the answer for the learner.
  */
 type Item = {
-  id: string; lesson_id: string; status: string; recipe_part?: string | null; item_type: ItemType; grading: "code" | "feedback"; level: string; goal: string; interests: string[];
+  id: string; lesson_id: string; module_id: string; course_id: string; status: string; recipe_part?: string | null;
+  importance?: string | null; notebook_note?: string | null; mission_type?: string | null; item_type: ItemType; grading: "code" | "feedback"; level: string; goal: string; interests: string[];
   prompt: string; content: Content; answer_key: AnswerKey; explanation: string; citation: { sourceId: string; title: string; url: string | null; quote?: string };
 };
 const cite = (c: Item["citation"]) => ({ title: c.title, url: c.url ?? null, quote: c.quote ?? null });
@@ -100,17 +103,24 @@ export async function attemptItem(actor: Account, id: string, body: Record<strin
   const live = await liveItem(id, actor);
   if (!live) return refused(404, "No such practice item.", A);
   const { item, versionId } = live;
+  // C2: in a course with the unlock rules, only an open item can be tried.
+  const gate = await activityGate(actor, item);
+  if (!gate.ok) return refused(403, gate.reason, A);
   const db = getDb();
   if (item.grading === "code") {
     const g = grade(item.item_type, item.answer_key, body.answer);
     if (!g) return refused(400, "Answer the item first.", A);
+    // C2: a score from 0 to 1 (matching and ordering get credit for each right position); 80% or more counts it as done.
+    const score = quizScore(item.item_type, item.answer_key as Record<string, unknown> | null, body.answer, g.correct);
     const { error } = await db.from("activity_attempts").insert({
-      item_id: id, account_id: actor.id, lesson_version_id: versionId, graded_by: "code", correct: g.correct, counted: true, answer: g.answer,
+      item_id: id, account_id: actor.id, lesson_version_id: versionId, graded_by: "code", correct: g.correct, counted: true, answer: g.answer, score,
     });
     if (error) throw new Error(`attempt insert failed: ${error.message}`);
+    const passed = quizPassed(score);
+    if (passed) await recordCompletion(actor, gate.ref, gate.courseId);
     return {
       ok: true,
-      body: { graded: true, correct: g.correct, correctAnswer: g.correctAnswer, explanation: item.explanation, citation: cite(item.citation), score: await lessonScore(actor, item.lesson_id) },
+      body: { graded: true, correct: g.correct, correctAnswer: g.correctAnswer, explanation: item.explanation, citation: cite(item.citation), score: await lessonScore(actor, item.lesson_id), quizScore: score, done: passed },
       event: noAudit(A),
     };
   }

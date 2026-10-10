@@ -6,6 +6,8 @@ import { ATTORNEY, NO_ATTORNEY, clean, isUuid, refused, type Result } from "./co
 import { academyOf, slotView } from "./owner-review";
 import { canOpenCourse } from "./learn";
 import { findIncomeClaims, textsOf } from "./income";
+import { isImportance } from "@/lib/progress/config";
+import { itemGate } from "@/lib/progress/progress";
 import { MIN_TRANSCRIPT_CHARS, VIDEO_LINK_SECONDS, VIDEO_MAX_BYTES, VIDEO_TYPES, sniffVideo, tooLarge, type VideoBrief, type VideoMime } from "./structure";
 import { headOf, removeFile, signDownload, signUpload } from "./video-store";
 
@@ -100,10 +102,22 @@ export async function updateSlot(actor: Account, slug: string, slotId: string, b
     if (body.lessonId !== null && !isUuid(body.lessonId)) return refused(400, "Choose a lesson of this module, or none.", A, targetOf(slot));
     fields.lesson_id = body.lessonId; changes.push("position in the module");
   }
+  // C2: the importance label and the Notebook note ("Very important" videos need one), while the course version is a Draft.
+  if (body.importance !== undefined) {
+    if (body.importance !== null && !isImportance(body.importance)) return refused(400, "Choose should know, important or very important.", A, targetOf(slot));
+    fields.importance = body.importance; changes.push("importance");
+  }
+  if (body.notebookNote !== undefined) {
+    const note = body.notebookNote === null ? null : clean(body.notebookNote, 800);
+    if (note !== null && note.length < 20) return refused(400, "A Notebook note is 2 or 3 sentences (20 characters or more).", A, targetOf(slot));
+    if (note && (findIncomeClaims(note).length || ATTORNEY.test(note))) return refused(400, "Reword the Notebook note: no income promises, no \"attorney approved\".", A, targetOf(slot));
+    fields.notebook_note = note || null; changes.push("Notebook note");
+  }
   if (!changes.length) return refused(400, "Nothing to change.", A, targetOf(slot));
   const { error } = await getDb().from("video_slots").update(fields).eq("id", slotId);
   if (error) {
     if (/own module/.test(error.message)) return refused(400, "Choose a lesson of this module.", A, targetOf(slot));
+    if (/set while its course version is a Draft/.test(error.message)) return refused(409, "The label and Notebook note change only on a Draft course version. Start a new version first.", A, targetOf(slot));
     throw new Error(`video slot update failed: ${error.message}`);
   }
   return {
@@ -242,7 +256,7 @@ export async function previewLink(actor: Account, slug: string, slotId: string) 
 // ============ Learners ============
 
 /** A slot a learner can see: its module's course is live and open to them, and the lesson that shows it is published. */
-async function learnerSlot(actor: Account, slotId: string) {
+export async function learnerSlot(actor: Account, slotId: string) {
   if (!isUuid(slotId)) return null;
   const db = getDb();
   const slot = (await db.from("video_slots").select("*").eq("id", slotId).maybeSingle()).data as Slot | null;
@@ -279,6 +293,13 @@ export async function learnerVideoLink(actor: Account, slotId: string): Promise<
   const slot = await learnerSlot(actor, slotId);
   if (!slot) return refused(404, "No such video.", A2);
   if (slot.status !== "approved" || !slot.current_upload_id) return refused(404, "Video coming: this video isn't ready yet.", A2);
+  // C2: in a course with the unlock rules, only an open video plays.
+  const tiered = ((await getDb().from("modules").select("course_id").eq("id", slot.module_id).maybeSingle()).data as { course_id: string } | null)?.course_id;
+  const sized = tiered ? ((await getDb().from("courses").select("size_tier").eq("id", tiered).maybeSingle()).data as { size_tier?: string | null } | null)?.size_tier : null;
+  if (sized) {
+    const gate = await itemGate(actor, "video", slot.id, slot.module_id);
+    if (!gate.ok) return refused(403, gate.reason, A2);
+  }
   const up = (await getDb().from("video_uploads").select("storage_path, mime").eq("id", slot.current_upload_id).maybeSingle()).data as { storage_path: string; mime: string } | null;
   const url = up ? await signDownload(up.storage_path, VIDEO_LINK_SECONDS) : null;
   if (!url) return refused(503, "The video can't be played right now. Its transcript is below.", A2);

@@ -161,8 +161,11 @@ describe("the C2 bundle on the live C1 database", () => {
     it("a Compact course has 3 or 4 modules, Standard 5 or 6 (the default), Large 7 to 9", async () => {
       expect((await q("select size_tier from public.courses where id = $1", [await course("tier-c3", 3, "compact")])).rows[0].size_tier).toBe("compact");
       await expect(course("tier-c5", 5, "compact")).rejects.toThrow(/Compact course has 3 to 4 modules/);
-      await expect(course("tier-s4", 4)).rejects.toThrow(/5 or 6 modules/);
-      expect((await q("select size_tier from public.courses where id = $1", [await course("tier-s6", 6)])).rows[0].size_tier).toBe("standard");
+      await expect(course("tier-s4", 4, "standard")).rejects.toThrow(/Standard course has 5 to 6 modules/);
+      expect((await q("select size_tier from public.courses where id = $1", [await course("tier-s6", 6, "standard")])).rows[0].size_tier).toBe("standard");
+      // A v2 plan without a tier keeps C1's rule and behaviour (no tier: no C2 rules).
+      await expect(course("tier-none4", 4)).rejects.toThrow(/5 or 6 modules/);
+      expect((await q("select size_tier from public.courses where id = $1", [await course("tier-none5", 5)])).rows[0].size_tier).toBeNull();
       expect((await q("select size_tier from public.courses where id = $1", [await course("tier-l8", 8, "large")])).rows[0].size_tier).toBe("large");
       await expect(course("tier-l10", 10, "large")).rejects.toThrow(/Large course has 7 to 9 modules/);
     });
@@ -175,7 +178,7 @@ describe("the C2 bundle on the live C1 database", () => {
     [lessonId, moduleId, courseId, JSON.stringify({ sourceId: source, title: "Test study" })])).rows[0].id as string;
     const approve = (id: string) => q("update public.activity_items set status = 'approved', reviewed_by_account_id = $2, reviewed_at = now() where id = $1", [id, reviewer]);
     beforeAll(async () => {
-      courseId = await course("labels", 5);
+      courseId = await course("labels", 5, "standard");
       moduleId = (await q("select id from public.modules where course_id = $1 and position = 1", [courseId])).rows[0].id;
       lessonId = (await q("select id from public.lessons where module_id = $1", [moduleId])).rows[0].id;
     });
@@ -195,6 +198,16 @@ describe("the C2 bundle on the live C1 database", () => {
         values ($1, $2, 'approved', '{}', '{}', $3)`, [moduleId, courseId, owner])).rejects.toThrow(/needs its importance label/);
     });
 
+    it("a course without a size tier keeps C1's behaviour: no label needed", async () => {
+      const old = await course("labels-c1", 5);
+      const m = (await q("select id from public.modules where course_id = $1 and position = 1", [old])).rows[0].id;
+      const l = (await q("select id from public.lessons where module_id = $1", [m])).rows[0].id;
+      const id = (await q(`insert into public.activity_items (lesson_id, module_id, course_id, idea_key, item_type, grading, level, goal, prompt, content, answer_key, explanation, citation)
+        values ($1, $2, $3, 'test-idea', 'multiple_choice', 'code', 'beginner', 'Test goal', 'Test prompt?', '{"options":["A","B"]}', '{"correct":0}', 'Test.', $4) returning id`,
+      [l, m, old, JSON.stringify({ sourceId: source, title: "Test study" })])).rows[0].id;
+      await approve(id);
+    });
+
     it("a new course version carries the size tier, notices, labels, notes and the capstone", async () => {
       const src = await course("carry", 3, "compact");
       await q("update public.video_slots s set importance = 'important' from public.modules m where m.id = s.module_id and m.course_id = $1", [src]);
@@ -211,7 +224,7 @@ describe("the C2 bundle on the live C1 database", () => {
   describe("completions, streaks and the leaderboard", () => {
     let courseId = "", moduleId = "", videoId = "";
     beforeAll(async () => {
-      courseId = await course("progress", 5);
+      courseId = await course("progress", 5, "standard");
       moduleId = (await q("select id from public.modules where course_id = $1 and position = 1", [courseId])).rows[0].id;
       videoId = (await q("select id from public.video_slots where module_id = $1", [moduleId])).rows[0].id;
       // An approved video, through the C1 upload path.

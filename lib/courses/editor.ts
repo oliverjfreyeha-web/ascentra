@@ -5,7 +5,8 @@ import { ATTORNEY, NO_ATTORNEY, clean, courseScope, isUuid, refused, type Result
 import { findIncomeClaims } from "./income";
 import type { LessonBody } from "./lessons";
 import { academyOf, activeBoosters } from "./owner-review";
-import { MODULE_COUNT, RECOMMENDED_PACE, checkRecipe, typeFits, type ItemPart } from "./structure";
+import { MODULE_COUNT, RECOMMENDED_PACE, SIZE_TIERS, checkModuleCount, checkRecipe, isSizeTier, typeFits, type ItemPart } from "./structure";
+import { isImportance, isMissionType, MISSION_TYPES } from "@/lib/progress/config";
 import type { ItemType } from "@/lib/activities/types";
 
 /**
@@ -19,7 +20,7 @@ import type { ItemType } from "@/lib/activities/types";
  * a published one is revised as a new Draft that replaces it when published.
  */
 
-type CourseRow = { id: string; academy_id: string; version: number; status: string; owner_review_required: boolean };
+type CourseRow = { id: string; academy_id: string; version: number; status: string; owner_review_required: boolean; size_tier?: string | null };
 type ModuleRow = { id: string; course_id: string; position: number; code: string; title: string; stage: string | null; recipe: Record<string, unknown>; recommended_pace: string };
 
 const reason = (msg: string) => msg.replace(/^ASCENTRA: /, "");
@@ -34,7 +35,7 @@ async function draftCourse(actor: Account, slug: string, A: string): Promise<{ c
   const academy = await academyOf(slug);
   if (!academy) return refused(404, "No such course.", A);
   if (scope) return refused(403, scope, A, { type: "course", id: slug, label: academy.name });
-  const course = (((await getDb().from("courses").select("id, academy_id, version, status, owner_review_required").eq("academy_id", academy.id)).data ?? []) as CourseRow[])
+  const course = (((await getDb().from("courses").select("id, academy_id, version, status, owner_review_required, size_tier").eq("academy_id", academy.id)).data ?? []) as CourseRow[])
     .sort((a, b) => b.version - a.version)[0];
   if (!course) return refused(404, "This course has no version yet. Approve a Blueprint first.", A, { type: "course", id: slug, label: academy.name });
   if (course.status !== "draft") return refused(409, `Version ${course.version} is live. Start a new version to edit it; learners keep seeing the live one until the new version is published.`, A, { type: "course", id: slug, label: academy.name });
@@ -159,7 +160,10 @@ export async function addModule(actor: Account, slug: string, body: Record<strin
   const income = incomeProblem(title);
   if (income) return refused(400, income, A, target);
   const mods = ((await getDb().from("modules").select("id, position, recipe").eq("course_id", dc.course.id)).data ?? []) as { id: string; position: number; recipe: Record<string, unknown> }[];
-  if (dc.course.owner_review_required && mods.length >= MODULE_COUNT.max) return refused(409, `A course has ${MODULE_COUNT.min} or ${MODULE_COUNT.max} modules; this one already has ${mods.length}.`, A, target);
+  // C2: the size tier sets the module count (Standard, C1's 5 or 6, when no tier is set).
+  const cap = isSizeTier(dc.course.size_tier) ? SIZE_TIERS[dc.course.size_tier].modules : MODULE_COUNT;
+  const tierName = isSizeTier(dc.course.size_tier) ? `A ${SIZE_TIERS[dc.course.size_tier].label} course` : "A course";
+  if (dc.course.owner_review_required && mods.length >= cap.max) return refused(409, `${tierName} has ${cap.min} to ${cap.max} modules; this one already has ${mods.length}. Change the size tier first for more.`, A, target);
   const position = Math.max(0, ...mods.map((x) => x.position)) + 1;
   const last = mods.sort((a, b) => b.position - a.position)[0];
   const { data, error } = await getDb().from("modules").insert({
@@ -183,7 +187,8 @@ export async function removeModule(actor: Account, slug: string, moduleId: strin
   const target = { type: "module", id: m.id, label: `${slug} v${dc.course.version}: ${m.title}` };
   const db = getDb();
   const count = ((await db.from("modules").select("id").eq("course_id", dc.course.id)).data ?? []).length;
-  if (dc.course.owner_review_required && count <= MODULE_COUNT.min) return refused(409, `A course has ${MODULE_COUNT.min} or ${MODULE_COUNT.max} modules; this one can't go below ${MODULE_COUNT.min}.`, A, target);
+  const cap = isSizeTier(dc.course.size_tier) ? SIZE_TIERS[dc.course.size_tier].modules : MODULE_COUNT;
+  if (dc.course.owner_review_required && count <= cap.min) return refused(409, `This course has ${cap.min} to ${cap.max} modules; it can't go below ${cap.min}. Change the size tier first for fewer.`, A, target);
   const lessons = ((await db.from("lessons").select("id").eq("module_id", m.id)).data ?? []) as { id: string }[];
   const versions = lessons.length ? ((await db.from("lesson_versions").select("id").in("lesson_id", lessons.map((l) => l.id))).data ?? []).length : 0;
   const items = ((await db.from("activity_items").select("id").eq("module_id", m.id)).data ?? []).length;
@@ -385,5 +390,69 @@ export async function reopenItem(actor: Account, slug: string, id: string): Prom
   return {
     ok: true, status: 201, body: { id: newId, status: "draft" },
     event: { action: A, result: "Completed", target, previous: item.status, next: "draft (needs review again)", context: `Reopened a ${item.status} practice item for editing as a new Draft (${newId}); it needs reviewing again.` },
+  };
+}
+
+/** C2: Body: { tier }. Sets a Draft version's size tier; its module count must already fit the tier. */
+export async function setSizeTier(actor: Account, slug: string, body: Record<string, unknown>): Promise<Result> {
+  const A = "courses.size_tier";
+  const dc = await draftCourse(actor, slug, A);
+  if (isRefusal(dc)) return dc;
+  const target = { type: "course", id: slug, label: `${dc.name} v${dc.course.version}` };
+  if (!isSizeTier(body.tier)) return refused(400, "Choose Compact, Standard or Large.", A, target);
+  const n = ((await getDb().from("modules").select("id").eq("course_id", dc.course.id)).data ?? []).length;
+  const fit = checkModuleCount(n, body.tier);
+  if (fit) return refused(409, `${fit} Add or remove modules first.`, A, target);
+  const { error } = await getDb().from("courses").update({ size_tier: body.tier }).eq("id", dc.course.id);
+  if (error) throw new Error(`size tier failed: ${error.message}`);
+  return {
+    ok: true, body: { tier: body.tier },
+    event: { action: A, result: "Completed", target, previous: dc.course.size_tier ?? "not set", next: body.tier, context: `Set "${dc.name}" v${dc.course.version} to ${SIZE_TIERS[body.tier].label} (${n} modules).` },
+  };
+}
+
+/**
+ * C2: Body: any of { importance, notebookNote, missionType }. A Draft item's importance label (should know, important,
+ * very important), its Notebook note (2 or 3 sentences; "Very important" items need one), and its real-world mission type.
+ */
+export async function setItemLabels(actor: Account, slug: string, id: string, body: Record<string, unknown>): Promise<Result> {
+  const A = "courses.activities.labels";
+  const dc = await draftCourse(actor, slug, A);
+  if (isRefusal(dc)) return dc;
+  const item = await itemOf(dc.course.id, id);
+  if (!item) return refused(404, "No such practice item in this course version.", A);
+  const target = { type: "activity_item", id, label: item.prompt.slice(0, 80) };
+  if (item.status !== "draft") return refused(409, `Only a Draft item's label changes; this one is ${item.status}. Reopen it first.`, A, target);
+  const fields: Record<string, unknown> = {};
+  if (body.importance !== undefined) {
+    if (body.importance !== null && !isImportance(body.importance)) return refused(400, "Choose should know, important or very important.", A, target);
+    fields.importance = body.importance;
+  }
+  if (body.notebookNote !== undefined) {
+    const note = body.notebookNote === null ? null : clean(body.notebookNote, 800);
+    if (note !== null && note.length < 20) return refused(400, "A Notebook note is 2 or 3 sentences (20 characters or more).", A, target);
+    if (note && ATTORNEY.test(note)) return refused(400, NO_ATTORNEY, A, target);
+    const income = note ? incomeProblem(note) : null;
+    if (income) return refused(400, income, A, target);
+    fields.notebook_note = note || null;
+  }
+  if (body.missionType !== undefined) {
+    if (body.missionType !== null && !isMissionType(body.missionType)) return refused(400, "Choose a kind of real-world mission, or none.", A, target);
+    fields.mission_type = body.missionType;
+  }
+  if (!Object.keys(fields).length) return refused(400, "Nothing to change.", A, target);
+  const { error } = await getDb().from("activity_items").update(fields).eq("id", id);
+  if (error) {
+    if (/ASCENTRA/.test(error.message)) return refused(409, reason(error.message), A, target);
+    throw new Error(`item labels failed: ${error.message}`);
+  }
+  return {
+    ok: true, body: { id, ...fields },
+    event: {
+      action: A, result: "Completed", target, previous: null,
+      next: [fields.importance !== undefined ? `importance: ${fields.importance ?? "none"}` : null, fields.notebook_note !== undefined ? "Notebook note set" : null,
+        fields.mission_type !== undefined ? `mission: ${fields.mission_type ? MISSION_TYPES[fields.mission_type as keyof typeof MISSION_TYPES].label : "none"}` : null].filter(Boolean).join("; "),
+      context: "Set a practice item's importance label, Notebook note or mission type.",
+    },
   };
 }
