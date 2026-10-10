@@ -111,6 +111,8 @@ const GLOBAL: Record<string, RoleKey[]> = {
   "community.manage": ["owner"],
   "missions.view": ["owner"],
   "missions.allowlist": ["owner"],
+  // I1: importing a course file.
+  "courses.import": ["owner"],
   // L4: the safety review queue.
   "safety.view": ["owner", "superAdmin"],
   "safety.review": ["owner", "superAdmin"],

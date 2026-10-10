@@ -214,6 +214,8 @@ const EXPECTED: Record<string, string> = {
   "POST /api/v1/leaderboard/moderation": "leaderboard.moderate",
   "GET /api/v1/community": "self.view",
   "PUT /api/v1/community": "community.manage",
+  "POST /api/v1/courses/import/check": "courses.import",
+  "POST /api/v1/courses/import": "courses.import",
   "GET /api/v1/account/state": "self.view",
   "PUT /api/v1/account/state": "self.view",
   "GET /api/v1/missions/allowlist": "missions.view",

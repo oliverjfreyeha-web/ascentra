@@ -1,0 +1,9 @@
+/*
+ * I1 (C2 live check): the topics tables at small widths. The topic name and its edit forms keep a readable width, and
+ * the table scrolls sideways inside its box instead of squeezing the name into a narrow column. Layout only.
+ */
+main.ui-admin .topics__table { min-width: 44rem; }
+main.ui-admin .topics__table td:first-child { min-width: 16rem; width: 34%; }
+main.ui-admin .topics__table td:first-child :is(input, textarea, select) { width: 100%; }
+main.ui-admin .topics__table th:not(:first-child), main.ui-admin .topics__table td:nth-child(n + 5) { white-space: nowrap; }
+.topics__refusal { color: var(--color-danger); font-size: var(--text-sm); }

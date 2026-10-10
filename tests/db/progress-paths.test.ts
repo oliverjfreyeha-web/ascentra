@@ -67,7 +67,7 @@ describe("the C2 bundle on the live C1 database", () => {
   afterAll(() => db.drop());
 
   it("applies in one go; verify.sql is OK with 82 tables", async () => {
-    expect((await q(readSql("db/verify.sql"))).rows[0].table_name).toMatch(/^OK: all 82 tables.*C2 progress, side hustles and unlock rules are in place$/);
+    expect((await q(readSql("db/verify.sql"))).rows[0].table_name).toMatch(/^PROBLEM: 0 missing, 0 without RLS, 0 unexpected.*C2 applied, I1 NOT applied$/);
   });
 
   describe("side hustles", () => {

@@ -20,7 +20,7 @@ describe("the B4 bundle on the live B3 database", () => {
   afterAll(() => db.drop());
 
   it("applies in one go; verify.sql is OK", async () => {
-    expect((await q(readSql("db/verify.sql"))).rows[0].table_name).toMatch(/^PROBLEM: 35 missing.*B4 applied, L1 NOT applied, L2 NOT applied, L3 NOT applied, L4 NOT applied, L5 NOT applied, L6 NOT applied, L7 NOT applied, L8 NOT applied, C1 NOT applied, C2 NOT applied$/);
+    expect((await q(readSql("db/verify.sql"))).rows[0].table_name).toMatch(/^PROBLEM: 35 missing.*B4 applied, L1 NOT applied, L2 NOT applied, L3 NOT applied, L4 NOT applied, L5 NOT applied, L6 NOT applied, L7 NOT applied, L8 NOT applied, C1 NOT applied, C2 NOT applied, I1 NOT applied$/);
   });
 
   it("sends each notice once (dedupe key), and a sent notice has a time", async () => {

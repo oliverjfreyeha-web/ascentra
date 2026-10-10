@@ -110,6 +110,12 @@
       "migrations": [
         "0021_progress_and_paths"
       ]
+    },
+    "I1": {
+      "requires": "0021_progress_and_paths",
+      "migrations": [
+        "0022_course_import"
+      ]
     }
   }
 }

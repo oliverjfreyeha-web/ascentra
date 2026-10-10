@@ -1,4 +1,4 @@
--- Run in the Supabase SQL Editor after applying the migrations (F3, F4, F5, F6, B1, B2, B3, B4, L1, L2, L3, L4, L5, L6, L7, L8, C1 and C2).
+-- Run in the Supabase SQL Editor after applying the migrations (F3, F4, F5, F6, B1, B2, B3, B4, L1, L2, L3, L4, L5, L6, L7, L8, C1, C2 and I1).
 -- The first row is the verdict. The rest lists every expected table with whether it exists and
 -- whether row-level security is on, then any other table in public (which should not exist).
 with expected(table_name) as (values
@@ -219,6 +219,17 @@ c2 as (
     exists (select 1 from pg_trigger where tgrelid = to_regclass('public.item_completions') and tgname = 'item_completions_kept') as completions_kept,
     (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public'
        and p.proname in ('record_item_completion', 'leaderboard_adults', 'learner_progress_totals', 'owner_set_pick')) = 4 as functions
+),
+i1 as (
+  select
+    exists (select 1 from private.schema_migrations where version = '0022_course_import') as recorded,
+    exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'import_course'
+              and p.prosecdef) as importer,
+    -- Only the server may run it: not anon, not a signed-in browser.
+    not coalesce((select has_function_privilege('authenticated', 'public.import_course(uuid, jsonb)', 'execute')
+                  where to_regprocedure('public.import_course(uuid, jsonb)') is not null), false)
+      and not coalesce((select has_function_privilege('anon', 'public.import_course(uuid, jsonb)', 'execute')
+                  where to_regprocedure('public.import_course(uuid, jsonb)') is not null), false) as server_only
 )
 select 0 as sort,
        case when (select count(*) from report where expected and table_exists and rls_on) = 82
@@ -250,7 +261,8 @@ select 0 as sort,
              and (select topic_link from c1) and (select editor from c1)
              and (select recorded from c2) and (select side_hustles from c2) and (select one_side_hustle from c2) and (select size_tiers from c2)
              and (select labels from c2) and (select completions_kept from c2) and (select functions from c2)
-            then 'OK: all 82 tables exist with row-level security on; audit_events and consent_records are insert-only; F4 admin invites and Owner protections are in place; F5 audit chain is in place; F6 devices, sessions and safeguards are in place; B1 billing is in place; B2 age rules and sign-up are in place; B3 Guardians are in place; B4 notices and privacy requests are in place; L1 source library is in place; L2 course generation and review are in place; L3 freshness cycle is in place; L4 Mentor and safety checks are in place; L5 Mentor allowance is in place; L6 topic catalog and activity library are in place; L7 interview and personalized path are in place; L8 topics and picks are in place; C1 course structure and Owner review are in place; C2 progress, side hustles and unlock rules are in place'
+             and (select recorded from i1) and (select importer from i1) and (select server_only from i1)
+            then 'OK: all 82 tables exist with row-level security on; audit_events and consent_records are insert-only; F4 admin invites and Owner protections are in place; F5 audit chain is in place; F6 devices, sessions and safeguards are in place; B1 billing is in place; B2 age rules and sign-up are in place; B3 Guardians are in place; B4 notices and privacy requests are in place; L1 source library is in place; L2 course generation and review are in place; L3 freshness cycle is in place; L4 Mentor and safety checks are in place; L5 Mentor allowance is in place; L6 topic catalog and activity library are in place; L7 interview and personalized path are in place; L8 topics and picks are in place; C1 course structure and Owner review are in place; C2 progress, side hustles and unlock rules are in place; I1 course import is in place'
             else 'PROBLEM: ' || (select count(*) from report where expected and not table_exists) || ' missing, '
                  || (select count(*) from report where table_exists and not rls_on) || ' without RLS, '
                  || (select count(*) from report where not expected) || ' unexpected, '
@@ -301,6 +313,8 @@ select 0 as sort,
                  || ', C2 ' || case when (select recorded from c2) and (select side_hustles from c2) and (select one_side_hustle from c2)
                                          and (select size_tiers from c2) and (select labels from c2) and (select completions_kept from c2)
                                          and (select functions from c2)
+                                    then 'applied' else 'NOT applied' end
+                 || ', I1 ' || case when (select recorded from i1) and (select importer from i1) and (select server_only from i1)
                                     then 'applied' else 'NOT applied' end
                  || case when (select staff_never_minor from b2) then '' else ', an Owner or admin is marked minor or pending' end
        end as table_name,

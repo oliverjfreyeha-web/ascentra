@@ -167,6 +167,8 @@ export const CAPABILITIES = {
   "community.manage": { scope: "global", from: "C2: an Owner-managed Community links setting (Discord and the Owner's social links)", reason: true },
   "missions.view": { scope: "global", from: "C2: the Owner reads the state allow-list per mission type" },
   "missions.allowlist": { scope: "global", from: "C2: a state allow-list per mission type, off for teens until the Owner turns it on", reason: true },
+  // ---- I1: the Owner imports a finished course file as a new Draft version (never published or approved by itself) ----
+  "courses.import": { scope: "global", from: "I1: an Import course admin tool; only the Owner can import, every import and every error is audited" },
   // ---- Mentor safety (L4): the review queue holds no conversation text ----
   "safety.view": { scope: "global", from: "L4: a review queue for the Owner and Super Admin (categories and actions, never conversation text)" },
   "safety.review": { scope: "global", from: "L4: safety checks with SafetyEvent records and a review queue for the Owner and Super Admin", reason: true },
@@ -204,6 +206,7 @@ export const OWNER_ONLY_CAPS = [
   "community.manage",
   "missions.view",
   "missions.allowlist",
+  "courses.import",
 ] as const satisfies readonly Cap[];
 
 /** Held by no role. Listed so tests can prove it. */

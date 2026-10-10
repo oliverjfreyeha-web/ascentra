@@ -4,6 +4,7 @@ import type { AnchorHTMLAttributes } from "react";
 export const useReverification = <T,>(fn: T) => fn;
 export const useAuth = () => ({ isLoaded: true, isSignedIn: true });
 export const useClerk = () => ({ signOut: async () => undefined });
+export const useUser = () => ({ isLoaded: true, user: { twoFactorEnabled: true } });
 export const SignOutButton = ({ children }: { children?: unknown }) => children ?? null;
 export const useRouter = () => ({ push: () => undefined, replace: () => undefined, refresh: () => undefined });
 export const useSearchParams = () => new URLSearchParams(window.location.search);
