@@ -114,6 +114,7 @@ test.describe("Import course", () => {
     await page.keyboard.type(" ");
     await expect(create).toBeDisabled();
     await check.click();
+    await expect(create).toBeEnabled();
     await create.focus();
     await page.keyboard.press("Enter");
     await expect.poll(() => sent.find((s) => s.path === "/api/v1/courses/import")?.body).toEqual({ fileName: "pasted.json", content: good + " " });
