@@ -34,7 +34,7 @@ describe("the L3 bundle on the live L2 database", () => {
   afterAll(() => db.drop());
 
   it("applies in one go; verify.sql says L3 is applied (L4 not yet)", async () => {
-    expect((await q(readSql("db/verify.sql"))).rows[0].table_name).toMatch(/^PROBLEM: 27 missing.*L3 applied, L4 NOT applied, L5 NOT applied, L6 NOT applied, L7 NOT applied, L8 NOT applied, C1 NOT applied, C2 NOT applied$/);
+    expect((await q(readSql("db/verify.sql"))).rows[0].table_name).toMatch(/^PROBLEM: 27 missing.*L3 applied, L4 NOT applied, L5 NOT applied, L6 NOT applied, L7 NOT applied, L8 NOT applied, C1 NOT applied, C2 NOT applied, I1 NOT applied$/);
   });
 
   it("the refresh interval is 30 to 60 days, 42 by default", async () => {

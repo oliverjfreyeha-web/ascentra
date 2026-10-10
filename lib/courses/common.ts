@@ -13,8 +13,7 @@ export const refused = (status: number, reason: string, action: string, target: 
 
 export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const isUuid = (v: unknown): v is string => typeof v === "string" && UUID.test(v);
-export const ATTORNEY = /attorney[- ]?approved|lawyer[- ]?approved|legally approved/i;
-export const NO_ATTORNEY = "ASCENTRA never calls anything attorney-approved. Reword it.";
+export { ATTORNEY, NO_ATTORNEY } from "./wording";
 export const AUDIENCES = ["beginner", "intermediate", "advanced"] as const;
 export type Audience = (typeof AUDIENCES)[number];
 export const isAudience = (v: unknown): v is Audience => typeof v === "string" && (AUDIENCES as readonly string[]).includes(v);
