@@ -3,7 +3,7 @@ import type { Account } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { isUuid, refused, type Result } from "@/lib/courses/common";
 import { learnerSlot } from "@/lib/courses/videos";
-import { missionGate, useContactApproval } from "@/lib/missions";
+import { missionGate, spendContactApproval } from "@/lib/missions";
 import { DEFAULT_TIME_ZONE, IMPORTANCE, MISSION_TYPES, isMissionType } from "./config";
 import { courseState, itemGate, lessonGate, planOf, recordCompletion, totalsOf, type ItemRef } from "./progress";
 import { localDay, pointsFor, rankOf, streaks } from "./rules";
@@ -61,7 +61,7 @@ export async function completeActivity(actor: Account, itemId: string): Promise<
   }
   const created = await recordCompletion(actor, gate.item, gate.state.course.id);
   // A contact mission's approval is used once.
-  if (created && actor.isMinor && isMissionType(item.mission_type) && MISSION_TYPES[item.mission_type].contacts) await useContactApproval(actor.id, gate.state.course.academyId, item.id);
+  if (created && actor.isMinor && isMissionType(item.mission_type) && MISSION_TYPES[item.mission_type].contacts) await spendContactApproval(actor.id, gate.state.course.academyId, item.id);
   return { ok: true, body: { done: true, new: created, points: gate.item.points }, event: noAudit(A) };
 }
 

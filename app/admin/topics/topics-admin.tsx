@@ -5,15 +5,23 @@ import { useReverification } from "@clerk/nextjs";
 import Link from "next/link";
 import { call, when } from "../../call";
 import { meFrom } from "../../me";
-import { adminTopicsFrom, learnerPicksFrom, type AdminTopic, type LearnerPicks } from "../../picks-api";
+import { adminTopicsFrom, learnerPicksFrom, type AdminTopic, type LearnerPicks, type Source } from "../../picks-api";
 import { Loading } from "../../ui/loading";
 
-/** L8: the Owner and authorized staff (Super Admin, Course Admin) manage topics; the Owner alone changes a learner's business. */
+/**
+ * L8: the Owner and authorized staff (Super Admin, Course Admin) manage topics; the Owner alone changes a learner's business.
+ * C2: side hustles have their own tab; businesses and side hustles carry the card estimates (cost to start, outlook,
+ * difficulty, risks), each with sources and the date checked. An empty estimate shows "Estimate coming" to learners.
+ */
+type Kind = "business" | "side_hustle" | "skill";
+const KINDS: { key: Kind; label: string; one: string }[] = [
+  { key: "business", label: "Businesses", one: "business" }, { key: "side_hustle", label: "Side hustles", one: "side hustle" }, { key: "skill", label: "Skills", one: "skill" },
+];
 export function TopicsAdmin() {
   const [role, setRole] = useState<string | null>(null);
   const [topics, setTopics] = useState<AdminTopic[] | null>(null);
   const [note, setNote] = useState("");
-  const [kind, setKind] = useState<"business" | "skill">("business");
+  const [kind, setKind] = useState<Kind>("business");
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -52,20 +60,22 @@ export function TopicsAdmin() {
   return (
     <>
       <div role="group" aria-label="Kind" className="ui-actions">
-        <button type="button" aria-pressed={kind === "business"} onClick={() => setKind("business")}>Businesses</button>{" "}
-        <button type="button" aria-pressed={kind === "skill"} onClick={() => setKind("skill")}>Skills</button>
+        {KINDS.map((k) => <button key={k.key} type="button" aria-pressed={kind === k.key} onClick={() => setKind(k.key)}>{k.label}</button>)}
       </div>
       {message && <p role="status">{message}</p>}
       {note && <p className="small muted">{note}</p>}
       {topics === null ? <Loading shape="table" /> : (
         <div className="ui-table-wrap">
           <table>
-            <caption className="sr-only">{kind === "business" ? "Businesses" : "Skills"}</caption>
+            <caption className="sr-only">{KINDS.find((k) => k.key === kind)!.label}</caption>
             <thead><tr><th scope="col">Topic</th><th scope="col">Shown</th><th scope="col">Teens</th><th scope="col">Course (none, drafting, in review, published)</th><th scope="col">Demand (30 days / all)</th><th scope="col">Picked now</th><th scope="col">Order</th></tr></thead>
             <tbody>
               {list.map((t, i) => (
                 <tr key={t.id}>
-                  <td><EditTopic t={t} busy={busy} onSave={(name, blurb) => send("PATCH", `/api/v1/topics/${t.id}`, { name, blurb }, `${name}: saved.`)} /></td>
+                  <td>
+                    <EditTopic t={t} busy={busy} onSave={(name, blurb) => send("PATCH", `/api/v1/topics/${t.id}`, { name, blurb }, `${name}: saved.`)} />
+                    {t.kind !== "skill" && t.facts && <EditFacts t={t} busy={busy} onSave={(body) => send("PATCH", `/api/v1/topics/${t.id}`, body, `${t.name}: estimates saved.`)} />}
+                  </td>
                   <td><button type="button" className="link" disabled={busy} onClick={() => toggle(t, "published", t.published ? "unpublished" : "published")}>{t.published ? "Published" : "Unpublished"}<span className="sr-only">: {t.name}. Select to {t.published ? "unpublish" : "publish"}.</span></button></td>
                   <td><button type="button" className="link" disabled={busy} onClick={() => toggle(t, "teenHidden", t.teenHidden ? "shown to teens" : "hidden from teens")}>{t.teenHidden ? "Hidden from teens" : "Shown to teens"}<span className="sr-only">: {t.name}. Select to {t.teenHidden ? "show to teens" : "hide from teens"}.</span></button></td>
                   <td>
@@ -149,7 +159,65 @@ function EditTopic({ t, busy, onSave }: { t: AdminTopic; busy: boolean; onSave: 
   );
 }
 
-function AddTopic({ kind, busy, onAdd }: { kind: "business" | "skill"; busy: boolean; onAdd: (body: Record<string, unknown>) => Promise<boolean> }) {
+const sourcesText = (list: Source[]) => list.map((x) => `${x.title} | ${x.url}`).join("\n");
+const sourcesFrom = (text: string): Source[] => text.split("\n").map((l) => l.trim()).filter(Boolean).map((l) => {
+  const [title, url] = l.split("|").map((x) => x.trim());
+  return { title: title ?? "", url: url ?? "" };
+});
+
+/** C2: the card estimates, entered by the Owner (or staff) with sources and the date checked. Never invented. */
+function EditFacts({ t, busy, onSave }: { t: AdminTopic; busy: boolean; onSave: (body: Record<string, unknown>) => Promise<boolean> }) {
+  const f = t.facts!;
+  const [open, setOpen] = useState(false);
+  const [v, setV] = useState({
+    costLow: f.costLow?.toString() ?? "", costHigh: f.costHigh?.toString() ?? "", costItems: f.costItems.join("\n"), costSources: sourcesText(f.costSources), costCheckedOn: f.costCheckedOn ?? "",
+    outlookLabel: f.outlookLabel ?? "", outlookSources: sourcesText(f.outlookSources), outlookCheckedOn: f.outlookCheckedOn ?? "", difficulty: f.difficulty?.toString() ?? "", riskNotes: f.riskNotes ?? "",
+  });
+  const set = (k: keyof typeof v) => (e: { target: { value: string } }) => setV({ ...v, [k]: e.target.value });
+  const id = `facts-${t.id}`;
+  if (!open) return (
+    <div className="small">
+      {t.card?.cost ? `Cost ${t.card.cost.range}` : "Cost: Estimate coming"} · {t.card?.outlook ? `Outlook ${t.card.outlook.label}` : "Outlook: Estimate coming"}{" "}
+      <button type="button" className="link small" onClick={() => setOpen(true)}>Edit estimates<span className="sr-only">: {t.name}</span></button>
+    </div>
+  );
+  function submit(e: FormEvent) {
+    e.preventDefault();
+    const num = (x: string) => (x.trim() === "" ? null : Number(x));
+    void onSave({
+      costLow: num(v.costLow), costHigh: num(v.costHigh), costItems: v.costItems.split("\n").map((x) => x.trim()).filter(Boolean), costSources: sourcesFrom(v.costSources),
+      costCheckedOn: v.costCheckedOn || null, outlookLabel: v.outlookLabel || null, outlookSources: sourcesFrom(v.outlookSources), outlookCheckedOn: v.outlookCheckedOn || null,
+      difficulty: num(v.difficulty), riskNotes: v.riskNotes,
+    }).then((ok) => { if (ok) setOpen(false); });
+  }
+  return (
+    <form className="ui-form" aria-label={`Estimates for ${t.name}`} onSubmit={submit}>
+      <p className="small muted">Learners see &ldquo;Estimate, not a promise. Checked (date). Sources.&rdquo; A number shows only with its sources and date; otherwise &ldquo;Estimate coming&rdquo;. No income claims.</p>
+      <fieldset>
+        <legend>Cost to start (US dollars)</legend>
+        <label>Lowest <input inputMode="decimal" value={v.costLow} onChange={set("costLow")} size={8} /></label>{" "}
+        <label>Highest <input inputMode="decimal" value={v.costHigh} onChange={set("costHigh")} size={8} /></label>
+        <label>What it covers (one per line) <textarea id={`${id}-items`} rows={2} value={v.costItems} onChange={set("costItems")} /></label>
+        <label>Sources (one per line: title | https link) <textarea rows={2} value={v.costSources} onChange={set("costSources")} /></label>
+        <label>Checked on <input type="date" value={v.costCheckedOn} onChange={set("costCheckedOn")} /></label>
+      </fieldset>
+      <fieldset>
+        <legend>Market outlook</legend>
+        <label>Outlook <select value={v.outlookLabel} onChange={set("outlookLabel")}>
+          <option value="">Not set (Estimate coming)</option><option value="growing">Growing</option><option value="steady">Steady</option><option value="shrinking">Shrinking</option><option value="unclear">Unclear</option>
+        </select></label>
+        <label>Sources (one per line: title | https link) <textarea rows={2} value={v.outlookSources} onChange={set("outlookSources")} /></label>
+        <label>Checked on <input type="date" value={v.outlookCheckedOn} onChange={set("outlookCheckedOn")} /></label>
+      </fieldset>
+      <label>Difficulty (1 easiest to 5) <select value={v.difficulty} onChange={set("difficulty")}><option value="">Not set</option>{[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n}</option>)}</select></label>
+      <label>Risks <textarea rows={2} maxLength={600} value={v.riskNotes} onChange={set("riskNotes")} /></label>
+      <p className="ui-actions"><button type="submit" disabled={busy}>Save estimates</button> <button type="button" onClick={() => setOpen(false)}>Cancel</button></p>
+    </form>
+  );
+}
+
+function AddTopic({ kind, busy, onAdd }: { kind: Kind; busy: boolean; onAdd: (body: Record<string, unknown>) => Promise<boolean> }) {
+  const one = KINDS.find((k) => k.key === kind)!.one;
   const [name, setName] = useState("");
   const [blurb, setBlurb] = useState("");
   const [teenHidden, setTeenHidden] = useState(false);
@@ -158,8 +226,8 @@ function AddTopic({ kind, busy, onAdd }: { kind: "business" | "skill"; busy: boo
     if (await onAdd({ kind, name, blurb, teenHidden })) { setName(""); setBlurb(""); setTeenHidden(false); }
   }
   return (
-    <form onSubmit={submit} className="ui-block ui-form" aria-label={`Add a ${kind}`}>
-      <h2>Add a {kind}</h2>
+    <form onSubmit={submit} className="ui-block ui-form" aria-label={`Add a ${one}`}>
+      <h2>Add a {one}</h2>
       <p className="small muted">New topics start unpublished, so you can check them first. No income claims and no &ldquo;attorney approved&rdquo; wording: both are refused.</p>
       <label>Name <input value={name} onChange={(e) => setName(e.target.value)} maxLength={80} /></label>
       <label>Description <textarea value={blurb} onChange={(e) => setBlurb(e.target.value)} maxLength={300} rows={2} /></label>
@@ -169,9 +237,10 @@ function AddTopic({ kind, busy, onAdd }: { kind: "business" | "skill"; busy: boo
   );
 }
 
-/** The Owner only: a learner's locked business can be changed, or released so they choose again. Needs a reason; audited. */
+/** The Owner only: a learner's locked business or side hustle can be changed, or released so they choose again. Needs a reason; audited. */
 function LearnerBusiness() {
   const verified = useReverification(call);
+  const [which, setWhich] = useState<"business" | "side_hustle">("business");
   const [email, setEmail] = useState("");
   const [found, setFound] = useState<LearnerPicks | null>(null);
   const [slug, setSlug] = useState("");
@@ -186,16 +255,19 @@ function LearnerBusiness() {
   }
   async function change(next: string | null) {
     if (!found?.found) return;
-    const r = await verified("POST", "/api/v1/topics/learner", { accountId: found.accountId, slug: next, reason });
+    const r = await verified("POST", "/api/v1/topics/learner", { accountId: found.accountId, slug: next, reason, kind: which });
     const f = r && r._status === 200 ? learnerPicksFrom(r) : null;
     if (f) { setFound(f); setReason(""); }
-    setMessage(f ? (next ? "Business changed. Recorded in the audit log with your reason." : "Released: the learner can choose a business again. Recorded with your reason.") : r?.reason ?? "Nothing was changed.");
+    const label = which === "business" ? "business" : "side hustle";
+    setMessage(f ? (next ? `The ${label} was changed. Recorded in the audit log with your reason.` : `Released: the learner can choose a ${label} again. Recorded with your reason.`) : r?.reason ?? "Nothing was changed.");
   }
-  const current = found?.found ? found.picks.find((p) => p.kind === "business" && p.status === "active") : null;
+  const current = found?.found ? found.picks.find((p) => p.kind === which && p.status === "active") : null;
+  const sideNow = found?.found ? found.picks.find((p) => p.kind === "side_hustle" && p.status === "active") : null;
+  const options = found?.found ? (which === "business" ? found.businesses : found.sideHustles ?? []) : [];
   return (
     <section className="ui-block" aria-labelledby="learner-business-h">
-      <h2 id="learner-business-h">A learner&apos;s business (Owner only)</h2>
-      <p className="small muted">On Basic and the free trial a learner&apos;s business locks once chosen. Only you can change it, with a reason that goes in the audit log.</p>
+      <h2 id="learner-business-h">A learner&apos;s business or side hustle (Owner only)</h2>
+      <p className="small muted">On Basic and the free trial a learner&apos;s business and side hustle lock once chosen. Only you can change them, with a reason that goes in the audit log.</p>
       <form onSubmit={lookup} className="ui-actions">
         <label>Learner&apos;s email <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></label>{" "}
         <button type="submit" disabled={!email.includes("@")}>Look up</button>
@@ -203,14 +275,20 @@ function LearnerBusiness() {
       {message && <p role="status">{message}</p>}
       {found?.found && (
         <>
-          <p>{found.email}{found.teen ? " (teen)" : ""} · plan: {found.plan ?? "none"} · business: {current ? `${current.name}${current.locked ? " (locked)" : ""}` : "none"}</p>
+          <p>{found.email}{found.teen ? " (teen)" : ""} · plan: {found.plan ?? "none"}</p>
           <ul className="small">{found.picks.map((p) => <li key={p.slug}>{p.kind}: {p.name}, {p.status === "active" ? "active" : "set aside"}{p.locked ? ", locked" : ""} · picked {when(p.pickedAt)}</li>)}</ul>
+          <p className="small">Side hustle now: {sideNow ? `${sideNow.name}${sideNow.locked ? " (locked)" : ""}` : "none"}</p>
+          <fieldset className="ui-actions">
+            <legend>Which one to change</legend>
+            <label><input type="radio" name="which" checked={which === "business"} onChange={() => { setWhich("business"); setSlug(""); }} /> Business ({current && which === "business" ? current.name : found.picks.find((p) => p.kind === "business" && p.status === "active")?.name ?? "none"})</label>{" "}
+            <label><input type="radio" name="which" checked={which === "side_hustle"} onChange={() => { setWhich("side_hustle"); setSlug(""); }} /> Side hustle ({sideNow?.name ?? "none"})</label>
+          </fieldset>
           <p className="ui-actions">
-            <label>Change to <select value={slug} onChange={(e) => setSlug(e.target.value)}><option value="">Choose…</option>{found.businesses.map((b) => <option key={b.slug} value={b.slug}>{b.name}</option>)}</select></label>{" "}
+            <label>Change to <select value={slug} onChange={(e) => setSlug(e.target.value)}><option value="">Choose…</option>{options.map((b) => <option key={b.slug} value={b.slug}>{b.name}</option>)}</select></label>{" "}
             <label>Reason (recorded) <input value={reason} onChange={(e) => setReason(e.target.value)} size={30} maxLength={500} /></label>
           </p>
           <p className="ui-actions">
-            <button type="button" disabled={!slug || reason.trim().length < 5} onClick={() => void change(slug)}>Change business</button>{" "}
+            <button type="button" disabled={!slug || reason.trim().length < 5} onClick={() => void change(slug)}>Change {which === "business" ? "business" : "side hustle"}</button>{" "}
             <button type="button" disabled={!current || reason.trim().length < 5} onClick={() => void change(null)}>Release (let them choose again)</button>
           </p>
         </>

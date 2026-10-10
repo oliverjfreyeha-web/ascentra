@@ -1,5 +1,5 @@
 import { withCap } from "@/lib/auth";
-import { ok, refuse } from "@/lib/http";
+import { ok } from "@/lib/http";
 import { guardianRequests } from "@/lib/missions";
 
 /** C2: a Guardian's open mission requests from their teens. */

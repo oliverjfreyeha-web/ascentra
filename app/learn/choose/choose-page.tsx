@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from "react"
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { call } from "../../call";
-import { chooserFrom, type ChoiceTopic, type Chooser, type PathAnswers } from "../../picks-api";
+import { chooserFrom, type CardFacts, type ChoiceTopic, type Chooser, type MainPick, type PathAnswers } from "../../picks-api";
 import { Glass } from "../../ui/glass";
 import { Icon } from "../../ui/icons";
 import { Loading } from "../../ui/loading";
@@ -16,8 +16,12 @@ import "./choose.css";
  * the answer. Nothing here promises income.
  * R1: during sign-up (?onboarding=1) this is step 3 of 4; "Continue" goes back to /welcome, where the server says
  * what comes next (the plan, for an adult; the learner home, for a teen).
+ * C2: a side hustle step (optional, "Skip for now") between the business and the skills. A business and a side hustle
+ * are each one at a time; cards show the Owner's cost and outlook estimates with their sources and date, or "Estimate
+ * coming". A skill the learner's business course already teaches says so (a note, never a block).
  */
-const STEPS = ["Your answers", "Your business", "Your skills"] as const;
+const STEPS = ["Your answers", "Your business", "Your side hustle", "Your skills"] as const;
+export const NO_PROMISE = "Results vary. Nothing here promises income.";
 
 export function ChoosePage() {
   const onboarding = useSearchParams().get("onboarding") === "1";
@@ -75,8 +79,9 @@ export function ChoosePage() {
       <Glass as="section" className="choose__panel" aria-labelledby="choose-step">
         <h2 id="choose-step" ref={head} tabIndex={-1}>{step + 1}. {STEPS[step]}</h2>
         {step === 0 && <Questions data={data} busy={busy} onSave={async (a) => { if (await send("PUT", "/api/v1/learn/picks/answers", a, "Saved. Here are your best matches.")) setStep(1); }} />}
-        {step === 1 && <Businesses data={data} busy={busy} onPick={(t) => void send("POST", "/api/v1/learn/picks", { slug: t.slug }, `Picked: ${t.name}.`)} onNext={() => setStep(2)} />}
-        {step === 2 && <Skills data={data} busy={busy} onboarding={onboarding} onContinue={() => router.push("/welcome")}
+        {step === 1 && <MainPicker kind="business" data={data} busy={busy} onPick={(t) => void send("POST", "/api/v1/learn/picks", { slug: t.slug }, `Picked: ${t.name}.`)} onNext={() => setStep(2)} />}
+        {step === 2 && <MainPicker kind="side_hustle" data={data} busy={busy} onPick={(t) => void send("POST", "/api/v1/learn/picks", { slug: t.slug }, `Picked: ${t.name}.`)} onNext={() => setStep(3)} />}
+        {step === 3 && <Skills data={data} busy={busy} onboarding={onboarding} onContinue={() => router.push("/welcome")}
           onPick={(t) => void send("POST", "/api/v1/learn/picks", { slug: t.slug }, `Picked: ${t.name}.`)}
           onPause={(t) => void send("POST", "/api/v1/learn/picks/pause", { slug: t.slug }, `Set aside: ${t.name}. It's kept; you can pick it again.`)} />}
       </Glass>
@@ -126,21 +131,54 @@ function Badges({ t }: { t: ChoiceTopic }) {
   );
 }
 
-function Businesses({ data, busy, onPick, onNext }: { data: Chooser; busy: boolean; onPick: (t: ChoiceTopic) => void; onNext: () => void }) {
+/** C2: the cost to start and the market outlook, as the Owner entered them with sources and a date, or "Estimate coming". */
+export function Facts({ f, name }: { f: CardFacts; name: string }) {
+  const sources = [...(f.cost?.sources ?? []), ...(f.outlook?.sources ?? [])];
+  return (
+    <dl className="choose__facts" aria-label={`Estimates for ${name}`}>
+      <div><dt>Cost to start</dt><dd>{f.cost ? <>{f.cost.range}{f.cost.items.length > 0 && <span className="muted"> ({f.cost.items.join(", ")})</span>}</> : f.empty}</dd></div>
+      <div><dt>Outlook</dt><dd>{f.outlook ? f.outlook.label : f.empty}</dd></div>
+      {f.difficulty !== null && <div><dt>Difficulty</dt><dd>{f.difficulty} of 5</dd></div>}
+      {f.riskNotes && <div><dt>Risks</dt><dd>{f.riskNotes}</dd></div>}
+      {(f.cost || f.outlook) && (
+        <div className="choose__facts-note">
+          <dt className="sr-only">About these estimates</dt>
+          <dd>
+            {f.note} Checked {[f.cost?.checkedOn, f.outlook?.checkedOn].filter(Boolean).sort()[0]}.{" "}
+            {sources.length > 0 && <>Sources: {sources.map((s, i) => (
+              <span key={s.url + i}>{i > 0 && ", "}<a href={s.url} target="_blank" rel="noopener noreferrer">{s.title}<span className="sr-only"> (opens in a new tab)</span></a></span>
+            ))}.</>}
+          </dd>
+        </div>
+      )}
+    </dl>
+  );
+}
+
+const MAIN = {
+  business: { one: "business", title: "Your business", all: "Every business, all online and remote.", none: null },
+  side_hustle: { one: "side hustle", title: "Your side hustle", all: "Every side hustle, all online. Optional: you can skip this and add one later.", none: "No side hustle yet. It's optional." },
+} as const;
+
+function MainPicker({ kind, data, busy, onPick, onNext }: { kind: "business" | "side_hustle"; data: Chooser; busy: boolean; onPick: (t: ChoiceTopic) => void; onNext: () => void }) {
   const [all, setAll] = useState(false);
-  const best = data.businesses.filter((b) => b.best);
-  const list = all || !best.length ? data.businesses : best;
-  const current = data.business;
+  const m = MAIN[kind];
+  const topics = (kind === "business" ? data.businesses : data.sideHustles) ?? [];
+  const current: MainPick | null = (kind === "business" ? data.business : data.sideHustle) ?? null;
+  const best = topics.filter((b) => b.best);
+  const list = all || !best.length ? topics : best;
+  const noteId = `choose-lock-note-${kind}`;
   return (
     <>
-      {current && (
+      <p className="choose__counter" aria-live="polite"><strong>{current ? 1 : 0} of 1 {m.one} picked</strong>{kind === "side_hustle" && <span className="small muted"> (optional)</span>}</p>
+      {current ? (
         <p className="choose__current">
-          Your business: <strong>{current.name}</strong>
+          {kind === "business" ? "Your business" : "Your side hustle"}: <strong>{current.name}</strong>
           {current.locked && <span className="choose__lock"><Icon name="lock" size={16} /> {current.lockNote}</span>}
         </p>
-      )}
-      <p className="small muted">{best.length && !all ? "Your 5 best matches, from your answers." : "Every business, all online and remote."}</p>
-      <ul className="choose__grid" aria-label={all || !best.length ? "All businesses" : "Best matches"}>
+      ) : m.none && <p className="small muted">{m.none}</p>}
+      <p className="small muted">{best.length && !all ? "Your 5 best matches, from your answers." : m.all} {NO_PROMISE}</p>
+      <ul className="choose__grid" aria-label={all || !best.length ? `All ${m.one === "business" ? "businesses" : "side hustles"}` : "Best matches"}>
         {list.map((t) => {
           const lockedOther = !!current?.locked && !t.picked;
           return (
@@ -148,12 +186,13 @@ function Businesses({ data, busy, onPick, onNext }: { data: Chooser; busy: boole
               <h3>{t.name}</h3>
               <p className="small">{t.blurb}</p>
               {t.why.length > 0 && <p className="small muted">Why: {t.why.join(" ")}</p>}
+              {t.facts && <Facts f={t.facts} name={t.name} />}
               <Badges t={t} />
               {t.picked ? (
-                <p className="choose__picked">{t.locked ? <><Icon name="lock" size={16} /> Your business. {current?.lockNote}</> : "Your business"}</p>
+                <p className="choose__picked">{t.locked ? <><Icon name="lock" size={16} /> {m.title}. {current?.lockNote}</> : m.title}</p>
               ) : (
                 <button type="button" disabled={busy || lockedOther} onClick={() => onPick(t)}
-                  aria-describedby={lockedOther ? "choose-lock-note" : undefined}>
+                  aria-describedby={lockedOther ? noteId : undefined}>
                   {current && !current.locked ? `Switch to ${t.name}` : `Pick ${t.name}`}
                 </button>
               )}
@@ -161,10 +200,12 @@ function Businesses({ data, busy, onPick, onNext }: { data: Chooser; busy: boole
           );
         })}
       </ul>
-      {current?.locked && <p id="choose-lock-note" className="small muted"><Icon name="lock" size={16} /> {current.lockNote}</p>}
+      {current?.locked && <p id={noteId} className="small muted"><Icon name="lock" size={16} /> {current.lockNote}</p>}
       <p className="ui-actions">
-        {best.length > 0 && <button type="button" onClick={() => setAll(!all)} aria-expanded={all}>{all ? "Show best matches" : `See all ${data.businesses.length}`}</button>}
-        <button type="button" className="primary" onClick={onNext}>Next: skills</button>
+        {best.length > 0 && <button type="button" onClick={() => setAll(!all)} aria-expanded={all}>{all ? "Show best matches" : `See all ${topics.length}`}</button>}
+        <button type="button" className="primary" onClick={onNext}>
+          {kind === "business" ? "Next: side hustle" : current ? "Next: skills" : "Skip for now"}
+        </button>
       </p>
     </>
   );
@@ -183,6 +224,7 @@ function Skills({ data, busy, onPick, onPause, onboarding, onContinue }: {
           <li key={t.slug} className="choose__card" data-picked={t.picked || undefined}>
             <h3>{t.name}</h3>
             <p className="small">{t.blurb}</p>
+            {t.overlapNote && <p className="small choose__overlap" role="note">{t.overlapNote}</p>}
             <Badges t={t} />
             {t.picked
               ? <button type="button" disabled={busy} onClick={() => onPause(t)}>Set aside {t.name}</button>
@@ -192,8 +234,9 @@ function Skills({ data, busy, onPick, onPause, onboarding, onContinue }: {
       </ul>
       {onboarding ? (
         <p className="ui-actions">
-          <button type="button" className="primary" disabled={busy || !data.business} onClick={onContinue} aria-describedby={data.business ? undefined : "choose-need-business"}>Continue</button>
-          {!data.business && <span id="choose-need-business" className="small muted">Pick a business first (step 2). Skills are optional.</span>}
+          <button type="button" className="primary" disabled={busy || !(data.business || data.sideHustle)} onClick={onContinue}
+            aria-describedby={data.business || data.sideHustle ? undefined : "choose-need-business"}>Continue</button>
+          {!(data.business || data.sideHustle) && <span id="choose-need-business" className="small muted">Pick a business (step 2) or a side hustle (step 3) first. Skills are optional.</span>}
         </p>
       ) : <p className="small"><Link href="/learn">Back to Learn</Link></p>}
     </>

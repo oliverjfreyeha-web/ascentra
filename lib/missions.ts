@@ -55,7 +55,7 @@ export async function missionGate(actor: Pick<Account, "id" | "isMinor">, missio
 }
 
 /** A contact approval is used once. */
-export async function useContactApproval(teenId: string, academyId: string, itemId: string) {
+export async function spendContactApproval(teenId: string, academyId: string, itemId: string) {
   await getDb().from("mission_approvals").update({ status: "used", used_at: new Date().toISOString() })
     .eq("teen_account_id", teenId).eq("academy_id", academyId).eq("scope", "contact").eq("item_id", itemId).eq("status", "approved");
 }

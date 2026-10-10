@@ -1,5 +1,5 @@
 import { withCap } from "@/lib/auth";
-import { ok, refuse } from "@/lib/http";
+import { ok } from "@/lib/http";
 import { leaderboard } from "@/lib/leaderboard";
 
 /** C2: the leaderboard (nickname, rank and streak only). Teens see practice rivals (simulated) and their own row. */
