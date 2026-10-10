@@ -41,7 +41,7 @@ describe("the L7 bundle on the live L6 database", () => {
   afterAll(() => db.drop());
 
   it("applies in one go; verify.sql finds L7 in place (and L8 not yet applied)", async () => {
-    expect((await q(readSql("db/verify.sql"))).rows[0].table_name).toMatch(/^PROBLEM: 7 missing.*L7 applied, L8 NOT applied, C1 NOT applied$/);
+    expect((await q(readSql("db/verify.sql"))).rows[0].table_name).toMatch(/^PROBLEM: 16 missing.*L7 applied, L8 NOT applied, C1 NOT applied, C2 NOT applied$/);
   });
 
   it("the interview is answered in full or skipped, with short list values only", async () => {

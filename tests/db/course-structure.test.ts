@@ -57,8 +57,8 @@ describe("the C1 bundle on the live L8 database", () => {
   });
   afterAll(() => db.drop());
 
-  it("applies in one go; verify.sql is OK with 73 tables", async () => {
-    expect((await q(readSql("db/verify.sql"))).rows[0].table_name).toMatch(/^OK: all 73 tables.*C1 course structure and Owner review are in place$/);
+  it("applies in one go; verify.sql finds C1 in place (and C2 not yet applied)", async () => {
+    expect((await q(readSql("db/verify.sql"))).rows[0].table_name).toMatch(/^PROBLEM: 9 missing.*L8 applied, C1 applied, C2 NOT applied$/);
   });
 
   it("seeds the seven learning boosters, each carried by existing activity types", async () => {
