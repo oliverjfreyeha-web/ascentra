@@ -49,7 +49,9 @@ const pick = (slug: string) => call(picksRoute, "POST", "/api/v1/learn/picks", "
 describe("L8 on the real database", () => {
   it("shows the seeded topics and saves the five answers on the profile", async () => {
     const c = chooserFrom((await call(picksRoute, "GET", "/api/v1/learn/picks", "learner")).body)!;
-    expect(c.businesses).toHaveLength(24);
+    // C2 moved 12 of the 24 seeded businesses to side hustles (db/migrations/0021_progress_and_paths.sql).
+    expect(c.businesses).toHaveLength(12);
+    expect(c.sideHustles).toHaveLength(12);
     expect(c.skills).toHaveLength(16);
     expect(c.skillCounter).toBe("0 of 3 skills used");
     const r = await call(answersRoute, "PUT", "/api/v1/learn/picks/answers", "learner", { goal: "start", hours: 10, experience: "some", style: "build", camera: "yes" });
@@ -63,22 +65,22 @@ describe("L8 on the real database", () => {
     expect(results.filter((r) => r.status === 201)).toHaveLength(3);
     expect(results.filter((r) => r.status === 409)).toHaveLength(3);
     expect((await q("select count(*)::int as n from public.learner_picks where user_id = $1 and kind = 'skill' and status = 'active'", [ROLE_ID.learner])).rows[0].n).toBe(3);
-    expect((await pick("website-design")).status).toBe(201);
-    expect(await pick("newsletter")).toMatchObject({ status: 403, body: { reason: "Your business is locked. Only the Owner can change this." } });
+    expect((await pick("seo-services")).status).toBe(201);
+    expect(await pick("graphic-design")).toMatchObject({ status: 403, body: { reason: "Your business is locked. Only the Owner can change this." } });
   });
 
   it("the Owner changes the business with a reason; topics admin shows demand; the audit chain verifies", async () => {
     const found = learnerPicksFrom((await call(learnerRoute, "GET", "/api/v1/topics/learner?email=learner@example.com", "owner")).body)!;
-    expect(found.found && found.picks.find((p) => p.kind === "business")).toMatchObject({ slug: "website-design", locked: true });
-    const r = await call(learnerRoute, "POST", "/api/v1/topics/learner", "owner", { accountId: ROLE_ID.learner, slug: "newsletter", reason: "Learner asked to switch" });
+    expect(found.found && found.picks.find((p) => p.kind === "business")).toMatchObject({ slug: "seo-services", locked: true });
+    const r = await call(learnerRoute, "POST", "/api/v1/topics/learner", "owner", { accountId: ROLE_ID.learner, slug: "graphic-design", reason: "Learner asked to switch" });
     expect(r.status).toBe(200);
     const c = chooserFrom((await call(picksRoute, "GET", "/api/v1/learn/picks", "learner")).body)!;
-    expect(c.business).toMatchObject({ slug: "newsletter", locked: true });
+    expect(c.business).toMatchObject({ slug: "graphic-design", locked: true });
     const admin = adminTopicsFrom((await call(topicsRoute, "GET", "/api/v1/topics", "courseAdmin")).body)!;
-    expect(admin.topics.find((t) => t.slug === "website-design")).toMatchObject({ demandAll: 1, activePicks: 0 });
+    expect(admin.topics.find((t) => t.slug === "seo-services")).toMatchObject({ demandAll: 1, activePicks: 0 });
     expect(admin.topics.reduce((n, t) => n + t.demandAll, 0)).toBe(4);
     const e = (await q("select reason, previous_value, new_value from public.audit_events where action = 'picks.override' and result = 'completed'")).rows;
-    expect(e).toEqual([{ reason: "Learner asked to switch", previous_value: "Website design and building for businesses (now paused, kept)", new_value: "Newsletter business (locked)" }]);
+    expect(e).toEqual([{ reason: "Learner asked to switch", previous_value: "SEO services (now paused, kept)", new_value: "Freelance graphic design (locked)" }]);
     expect((await q("select ok from public.audit_verify_chain()")).rows[0].ok).toBe(true);
   });
 });

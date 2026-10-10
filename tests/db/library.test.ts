@@ -34,7 +34,7 @@ describe("the L1 bundle on the live B4 database", () => {
 
   it("applies in one go; pgvector is on; verify.sql says L1 is applied (L2 not yet)", async () => {
     expect((await q("select extname from pg_extension where extname = 'vector'")).rows).toHaveLength(1);
-    expect((await q(readSql("db/verify.sql"))).rows[0].table_name).toMatch(/^PROBLEM: 23 missing.*L1 applied, L2 NOT applied, L3 NOT applied, L4 NOT applied, L5 NOT applied, L6 NOT applied, L7 NOT applied, L8 NOT applied, C1 NOT applied$/);
+    expect((await q(readSql("db/verify.sql"))).rows[0].table_name).toMatch(/^PROBLEM: 32 missing.*L1 applied, L2 NOT applied, L3 NOT applied, L4 NOT applied, L5 NOT applied, L6 NOT applied, L7 NOT applied, L8 NOT applied, C1 NOT applied, C2 NOT applied$/);
   });
 
   it("only the Owner approves an owner-supplied source; a Reviewer approves the others; a learner never", async () => {

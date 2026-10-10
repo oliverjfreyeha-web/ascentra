@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth, useClerk } from "@clerk/nextjs";
 import { call } from "../call";
+import { US_STATES } from "@/lib/progress/config";
 import { SignOut } from "../sign-out";
 import { BillingPanel } from "../account/billing-panel";
 import { loadFailure } from "./load-failure";
@@ -136,6 +137,8 @@ function DobStep({ onDone, onRefused }: { onDone: (s: State) => void; onRefused:
   const [y, setY] = useState("");
   const [us, setUs] = useState(false);
   const [notUs, setNotUs] = useState(false);
+  // C2: the learner's state, private, asked right after the date of birth. Optional here; it can be added in Account.
+  const [usState, setUsState] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const usBox = useRef<HTMLInputElement>(null);
@@ -154,7 +157,9 @@ function DobStep({ onDone, onRefused }: { onDone: (s: State) => void; onRefused:
       return;
     }
     setBusy(true);
-    const r = await call("POST", "/api/registration", { dateOfBirth: `${pad(y, 4)}-${pad(m, 2)}-${pad(d, 2)}`, usResident: us });
+    let timeZone: string | undefined;
+    try { timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone; } catch { timeZone = undefined; }
+    const r = await call("POST", "/api/registration", { dateOfBirth: `${pad(y, 4)}-${pad(m, 2)}-${pad(d, 2)}`, usResident: us, ...(usState ? { usState } : {}), ...(timeZone ? { timeZone } : {}) });
     setBusy(false);
     if (r._status === 403 && r.error === "not_eligible") return onRefused();
     if (r._status === 200 || r._status === 201) return onDone(r as unknown as State);
@@ -188,6 +193,16 @@ function DobStep({ onDone, onRefused }: { onDone: (s: State) => void; onRefused:
           <input ref={usBox} type="checkbox" checked={us} onChange={(e) => { setUs(e.target.checked); setNotUs(false); if (e.target.checked) setError(null); }}
             aria-describedby={error === US_CONFIRM ? "dob-error" : undefined} aria-invalid={error === US_CONFIRM} /> I live in the United States
         </label>
+      </p>
+      <p>
+        <label className="ui-stacked">
+          Your state (private){" "}
+          <select value={usState} onChange={(e) => setUsState(e.target.value)} aria-describedby="dob-state-hint">
+            <option value="">Choose…</option>
+            {Object.entries(US_STATES).map(([code, name]) => <option key={code} value={code}>{name}</option>)}
+          </select>
+        </label>
+        <span id="dob-state-hint" className="ui-hint">Only you, ASCENTRA&apos;s systems and authorized staff see it. It decides which real-world practice missions are open to teens. You can add or change it later in Account.</span>
       </p>
       {notUs && <p role="alert" className="notice">{US_ONLY_TEXT}</p>}
       {error && <p role="alert" id="dob-error">{error}</p>}

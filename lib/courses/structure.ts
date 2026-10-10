@@ -6,8 +6,23 @@
  */
 import { MIN_MODULE_TYPES, type ItemType } from "@/lib/activities/types";
 
-/** A course has 5 or 6 modules, each harder than the last. */
-export const MODULE_COUNT = { min: 5, max: 6 } as const;
+/**
+ * C2: course size tiers. The module count fits the tier; the study hours are a recommended pace only (no time lock).
+ * Modules stay about one week each: more depth means more lessons and tasks in a module, not more weeks. This replaces
+ * C1's "5 or 6" rule; Standard is that rule, and the default.
+ */
+export const SIZE_TIERS = {
+  compact: { label: "Compact", modules: { min: 3, max: 4 }, hoursPerWeek: { min: 4, max: 6 } },
+  standard: { label: "Standard", modules: { min: 5, max: 6 }, hoursPerWeek: { min: 5, max: 8 } },
+  large: { label: "Large", modules: { min: 7, max: 9 }, hoursPerWeek: { min: 6, max: 10 } },
+} as const;
+export type SizeTier = keyof typeof SIZE_TIERS;
+export const SIZE_TIER_KEYS = Object.keys(SIZE_TIERS) as SizeTier[];
+export const isSizeTier = (v: unknown): v is SizeTier => typeof v === "string" && (SIZE_TIER_KEYS as string[]).includes(v);
+export const studyHours = (tier: SizeTier) => `${SIZE_TIERS[tier].hoursPerWeek.min} to ${SIZE_TIERS[tier].hoursPerWeek.max} hours a week (recommended)`;
+
+/** A Standard course has 5 or 6 modules, each harder than the last (C1's rule, kept as the default tier). */
+export const MODULE_COUNT = SIZE_TIERS.standard.modules;
 /** Each module is designed for about one week, in depth. A recommendation only: nothing is time-locked. */
 export const RECOMMENDED_PACE = "About 1 week";
 
@@ -90,8 +105,10 @@ export function clampRecipe(input: unknown, activeBoosters: readonly string[]): 
   return out;
 }
 
-export function checkModuleCount(n: number): string | null {
-  return n >= MODULE_COUNT.min && n <= MODULE_COUNT.max ? null : `A course has ${MODULE_COUNT.min} or ${MODULE_COUNT.max} modules (this one has ${n}).`;
+export function checkModuleCount(n: number, tier?: SizeTier | null): string | null {
+  if (!tier) return n >= MODULE_COUNT.min && n <= MODULE_COUNT.max ? null : `A course has ${MODULE_COUNT.min} or ${MODULE_COUNT.max} modules (this one has ${n}).`;
+  const { min, max } = SIZE_TIERS[tier].modules;
+  return n >= min && n <= max ? null : `A ${SIZE_TIERS[tier].label} course has ${min} to ${max} modules (this one has ${n}).`;
 }
 
 export type Coverage = {

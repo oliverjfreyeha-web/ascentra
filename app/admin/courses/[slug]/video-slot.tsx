@@ -3,6 +3,7 @@
 import { useRef, useState, type DragEvent } from "react";
 import { call, when, type ApiResult } from "../../../call";
 import { courseApi, MIN_TRANSCRIPT_CHARS, SLOT_STATUS, VIDEO_MAX_BYTES, mb, tooLarge, uploadStartFrom, type Brief, type SlotView } from "../../../studio-api";
+import { LabelEditor } from "./course-c2";
 
 type Act = (run: () => Promise<ApiResult>, okText: (r: ApiResult) => string) => Promise<boolean>;
 const lines = (s: string) => s.split("\n").map((x) => x.trim()).filter(Boolean);
@@ -29,7 +30,7 @@ function sendFile(url: string, file: File, onProgress: (pct: number) => void): P
  * (mp4 or webm, checked by content on the server, 50 MB at most), the transcript, and the Owner's approval. Replacing a
  * video keeps the old record; the list below shows every upload.
  */
-export function VideoSlotEditor({ slug, slot: s, owner, busy, act }: { slug: string; slot: SlotView; owner: boolean; busy: boolean; act: Act }) {
+export function VideoSlotEditor({ slug, slot: s, owner, busy, act, editable = false }: { slug: string; slot: SlotView; owner: boolean; busy: boolean; act: Act; editable?: boolean }) {
   const base = `${courseApi(slug)}/videos/${s.id}`;
   const [copied, setCopied] = useState<string | null>(null);
   const [transcript, setTranscript] = useState(s.transcript);
@@ -74,6 +75,7 @@ export function VideoSlotEditor({ slug, slot: s, owner, busy, act }: { slug: str
     <section className="studio__slot" aria-labelledby={titleId}>
       <h5 id={titleId}>{s.title} <span className={`studio__badge${s.status === "approved" ? " is-ok" : ""}`}>{SLOT_STATUS[s.status]}</span></h5>
       {s.status === "approved" && s.approvedAt && <p className="muted small">Approved by the Owner on {new Date(s.approvedAt).toLocaleDateString()}.</p>}
+      <LabelEditor url={base} method="PATCH" current={{ importance: s.importance ?? null, notebookNote: s.notebookNote ?? null }} editable={owner && editable} busy={busy} act={act} mission={false} name={s.title} />
       {s.file && <p className="muted small">Video: {s.file.name ?? "uploaded file"} · {mb(s.file.size)} · uploaded {when(s.file.uploadedAt)}</p>}
 
       <details>

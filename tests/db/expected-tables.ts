@@ -27,4 +27,7 @@ export const EXPECTED_TABLES = [
   "topics", "learner_picks", "topic_interest",
   // C1
   "booster_types", "video_slots", "video_uploads", "module_reviews",
+  // C2
+  "course_notice_views", "course_capstones", "item_completions", "trial_bonuses", "notebook_entries",
+  "account_regions", "mission_state_allowlist", "mission_approvals", "community_settings",
 ].sort();

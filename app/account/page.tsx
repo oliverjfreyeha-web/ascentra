@@ -5,6 +5,7 @@ import { BillingPanel } from "./billing-panel";
 import { DevicesPanel } from "./devices-panel";
 import { PrivacyCenter } from "./privacy-center";
 import { AppearancePanel } from "./appearance-panel";
+import { ProgressSettings } from "./progress-settings";
 import { ProtectTip } from "../ui/protect-tip";
 import { SiteFooter } from "../ui/site-footer";
 import { Reveal } from "../ui/reveal";
@@ -24,6 +25,7 @@ export default function AccountPage() {
       <BillingPanel />
       <PrivacyCenter />
       <div className="ui-block"><DevicesPanel /></div>
+      <ProgressSettings />
       <section className="ui-block" id="appearance" aria-labelledby="appearance-h"><AppearancePanel /></section>
       <section className="ui-block ui-clerk" id="sign-in-methods" aria-labelledby="sign-in-methods-h">
         <h2 id="sign-in-methods-h">Sign-in methods</h2>

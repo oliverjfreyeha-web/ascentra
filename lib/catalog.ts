@@ -42,7 +42,7 @@ export const WAITING_LABEL: Record<string, string> = {
 type Job = {
   id: string; batch_id: string; topic_slug: string; topic_name: string; audience_level: string; status: string; waiting_for: string | null; note: string | null;
   research_run_id: string | null; blueprint_id: string | null; academy_id: string | null; estimate_usd: number | string; queued_by_account_id: string;
-  queued_at: string; last_step_at: string | null; finished_at: string | null; structure?: number;
+  queued_at: string; last_step_at: string | null; finished_at: string | null; structure?: number; size_tier?: string | null;
 };
 type Topic = { slug: string; name: string; outcome: string | null; audience_level: string; origin: string };
 type CourseInfo = { exists: boolean; published: boolean; stale: boolean; inReview: boolean; drafting: boolean };
@@ -181,6 +181,8 @@ export async function queueTopics(actor: Account, body: Record<string, unknown>)
   const { error } = await getDb().from("catalog_jobs").insert(chosen.map((t) => ({
     batch_id: batch, topic_slug: t.slug, topic_name: t.name, audience_level: t.audience, estimate_usd: per, queued_by_account_id: actor.id, status: "queued",
     structure: body.structure === 2 ? 2 : 1,
+    // C2: the size tier the Blueprint is built for (only sent with a v2 course).
+    ...(body.structure === 2 && typeof body.sizeTier === "string" && ["compact", "standard", "large"].includes(body.sizeTier) ? { size_tier: body.sizeTier } : {}),
   })));
   if (error?.code === "23505") return refused(409, "One of these topics was queued at the same moment. Reload.", A);
   if (error) throw new Error(`catalog queue failed: ${error.message}`);
@@ -293,7 +295,7 @@ async function step(job: Job, actor: Account): Promise<boolean> {
     const room = await capRoom("blueprint");
     if (room) return held(room);
     const approved = ((await db.from("sources").select("id").eq("research_run_id", job.research_run_id ?? "").eq("status", "approved")).data ?? []) as { id: string }[];
-    const r = await generateBlueprint(actor, job.topic_slug, { title: job.topic_name, topic: job.topic_name, audience: job.audience_level, sourceIds: approved.slice(0, 12).map((s) => s.id), researchRunIds: [job.research_run_id], ...(job.structure === 2 ? { structure: 2 } : {}) });
+    const r = await generateBlueprint(actor, job.topic_slug, { title: job.topic_name, topic: job.topic_name, audience: job.audience_level, sourceIds: approved.slice(0, 12).map((s) => s.id), researchRunIds: [job.research_run_id], ...(job.structure === 2 ? { structure: 2, ...(job.size_tier ? { sizeTier: job.size_tier } : {}) } : {}) });
     await recordAudit({ actor: batchActor(actor), ...r.event, requestId: `catalog:${job.id}`, reason: "Overnight batch run" });
     if (!r.ok) return r.status === 429 ? held(`the next night: ${r.reason}`) : failed(`The Blueprint couldn't be drafted: ${r.reason}`);
     const academy = (await db.from("academies").select("id").eq("slug", job.topic_slug).maybeSingle()).data as { id: string } | null;

@@ -8,6 +8,8 @@ import { courseApi, studioFrom, type Studio } from "../../../studio-api";
 import { can } from "../../../courses-api";
 import { Loading } from "../../../ui/loading";
 import { ModuleEditor } from "./module-editor";
+import { CapstoneEditor, NoticesEditor, TierPicker, type StudioC2 } from "./course-c2";
+import { SIZE_TIERS } from "@/lib/courses/structure";
 
 /**
  * C1: the course studio, for a course built with the module recipe. The Owner's editor and review in one place: every
@@ -17,7 +19,7 @@ import { ModuleEditor } from "./module-editor";
  */
 export function CourseStudio({ slug }: { slug: string }) {
   const [role, setRole] = useState<string | null>(null);
-  const [studio, setStudio] = useState<Studio | null>(null);
+  const [studio, setStudio] = useState<StudioC2 | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -27,7 +29,7 @@ export function CourseStudio({ slug }: { slug: string }) {
 
   const load = useCallback(async () => {
     const r = await call("GET", `${base}/studio`);
-    const parsed = r._status === 200 ? studioFrom(r) : null;
+    const parsed = r._status === 200 ? (studioFrom(r) as StudioC2 | null) : null;
     setStudio(parsed);
     setFailed(parsed ? null : r.reason ?? "Couldn't load the course studio.");
   }, [base]);
@@ -73,6 +75,8 @@ export function CourseStudio({ slug }: { slug: string }) {
         </div>
       )}
 
+      <TierPicker slug={slug} current={v.sizeTier ?? null} modules={studio.modules.length} editable={editable} busy={busy} act={act} />
+
       <IncomeCheck findings={studio.findings} />
 
       <div className="studio__publish">
@@ -100,6 +104,16 @@ export function CourseStudio({ slug }: { slug: string }) {
         ) : <p className="muted small">Only the Owner publishes or unpublishes a course, after approving every module.</p>}
       </div>
 
+      {v.sizeTier && (
+        <details className="studio__c2">
+          <summary>Capstone and course notices</summary>
+          <h3>Capstone</h3>
+          <CapstoneEditor slug={slug} capstone={studio.capstone ?? null} business={!!studio.business} editable={editable} busy={busy} act={act} />
+          <h3>Notices</h3>
+          <NoticesEditor slug={slug} notices={studio.notices ?? { license: null, software: null }} editable={editable} busy={busy} act={act} />
+        </details>
+      )}
+
       <ol className="studio__modules">
         {studio.modules.map((m, i) => (
           <li key={m.id}>
@@ -114,7 +128,7 @@ export function CourseStudio({ slug }: { slug: string }) {
           </li>
         ))}
       </ol>
-      {editable && studio.modules.length < 6 && <AddModule busy={busy} onAdd={(title) => act(() => call("POST", `${base}/modules`, { title }), () => `Added the module "${title}".`)} />}
+      {editable && studio.modules.length < (v.sizeTier ? SIZE_TIERS[v.sizeTier].modules.max : 6) && <AddModule busy={busy} onAdd={(title) => act(() => call("POST", `${base}/modules`, { title }), () => `Added the module "${title}".`)} />}
     </section>
   );
 }

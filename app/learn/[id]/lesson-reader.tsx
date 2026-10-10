@@ -11,6 +11,7 @@ import { learnerLessonFrom, type LearnerLesson } from "../../courses-api";
 import { Loading } from "../../ui/loading";
 import { lessonVideosFrom, reviewLabel, type LessonVideo } from "../../studio-api";
 import { LessonVideos } from "./lesson-videos";
+import { lessonProgressFrom, type LessonProgress } from "../../progress-api";
 
 /** L2: one published lesson, with its citations and "last verified" date. Progress records the version read. */
 export function LessonReader({ id }: { id: string }) {
@@ -20,6 +21,9 @@ export function LessonReader({ id }: { id: string }) {
   const [message, setMessage] = useState<string | null>(null);
   const [practice, setPractice] = useState<LessonPractice | null>(null);
   const [videos, setVideos] = useState<LessonVideo[]>([]);
+  // C2: labels, open and done, and the course notices (each shown once: kept here until the page is left).
+  const [extras, setExtras] = useState<LessonProgress | null>(null);
+  const [notices, setNotices] = useState<LessonProgress["notices"]>([]);
   const url = `/api/v1/learn/lessons/${encodeURIComponent(id)}`;
   const load = useCallback(async () => {
     const r = await call("GET", current ? `${url}?view=current` : url);
@@ -27,6 +31,9 @@ export function LessonReader({ id }: { id: string }) {
     setData(l);
     setPractice(r._status === 200 ? lessonActivitiesFrom(r) : null);
     setVideos(r._status === 200 ? lessonVideosFrom(r) : []);
+    const x = r._status === 200 ? lessonProgressFrom(r.progress2) : null;
+    setExtras(x);
+    if (x?.notices.length) setNotices((n) => [...n, ...x.notices]);
     setFailed(l ? null : r.reason ?? "Couldn't load this lesson.");
   }, [url, current]);
   useEffect(() => {
@@ -76,7 +83,17 @@ export function LessonReader({ id }: { id: string }) {
           )}
         </p>
       </header>
-      <LessonVideos videos={videos} />
+      {notices.length > 0 && (
+        <aside aria-label="Notices for this course" className="ui-lesson-notices">
+          {notices.map((n) => (
+            <p key={n.kind} className="notice" role="note"><strong>{n.kind === "license" ? "Business license" : "Software and AI plans"}:</strong> {n.text} <span className="small muted">General information, not legal advice. Not sponsored. Shown once per course.</span></p>
+          ))}
+        </aside>
+      )}
+      {extras && (
+        <p className="small muted">Module {extras.module.position}: {extras.module.doneCount} of {extras.module.itemCount} items done · rank {extras.rank.name}</p>
+      )}
+      <LessonVideos videos={videos} progress={extras} onWatched={() => void load()} />
       <LessonView body={v.body} citations={v.citations} lastVerifiedOn={v.lastVerifiedOn} uncited={v.uncited} />
       <div className="ui-lesson-end">
         {data.progress?.status === "complete"
@@ -84,7 +101,8 @@ export function LessonReader({ id }: { id: string }) {
           : <button type="button" className="primary" onClick={() => void complete()}>Mark as done</button>}
         {message && <p role="status">{message}</p>}
       </div>
-      {practice && <Practice items={practice.activities} score={practice.score} selection={practice.selection} onScore={(score) => setPractice({ ...practice, score })} onModeChanged={() => void load()} />}
+      {practice && <Practice items={practice.activities} score={practice.score} selection={practice.selection} onScore={(score) => setPractice({ ...practice, score })} onModeChanged={() => void load()}
+        progress={extras} onProgress={() => void load()} />}
       <MentorPanel lessonId={id} />
     </>
   );

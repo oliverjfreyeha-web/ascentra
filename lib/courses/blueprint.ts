@@ -9,7 +9,7 @@ import { approvedSources, passagesFor, renderContext, type Passage } from "./pas
 import type { OutdatedNote } from "./research";
 import { findIncomeClaims } from "./income";
 import { activeBoosters } from "./owner-review";
-import { MODULE_COUNT, RECIPE_CAPS, checkModuleCount, checkRecipe, clampRecipe, type Recipe, type VideoBrief } from "./structure";
+import { MODULE_COUNT, RECIPE_CAPS, SIZE_TIERS, checkModuleCount, checkRecipe, clampRecipe, isSizeTier, type Recipe, type SizeTier, type VideoBrief } from "./structure";
 import { checkBrief } from "./videos";
 
 /**
@@ -81,7 +81,7 @@ type Generated = Omit<z.infer<typeof BlueprintSchema>, "modules"> & { modules: (
 export type PlanVideo = { title: string; brief: VideoBrief };
 export type KeyClaim = { claim: string; sourceId: string | null; claimId?: string | null; quote?: string | null };
 export type Plan = {
-  title: string; outcome: string; structure?: 2;
+  title: string; outcome: string; structure?: 2; sizeTier?: SizeTier;
   modules: {
     title: string; stage: string | null; lessons: { title: string; minutes: number | null; objectives: string[]; keyClaims: KeyClaim[] }[]; skills: { key: string; name: string }[];
     recipe?: Recipe; videos?: PlanVideo[];
@@ -91,7 +91,7 @@ export type Plan = {
 const slugify = (s: string) => s.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) || "skill";
 
 /** Turns the model's answer into a plan whose citations point at real sources. Pure: tested on its own. */
-export function toPlan(g: Generated, passages: Passage[], v2?: { boosters: readonly string[]; titles: ReadonlyMap<string, string> }): Plan {
+export function toPlan(g: Generated, passages: Passage[], v2?: { boosters: readonly string[]; titles: ReadonlyMap<string, string>; sizeTier?: SizeTier }): Plan {
   const byN = new Map(passages.map((p) => [p.n, p]));
   const keys = new Set<string>();
   const video = (v: z.infer<typeof VideoOut>, i: number): PlanVideo => ({
@@ -109,8 +109,8 @@ export function toPlan(g: Generated, passages: Passage[], v2?: { boosters: reado
     },
   });
   return {
-    title: clean(g.title, 200), outcome: clean(g.outcome, 500), ...(v2 ? { structure: 2 as const } : {}),
-    modules: g.modules.slice(0, 6).map((m) => ({
+    title: clean(g.title, 200), outcome: clean(g.outcome, 500), ...(v2 ? { structure: 2 as const } : {}), ...(v2?.sizeTier ? { sizeTier: v2.sizeTier } : {}),
+    modules: g.modules.slice(0, v2?.sizeTier ? SIZE_TIERS[v2.sizeTier].modules.max : 6).map((m) => ({
       ...(v2 ? (() => {
         const recipe = clampRecipe(m.recipe, v2.boosters);
         const videos = (m.videos ?? []).slice(0, recipe.videos).map(video);
@@ -179,6 +179,8 @@ export async function generateBlueprint(actor: Account, slug: string, body: Reco
   if (!passages.length) return refused(422, "Those sources have no passages to work from yet.", A);
   const notes = await outdatedNotes([...new Set([...runIds, ...sources.map((s) => s.researchRunId).filter((x): x is string => !!x)])]);
   const v2 = body.structure === 2;
+  // C2: the course size; its module count replaces the "5 or 6" line of the prompt.
+  const sizeTier = v2 && isSizeTier(body.sizeTier) ? body.sizeTier : undefined;
   const boosters = v2 ? await activeBoosters() : [];
 
   let generated: Generated;
@@ -188,6 +190,7 @@ export async function generateBlueprint(actor: Account, slug: string, body: Reco
       user: [
         `Course title: ${title}`, `Topic: ${topic}`, `Audience level: ${body.audience}`,
         v2 ? `Learning boosters (key: what it is):\n${boosters.map((b) => `- ${b.key}: ${b.name}. ${b.description}`).join("\n")}` : "",
+        sizeTier ? `Course size: ${SIZE_TIERS[sizeTier].label}. Propose ${SIZE_TIERS[sizeTier].modules.min} to ${SIZE_TIERS[sizeTier].modules.max} modules (this replaces the 5 or 6 above); each still about a week, with more depth meaning more lessons and tasks in a module.` : "",
         notes.length ? `Outdated, according to the research:\n${notes.map((n) => `- ${n.item}${n.replacedBy ? ` -> ${n.replacedBy}` : ""}`).join("\n")}` : "",
         "", renderContext(sources, passages),
       ].join("\n"),
@@ -198,9 +201,12 @@ export async function generateBlueprint(actor: Account, slug: string, body: Reco
     if (!(err instanceof AiUnavailable)) throw err;
     return refused(err.code === "ai_off" ? 503 : err.code === "cap_reached" ? 429 : 502, err.message, A, { type: "course", id: slug, label: title });
   }
-  const plan = toPlan(generated, passages, v2 ? { boosters: boosters.map((b) => b.key), titles: new Map(sources.map((s) => [s.id, s.title])) } : undefined);
+  const plan = toPlan(generated, passages, v2 ? { boosters: boosters.map((b) => b.key), titles: new Map(sources.map((s) => [s.id, s.title])), sizeTier } : undefined);
   if (!plan.modules.length) return refused(502, "The model didn't propose a usable outline. Nothing was saved.", A);
-  if (v2 && checkModuleCount(plan.modules.length)) return refused(502, `The model proposed ${plan.modules.length} usable module(s), not ${MODULE_COUNT.min} or ${MODULE_COUNT.max}. Nothing was saved; try again.`, A);
+  if (v2 && checkModuleCount(plan.modules.length, sizeTier)) {
+    const range = sizeTier ? SIZE_TIERS[sizeTier].modules : MODULE_COUNT;
+    return refused(502, `The model proposed ${plan.modules.length} usable module(s), not ${range.min} to ${range.max}. Nothing was saved; try again.`, A);
+  }
 
   const db = getDb();
   let academy = (await db.from("academies").select("id, name").eq("slug", slug).maybeSingle()).data as { id: string; name: string } | null;
@@ -230,7 +236,7 @@ export async function generateBlueprint(actor: Account, slug: string, body: Reco
 
 const KeyClaimIn = z.object({ claim: z.string().min(3).max(400), sourceId: z.string().uuid().nullable().optional(), claimId: z.string().uuid().nullable().optional(), quote: z.string().max(300).nullable().optional() });
 const PlanIn = z.object({
-  title: z.string().min(1).max(200), outcome: z.string().max(500), structure: z.literal(2).optional(),
+  title: z.string().min(1).max(200), outcome: z.string().max(500), structure: z.literal(2).optional(), sizeTier: z.enum(["compact", "standard", "large"]).optional(),
   modules: z.array(z.object({
     title: z.string().min(1).max(200), stage: z.string().max(60).nullable().optional(),
     recipe: z.record(z.string(), z.unknown()).optional(),
@@ -240,7 +246,7 @@ const PlanIn = z.object({
       objectives: z.array(z.string().max(300)).max(8), keyClaims: z.array(KeyClaimIn).max(10),
     })).min(1).max(8),
     skills: z.array(z.object({ key: z.string().regex(/^[a-z0-9-]{1,40}$/), name: z.string().min(1).max(120) })).max(8),
-  })).min(1).max(8),
+  })).min(1).max(9),
 });
 
 type BlueprintRow = { id: string; academy_id: string; kind: string; status: string; plan: Plan; source_ids: string[]; course_id: string | null };
@@ -269,7 +275,10 @@ export async function editBlueprint(actor: Account, slug: string, id: string, bo
   // C1: a v2 outline keeps its shape: 5 or 6 modules, a recipe within the caps, a brief for each video.
   if (bp.plan.structure === 2 || plan.structure === 2) {
     plan.structure = 2;
-    const count = checkModuleCount(plan.modules.length);
+    // C2: the size tier stays as the Blueprint was made, unless the edit names one.
+    const tier = plan.sizeTier ?? bp.plan.sizeTier;
+    if (tier) plan.sizeTier = tier;
+    const count = checkModuleCount(plan.modules.length, tier);
     if (count) return refused(400, count, A, { type: "blueprint", id });
     const keys = (await activeBoosters()).map((b) => b.key);
     for (const [i, m] of plan.modules.entries()) {

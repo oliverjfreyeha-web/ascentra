@@ -34,7 +34,7 @@ describe("the L8 bundle on the live L7 database", () => {
   afterAll(() => db.drop());
 
   it("applies in one go; verify.sql finds L8 in place (and C1 not yet applied)", async () => {
-    expect((await q(readSql("db/verify.sql"))).rows[0].table_name).toMatch(/^PROBLEM: 4 missing.*L8 applied, C1 NOT applied$/);
+    expect((await q(readSql("db/verify.sql"))).rows[0].table_name).toMatch(/^PROBLEM: 13 missing.*L8 applied, C1 NOT applied, C2 NOT applied$/);
   });
 
   it("seeds 24 businesses and 16 skills, all published, five businesses hidden from teens, no skill hidden", async () => {

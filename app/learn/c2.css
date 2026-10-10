@@ -1,0 +1,33 @@
+/*
+ * C2 · Progress, Notebook, leaderboard, community and capstone screens. Plain and easy to restyle: existing tokens and
+ * the existing ui-block / ui-rows / ui-badge kit only. Dark only. No glass on glass: these sit inside solid blocks.
+ */
+.c2-stats { display: grid; gap: var(--space-3); grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr)); margin: 0 0 var(--space-4); }
+.c2-stats > div { padding: var(--space-3) var(--space-4); border: var(--border-hairline); border-radius: var(--radius-md); background: rgb(8 8 19 / 0.6); }
+.c2-stats dt { font-size: var(--text-xs); color: var(--color-text-muted); }
+.c2-stats dd { margin: var(--space-1) 0 0; font-size: var(--text-lg); }
+.c2-modules { list-style: none; margin: var(--space-3) 0 0; padding: 0; display: grid; gap: var(--space-2); }
+.c2-modules > li { display: grid; gap: var(--space-1); padding: var(--space-3) var(--space-4); border: var(--border-hairline); border-radius: var(--radius-md); }
+.c2-modules > li[data-state="locked"] { opacity: 0.85; border-style: dashed; }
+.c2-state { display: inline-flex; align-items: center; gap: var(--space-1); font-size: var(--text-sm); }
+.c2-reason { margin: 0; font-size: var(--text-sm); color: var(--color-text-muted); }
+.c2-items { list-style: none; margin: var(--space-2) 0 0; padding: 0; display: grid; gap: var(--space-1); font-size: var(--text-sm); }
+.c2-items > li { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.c2-notice { margin: 0 0 var(--space-3); padding: var(--space-3) var(--space-4); border-left: 2px solid var(--color-accent); background: rgb(8 8 19 / 0.72); font-size: var(--text-sm); }
+.c2-board { width: 100%; }
+.c2-board tr[data-you] td { font-weight: var(--weight-semibold); }
+.c2-board td small { display: block; color: var(--color-text-muted); }
+.c2-entries { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
+.c2-entries > li { padding: var(--space-3) var(--space-4); border: var(--border-hairline); border-radius: var(--radius-md); }
+.c2-entries p { margin: var(--space-1) 0 0; }
+.c2-summary { white-space: pre-wrap; }
+.c2-checks { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
+.c2-bars { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-1); font-size: var(--text-sm); }
+.c2-bars > li { display: grid; grid-template-columns: 7rem 1fr 3rem; gap: var(--space-2); align-items: center; }
+@media (max-width: 40rem) {
+  .c2-bars > li { grid-template-columns: 5.5rem 1fr 2.5rem; }
+  .c2-modules > li { padding: var(--space-3); }
+}
+/* Practice items in a lesson: a fieldset never grows past the screen; long button text wraps (C2's mission buttons). */
+.ui-practice { min-width: 0; }
+.ui-practice .ui-actions .ui-btn { white-space: normal; text-align: left; height: auto; }

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { call, when, type ApiResult } from "../../../call";
 import { courseApi, BOOSTERS_MAX, ITEM_PARTS, PART_NAMES, RECIPE_CAPS, type Booster, type StudioModule } from "../../../studio-api";
 import type { LessonBody } from "../../../courses-api";
+import { LabelEditor } from "./course-c2";
 import { VideoSlotEditor } from "./video-slot";
 
 type Act = (run: () => Promise<ApiResult>, okText: (r: ApiResult) => string) => Promise<boolean>;
@@ -82,6 +83,9 @@ export function ModuleEditor({ slug, module: m, index, count, boosters, owner, e
               <PartPicker item={it} boosters={boosters} busy={busy}
                 onPick={(part, booster) => act(() => call("PUT", `${base}/activities/${it.id}/part`, { part, booster }), () => "Practice item moved.")} />
             ) : <span className="small">{partLabel(it.part, it.booster, boosters)}</span>}
+            {/* C2: the importance label (and Notebook note, and mission kind) while the item is a Draft. */}
+            <LabelEditor url={`${base}/activities/${it.id}/labels`} method="PUT" current={{ importance: it.importance ?? null, notebookNote: it.notebookNote ?? null, missionType: it.missionType ?? null }}
+              editable={editable && it.status === "draft"} busy={busy} act={act} mission name={it.prompt.slice(0, 60)} />
             {editable && (it.status === "approved" || it.status === "rejected") && (
               <> <button type="button" className="link" disabled={busy} onClick={() => act(() => call("POST", `${base}/activities/${it.id}/reopen`), () => "Reopened as a Draft: edit it in the practice library below; it needs reviewing again.")}>Reopen to edit</button></>
             )}
@@ -90,7 +94,7 @@ export function ModuleEditor({ slug, module: m, index, count, boosters, owner, e
       </ul>
 
       <h4>Videos</h4>
-      {m.slots.map((s) => <VideoSlotEditor key={s.id} slug={slug} slot={s} owner={owner} busy={busy} act={act} />)}
+      {m.slots.map((s) => <VideoSlotEditor key={s.id} slug={slug} slot={s} owner={owner} busy={busy} act={act} editable={editable} />)}
       {owner && m.slots.length < RECIPE_CAPS.videos.max && (
         <button type="button" className="link" disabled={busy} onClick={() => act(() => call("POST", `${base}/videos`, { moduleId: m.id, title: `${m.title}: video ${m.slots.length + 1}` }), () => "Video slot added. Write its brief.")}>Add a video slot</button>
       )}

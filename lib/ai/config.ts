@@ -19,6 +19,8 @@
  *   - activities.feedback (L6): feedback on a practice answer (never a grade) → Haiku 4.5.
  *   - paths.rank (L7): order a few published courses for a learner's four interview answers, with one-line reasons →
  *     Haiku 4.5 (a short ranking; it gets the answers and the course list only, never who the learner is).
+ *   - notebook.summary (C2): an optional summary of a learner's own auto-notes (course text only; never their "My ideas"
+ *     journal or who they are) → Haiku 4.5. Off unless the learner turns it on.
  *   - embeddings: Voyage AI voyage-3.5-lite (Anthropic has no embeddings endpoint; Voyage is the one its docs use).
  * Spend caps are a Owner decision: the values here are PLACEHOLDERS. AI_DAILY_CAP_USD / AI_MONTHLY_CAP_USD (plain
  * numbers, not secrets) override them without a code change.
@@ -36,6 +38,7 @@ export const AI_MODELS = {
   "activities.draft": "claude-haiku-4-5",
   "activities.feedback": "claude-haiku-4-5",
   "paths.rank": "claude-haiku-4-5",
+  "notebook.summary": "claude-haiku-4-5",
 } as const;
 
 /** Effort for the steps on models that take it (Sonnet 5.5): medium holds cost down without losing structure. */
@@ -84,6 +87,7 @@ export const STEP_BUDGETS = {
   activityPool: { purpose: "activities.draft", input: 20_000, output: 8_000, webSearches: 0 },
   activityFeedback: { purpose: "activities.feedback", input: 3_000, output: 500, webSearches: 0 },
   pathRank: { purpose: "paths.rank", input: 4_000, output: 600, webSearches: 0 },
+  notebookSummary: { purpose: "notebook.summary", input: 6_000, output: 700, webSearches: 0 },
 } as const;
 
 /** L4: one Mentor message, upper end: two safety screens (message and reply) and the answer, unrounded. */

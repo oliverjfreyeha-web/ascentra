@@ -4,7 +4,7 @@ import { getDb } from "@/lib/db";
 import { canSeeCourse, clean, isUuid, refused, type Result } from "./common";
 import type { LessonBody } from "./lessons";
 import { INCOME_BLOCK, scanTexts, textsOf, type Finding } from "./income";
-import { RECOMMENDED_PACE, briefText, checkModuleCount, coverage, defaultPartOf, type Coverage, type Recipe, type VideoBrief } from "./structure";
+import { RECOMMENDED_PACE, briefText, checkModuleCount, coverage, defaultPartOf, isSizeTier, type Coverage, type Recipe, type SizeTier, type VideoBrief } from "./structure";
 import type { ItemType } from "@/lib/activities/types";
 
 /**
@@ -20,6 +20,7 @@ import type { ItemType } from "@/lib/activities/types";
 
 type CourseRow = {
   id: string; academy_id: string; version: number; status: string; owner_review_required: boolean; unpublished_at: string | null; published_at: string | null;
+  size_tier?: string | null; license_notice?: string | null; software_notice?: string | null;
 };
 type ModuleRow = { id: string; course_id: string; position: number; title: string; stage: string | null; recipe: Partial<Recipe>; recommended_pace: string };
 type LessonRow = { id: string; module_id: string; position: number; title: string; minutes: number | null };
@@ -27,10 +28,12 @@ type VersionRow = {
   id: string; lesson_id: string; version: number; status: string; title: string; body: LessonBody; submitted_at: string | null; verified_at: string | null;
   verified_by_account_id: string | null; returned_note: string | null; published_at: string | null;
 };
-type ItemRow = { id: string; lesson_id: string; module_id: string; status: string; item_type: ItemType; recipe_part: string | null; booster_key: string | null; prompt: string; content: unknown; explanation: string; reviewed_at: string | null };
+type ItemRow = { id: string; lesson_id: string; module_id: string; status: string; item_type: ItemType; recipe_part: string | null; booster_key: string | null; prompt: string; content: unknown; explanation: string; reviewed_at: string | null;
+  importance?: string | null; notebook_note?: string | null; mission_type?: string | null };
 type SlotRow = {
   id: string; module_id: string; lesson_id: string | null; position: number; title: string; brief: VideoBrief; brief_generated_by: string; status: string;
   current_upload_id: string | null; transcript: string | null; approved_at: string | null; approved_by_account_id: string | null; brief_edited_at: string | null;
+  importance?: string | null; notebook_note?: string | null;
 };
 type UploadRow = { id: string; slot_id: string; storage_path: string; mime: string; size_bytes: number; status: string; reject_reason: string | null; original_name: string | null; uploaded_by_account_id: string; uploaded_at: string; replaced_at: string | null };
 type ReviewRow = { id: string; seq: number; module_id: string; decision: "approved" | "sent_back"; note: string | null; lesson_version_ids: string[]; item_ids: string[]; decided_by_account_id: string; decided_at: string };
@@ -41,7 +44,7 @@ export async function academyOf(slug: string): Promise<Academy | null> {
   return (await getDb().from("academies").select("id, slug, name").eq("slug", slug).maybeSingle()).data as Academy | null;
 }
 async function coursesOf(academyId: string): Promise<CourseRow[]> {
-  return (((await getDb().from("courses").select("id, academy_id, version, status, owner_review_required, unpublished_at, published_at").eq("academy_id", academyId)).data ?? []) as CourseRow[])
+  return (((await getDb().from("courses").select("*").eq("academy_id", academyId)).data ?? []) as CourseRow[])
     .sort((a, b) => b.version - a.version);
 }
 const isLive = (c: CourseRow) => c.status === "published" || c.status === "restored";
@@ -56,7 +59,7 @@ export async function loadVersion(courseId: string) {
   const lessons = (((await db.from("lessons").select("id, module_id, position, title, minutes").in("module_id", mids.length ? mids : none)).data ?? []) as LessonRow[]).sort((a, b) => a.position - b.position);
   const lids = lessons.map((l) => l.id);
   const versions = ((await db.from("lesson_versions").select("id, lesson_id, version, status, title, body, submitted_at, verified_at, verified_by_account_id, returned_note, published_at").in("lesson_id", lids.length ? lids : none)).data ?? []) as VersionRow[];
-  const items = ((await db.from("activity_items").select("id, lesson_id, module_id, status, item_type, recipe_part, booster_key, prompt, content, explanation, reviewed_at").in("module_id", mids.length ? mids : none)).data ?? []) as ItemRow[];
+  const items = ((await db.from("activity_items").select("id, lesson_id, module_id, status, item_type, recipe_part, booster_key, prompt, content, explanation, reviewed_at, importance, notebook_note, mission_type").in("module_id", mids.length ? mids : none)).data ?? []) as ItemRow[];
   const slots = (((await db.from("video_slots").select("*").in("module_id", mids.length ? mids : none)).data ?? []) as SlotRow[]).sort((a, b) => a.position - b.position);
   const sids = slots.map((s) => s.id);
   const uploads = (((await db.from("video_uploads").select("*").in("slot_id", sids.length ? sids : none)).data ?? []) as UploadRow[]).sort((a, b) => b.uploaded_at.localeCompare(a.uploaded_at));
@@ -92,11 +95,12 @@ export function incomeFindings(l: Loaded): Finding[] {
       }
     }
     for (const i of l.items.filter((x) => x.module_id === m.id && x.status !== "archived" && x.status !== "rejected")) {
-      pieces.push({ where: `${at} › practice item "${i.prompt.slice(0, 50)}"`, text: [i.prompt, i.explanation, ...textsOf(i.content)].join(" \n ") });
+      pieces.push({ where: `${at} › practice item "${i.prompt.slice(0, 50)}"`, text: [i.prompt, i.explanation, ...textsOf(i.content), i.notebook_note ?? ""].join(" \n ") });
     }
     for (const s of l.slots.filter((x) => x.module_id === m.id)) {
       pieces.push({ where: `${at} › video "${s.title}" › brief`, text: [s.title, ...textsOf(s.brief)].join(" \n ") });
       if (s.transcript) pieces.push({ where: `${at} › video "${s.title}" › transcript`, text: s.transcript });
+      if (s.notebook_note) pieces.push({ where: `${at} › video "${s.title}" › Notebook note`, text: s.notebook_note });
     }
   }
   return scanTexts(pieces);
@@ -109,7 +113,7 @@ export type ModuleState = {
 };
 
 /** Where a module stands for the Owner's review: what is missing, what would be approved, and the last decision. */
-export function moduleState(l: Loaded, m: ModuleRow, findings: Finding[]): ModuleState {
+export function moduleState(l: Loaded, m: ModuleRow, findings: Finding[], labelsRequired = false): ModuleState {
   const lessons = l.lessons.filter((x) => x.module_id === m.id);
   const items = l.items.filter((i) => i.module_id === m.id && live(i));
   const slots = l.slots.filter((s) => s.module_id === m.id);
@@ -129,6 +133,10 @@ export function moduleState(l: Loaded, m: ModuleRow, findings: Finding[]): Modul
   for (const p of cov.missing) blockers.push(p === "videos" ? "No video slot." : `No reviewed ${p === "quizzes" ? "quiz" : p === "assignments" ? "assignment" : p === "sandboxes" ? "sandbox" : "interactive sequence"} item yet.`);
   if (!cov.varietyOk) blockers.push(`Practice needs at least 3 different activity types (it has ${cov.types}).`);
   if (mine.length) blockers.push(`The income-claims check found ${mine.length} place(s) to reword.`);
+  // C2: every video and practice item carries its importance label; "Very important" ones their Notebook note.
+  const labelled = (x: { importance?: string | null; notebook_note?: string | null }) => !!x.importance && (x.importance !== "very_important" || !!x.notebook_note);
+  const unlabelled = slots.filter((x) => !labelled(x)).length + l.items.filter((i) => i.module_id === m.id && ["draft", "approved", "published"].includes(i.status) && !labelled(i)).length;
+  if (labelsRequired && unlabelled) blockers.push(`${unlabelled} video(s) or practice item(s) need an importance label (and "Very important" ones a Notebook note).`);
   const latest = l.reviews.find((r) => r.module_id === m.id) ?? null;
   const ids = candidates.map((c) => c.id);
   // The approval must be newer than every candidate's last submission and verification.
@@ -151,10 +159,13 @@ export async function courseStudio(actor: Account, slug: string) {
   const liveVersion = courses.find(isLive) ?? null;
   if (!latest) return { course: academy, version: null, live: null, modules: [], findings: [], emptySlots: 0, boosters: await activeBoosters(), canPublish: false, publishBlockers: ["No course version yet: approve a Blueprint first."] };
   const l = await loadVersion(latest.id);
-  const findings = incomeFindings(l);
+  // C2: a course with a size tier also checks its capstone and notices, and needs every item labelled.
+  const sized = isSizeTier(latest.size_tier);
+  const extra = sized ? await courseExtras(latest, academy.slug) : null;
+  const findings = [...incomeFindings(l), ...(extra?.findings ?? [])];
   const boosters = await activeBoosters();
   const modules = l.modules.map((m) => {
-    const st = moduleState(l, m, findings);
+    const st = moduleState(l, m, findings, sized);
     return {
       id: m.id, position: m.position, title: m.title, stage: m.stage, recipe: { ...m.recipe }, recommendedPace: m.recommended_pace || RECOMMENDED_PACE,
       state: st,
@@ -173,7 +184,7 @@ export async function courseStudio(actor: Account, slug: string) {
       }),
       items: l.items.filter((i) => i.module_id === m.id && i.status !== "archived").map((i) => ({
         id: i.id, lessonId: i.lesson_id, type: i.item_type, part: i.recipe_part ?? defaultPartOf(i.item_type), partSet: !!i.recipe_part, booster: i.booster_key, status: i.status,
-        prompt: i.prompt,
+        prompt: i.prompt, importance: i.importance ?? null, notebookNote: i.notebook_note ?? null, missionType: i.mission_type ?? null,
       })),
       slots: l.slots.filter((s) => s.module_id === m.id).map((s) => slotView(s, l.uploads)),
     };
@@ -181,17 +192,35 @@ export async function courseStudio(actor: Account, slug: string) {
   const emptySlots = l.slots.filter((s) => s.status !== "approved").length;
   const publishBlockers: string[] = [];
   if (latest.owner_review_required) {
-    const count = checkModuleCount(l.modules.length);
+    const count = checkModuleCount(l.modules.length, sized ? (latest.size_tier as SizeTier) : null);
     if (count) publishBlockers.push(count);
+    if (extra && !extra.capstone) publishBlockers.push("Add the course's capstone (every course has one).");
+    if (extra?.capstone && extra.business && !extra.capstone.automation) publishBlockers.push("A business course's capstone needs its \"Automation with AI\" part.");
     for (const m of modules) if (!m.state.review?.current) publishBlockers.push(`Module ${m.position} "${m.title}" needs the Owner's approval${m.state.review?.decision === "sent_back" ? " (it was sent back)" : ""}.`);
     if (findings.length) publishBlockers.push(INCOME_BLOCK);
   } else publishBlockers.push("This course version uses the earlier flow: publish its lessons one by one below. A new version uses the Owner's review.");
   return {
     course: academy,
-    version: { id: latest.id, version: latest.version, status: latest.status, ownerReviewRequired: latest.owner_review_required, isDraft: latest.status === "draft", publishedAt: latest.published_at, unpublishedAt: latest.unpublished_at },
+    version: { id: latest.id, version: latest.version, status: latest.status, ownerReviewRequired: latest.owner_review_required, isDraft: latest.status === "draft", publishedAt: latest.published_at, unpublishedAt: latest.unpublished_at,
+      sizeTier: sized ? latest.size_tier : null },
+    capstone: extra?.capstone ?? null, business: extra?.business ?? false, notices: { license: latest.license_notice ?? null, software: latest.software_notice ?? null },
     live: liveVersion ? { id: liveVersion.id, version: liveVersion.version, unpublishedAt: liveVersion.unpublished_at } : null,
     modules, findings, emptySlots, boosters, canPublish: !publishBlockers.length, publishBlockers,
   };
+}
+
+/** C2: the capstone and notices of a course version, and the income-claims check over them. */
+async function courseExtras(c: CourseRow, slug: string) {
+  const db = getDb();
+  const capstone = (await db.from("course_capstones").select("title, brief, deliverables, checklist, automation, plans_checked_on").eq("course_id", c.id).maybeSingle()).data as
+    { title: string; brief: string; deliverables: string[]; checklist: string[]; automation: { what: string; prompts: string[]; plans: unknown[] } | null; plans_checked_on: string | null } | null;
+  const topic = (await db.from("topics").select("kind").eq("catalog_slug", slug).maybeSingle()).data as { kind: string } | null;
+  const findings = scanTexts([
+    { where: "Course › business license notice", text: c.license_notice ?? null },
+    { where: "Course › software or AI plan notice", text: c.software_notice ?? null },
+    ...(capstone ? [{ where: `Capstone "${capstone.title}"`, text: textsOf(capstone).join(" \n ") }] : []),
+  ]);
+  return { capstone, business: topic?.kind === "business", findings };
 }
 
 export function slotView(s: SlotRow, uploads: UploadRow[]) {
@@ -199,6 +228,7 @@ export function slotView(s: SlotRow, uploads: UploadRow[]) {
   return {
     id: s.id, position: s.position, title: s.title, lessonId: s.lesson_id, status: s.status, brief: s.brief, briefText: briefText(s.title, s.brief ?? {}),
     briefBy: s.brief_generated_by, briefEditedAt: s.brief_edited_at, transcript: s.transcript ?? "", approvedAt: s.approved_at,
+    importance: s.importance ?? null, notebookNote: s.notebook_note ?? null,
     file: up ? { name: up.original_name, size: up.size_bytes, mime: up.mime, uploadedAt: up.uploaded_at } : null,
     history: uploads.filter((u) => u.slot_id === s.id).map((u) => ({ id: u.id, name: u.original_name, size: u.size_bytes, status: u.status, reason: u.reject_reason, uploadedAt: u.uploaded_at, replacedAt: u.replaced_at })),
   };
@@ -219,7 +249,7 @@ async function moduleInCourse(slug: string, moduleId: string) {
   const db = getDb();
   const m = (await db.from("modules").select("id, course_id, position, title, stage, recipe, recommended_pace").eq("id", moduleId).maybeSingle()).data as ModuleRow | null;
   if (!m) return null;
-  const c = (await db.from("courses").select("id, academy_id, version, status, owner_review_required, unpublished_at, published_at").eq("id", m.course_id).maybeSingle()).data as CourseRow | null;
+  const c = (await db.from("courses").select("*").eq("id", m.course_id).maybeSingle()).data as CourseRow | null;
   return c && c.academy_id === academy.id ? { academy, course: c, module: m } : null;
 }
 
@@ -232,7 +262,7 @@ export async function approveModule(actor: Account, slug: string, moduleId: stri
   if (actor.roleKey !== "owner") return refused(403, "Only the Owner gives the final approval.", A, target);
   if (!found.course.owner_review_required) return refused(409, "This course version uses the earlier flow (no Owner review step). Start a new version to use it.", A, target);
   const l = await loadVersion(found.course.id);
-  const st = moduleState(l, found.module, incomeFindings(l));
+  const st = moduleState(l, found.module, incomeFindings(l), isSizeTier(found.course.size_tier));
   if (st.review?.current) return refused(409, "You've already approved this module as it is now.", A, target);
   if (!st.ready) return refused(409, `Not ready for your approval: ${st.blockers.join(" ")}`, A, target);
   const { data, error } = await getDb().from("module_reviews").insert({
@@ -352,7 +382,7 @@ export async function reviewChecklist(actor: Account) {
     if (!latest?.owner_review_required) continue;
     const l = await loadVersion(latest.id);
     const findings = incomeFindings(l);
-    const modules = l.modules.map((m) => ({ m, st: moduleState(l, m, findings) }));
+    const modules = l.modules.map((m) => ({ m, st: moduleState(l, m, findings, isSizeTier(latest.size_tier)) }));
     out.push({
       slug: a.slug, name: a.name, version: latest.version, status: latest.status, unpublished: !!latest.unpublished_at,
       waiting: modules.filter(({ st }) => st.ready && !st.review?.current).map(({ m }) => ({ id: m.id, position: m.position, title: m.title })),

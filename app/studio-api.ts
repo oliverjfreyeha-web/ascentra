@@ -16,6 +16,8 @@ export type Brief = { purpose?: string; points?: { text: string; sources?: { sou
 export type SlotView = {
   id: string; position: number; title: string; lessonId: string | null; status: "waiting" | "uploaded" | "approved"; brief: Brief; briefText: string; briefBy: string;
   briefEditedAt: string | null; transcript: string; approvedAt: string | null;
+  // C2: the importance label, and a "Very important" video's Notebook note.
+  importance?: string | null; notebookNote?: string | null;
   file: { name: string | null; size: number; mime: string; uploadedAt: string } | null;
   history: { id: string; name: string | null; size: number; status: string; reason: string | null; uploadedAt: string; replacedAt: string | null }[];
 };
@@ -32,7 +34,10 @@ export type StudioModule = {
     published: { id: string; version: number } | null;
     text: { versionId: string; version: number; status: string; body: LessonBody } | null;
   }[];
-  items: { id: string; lessonId: string; type: string; part: string; partSet: boolean; booster: string | null; status: string; prompt: string }[];
+  items: {
+    id: string; lessonId: string; type: string; part: string; partSet: boolean; booster: string | null; status: string; prompt: string;
+    importance?: string | null; notebookNote?: string | null; missionType?: string | null;
+  }[];
   slots: SlotView[];
 };
 export type Booster = { key: string; name: string; description: string; itemTypes: string[] };

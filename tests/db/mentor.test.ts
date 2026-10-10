@@ -20,7 +20,7 @@ describe("the L4 bundle on the live L3 database", () => {
   afterAll(() => db.drop());
 
   it("applies in one go; verify.sql says L4 is applied (L5 not yet)", async () => {
-    expect((await q(readSql("db/verify.sql"))).rows[0].table_name).toMatch(/^PROBLEM: 17 missing.*L4 applied, L5 NOT applied, L6 NOT applied, L7 NOT applied, L8 NOT applied, C1 NOT applied$/);
+    expect((await q(readSql("db/verify.sql"))).rows[0].table_name).toMatch(/^PROBLEM: 26 missing.*L4 applied, L5 NOT applied, L6 NOT applied, L7 NOT applied, L8 NOT applied, C1 NOT applied, C2 NOT applied$/);
   });
 
   it("counts Mentor messages per account per day, atomically", async () => {

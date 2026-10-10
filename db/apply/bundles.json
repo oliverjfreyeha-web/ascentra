@@ -104,6 +104,12 @@
       "migrations": [
         "0020_course_structure"
       ]
+    },
+    "C2": {
+      "requires": "0020_course_structure",
+      "migrations": [
+        "0021_progress_and_paths"
+      ]
     }
   }
 }

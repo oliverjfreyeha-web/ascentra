@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { SignOut } from "../sign-out";
 import { GuardianCenter } from "./guardian-center";
+import { MissionApprovals } from "./mission-approvals";
 import { Reveal } from "../ui/reveal";
 
 export default function GuardianPage() {
@@ -14,6 +15,7 @@ export default function GuardianPage() {
         <h1>Guardian Center</h1>
       </header>
       <GuardianCenter />
+      <MissionApprovals />
     </main>
   );
 }

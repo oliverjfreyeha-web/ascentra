@@ -198,6 +198,9 @@ export async function submitVersion(actor: Account, slug: string, id: string): P
   // C1: the income-claims check. Text that reads as a promise of income or results never goes to review.
   const findings = lessonFindings(v.title, v.body, `"${v.title}" v${v.version}`);
   if (findings.length) return refused(409, incomeReason(findings), A, target);
+  // C2: in a course with a size tier, a module goes to review only with every video and practice item labelled.
+  const unlabelled = await unlabelledInModule(v.lesson_id, v.course_id);
+  if (unlabelled) return refused(409, `Label every video and practice item in this module first (${unlabelled} without an importance label, or "Very important" without its Notebook note).`, A, target);
   const { error } = await getDb().from("lesson_versions").update({ status: "review", submitted_at: new Date().toISOString(), submitted_by_account_id: actor.id }).eq("id", id);
   if (error) throw new Error(`submit failed: ${error.message}`);
   return { ok: true, body: { id, status: "review" }, event: { action: A, result: "Completed", target, previous: "draft", next: "review", context: `Submitted ${label(v)} for review.` } };
@@ -283,4 +286,17 @@ export function diffLines(before: string[], after: string[]): { op: "same" | "ad
   while (i < n) out.push({ op: "remove", text: before[i++] });
   while (j < m) out.push({ op: "add", text: after[j++] });
   return out;
+}
+
+/** C2: how many videos and practice items of a lesson's module lack their label (only in a course with a size tier). */
+async function unlabelledInModule(lessonId: string, courseId: string): Promise<number> {
+  const db = getDb();
+  const c = (await db.from("courses").select("size_tier").eq("id", courseId).maybeSingle()).data as { size_tier?: string | null } | null;
+  if (!c?.size_tier) return 0;
+  const l = (await db.from("lessons").select("module_id").eq("id", lessonId).maybeSingle()).data as { module_id: string } | null;
+  if (!l) return 0;
+  const ok = (x: { importance?: string | null; notebook_note?: string | null }) => !!x.importance && (x.importance !== "very_important" || !!x.notebook_note);
+  const slots = ((await db.from("video_slots").select("importance, notebook_note").eq("module_id", l.module_id)).data ?? []) as { importance: string | null; notebook_note: string | null }[];
+  const items = ((await db.from("activity_items").select("importance, notebook_note, status").eq("module_id", l.module_id)).data ?? []) as { importance: string | null; notebook_note: string | null; status: string }[];
+  return slots.filter((x) => !ok(x)).length + items.filter((i) => ["draft", "approved", "published"].includes(i.status) && !ok(i)).length;
 }

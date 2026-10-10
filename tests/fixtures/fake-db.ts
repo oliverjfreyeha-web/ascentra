@@ -387,25 +387,50 @@ export function createFakeDb(tables: Record<string, Row[]> = {}) {
       }
       return { data: r, error: null };
     }
-    // owner_set_business
+    // owner_set_business and owner_set_pick (C2: a business or a side hustle)
+    const kind = fn === "owner_set_pick" ? String(a.p_kind) : "business";
+    if (kind !== "business" && kind !== "side_hustle") return { data: null, error: { code: "23514", message: "ASCENTRA: the Owner changes a business or a side hustle." } };
     reconcile(mine, topics, plan, minor);
-    const current = mine.find((p) => p.kind === "business" && p.status === "active");
+    const current = mine.find((p) => p.kind === kind && p.status === "active");
     if (a.p_topic == null) {
       if (!current) return { data: { result: "unchanged", previous: null, next: null }, error: null };
       Object.assign(current, { status: "paused", locked: false });
       return { data: { result: "released", previous: current.topic_id, next: null }, error: null };
     }
     const t = topics.find((x) => x.id === a.p_topic);
-    if (!t || t.kind !== "business" || !t.published || (t.teen_hidden && minor)) return { data: { result: "not_available" }, error: null };
+    if (!t || t.kind !== kind || !t.published || (t.teen_hidden && minor)) return { data: { result: "not_available" }, error: null };
     if (current?.topic_id === t.id) return { data: { result: "unchanged", previous: t.id, next: t.id }, error: null };
     if (current) Object.assign(current, { status: "paused", locked: false });
     const existing = mine.find((p) => p.topic_id === t.id);
     if (existing) Object.assign(existing, { status: "active", picked_at: now, locked: plan !== "pro" });
-    else data.learner_picks.push({ id: randomUUID(), user_id: a.p_account, topic_id: t.id, kind: "business", status: "active", locked: plan !== "pro", picked_at: now });
+    else data.learner_picks.push({ id: randomUUID(), user_id: a.p_account, topic_id: t.id, kind, status: "active", locked: plan !== "pro", picked_at: now });
     return { data: { result: "changed", previous: current?.topic_id ?? null, next: t.id }, error: null };
   }
+  // C2: completions (once per item, on the learner's own day) and the totals from them (0021).
+  function recordCompletion(a: Record<string, unknown>) {
+    data.item_completions ??= [];
+    const exists = data.item_completions.some((r) => r.account_id === a.p_account && r.item_kind === a.p_kind && r.item_id === a.p_item);
+    const tz = (data.profiles?.find((p) => p.account_id === a.p_account)?.time_zone as string | undefined) ?? "America/New_York";
+    const local_day = new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+    if (!exists) data.item_completions.push({ id: randomUUID(), account_id: a.p_account, course_id: a.p_course, module_id: a.p_module ?? null, lesson_id: a.p_lesson ?? null,
+      item_kind: a.p_kind, item_id: a.p_item, importance: a.p_importance ?? null, points: a.p_points, local_day, completed_at: new Date().toISOString() });
+    return { data: { created: !exists, local_day }, error: null };
+  }
+  function progressTotals(a: Record<string, unknown>) {
+    const mine = (data.item_completions ?? []).filter((r) => r.account_id === a.p_account);
+    const days = [...new Set(mine.map((r) => String(r.local_day)))].sort();
+    const n = (d: string) => Math.round(Date.parse(`${d}T00:00:00Z`) / 86_400_000);
+    let longest = 0, run = 0, prev = Number.NaN, lastRun = 0, lastDay = Number.NaN;
+    for (const d of days.map(n)) { run = d === prev + 1 ? run + 1 : 1; prev = d; longest = Math.max(longest, run); lastRun = run; lastDay = d; }
+    const tz = (data.profiles?.find((p) => p.account_id === a.p_account)?.time_zone as string | undefined) ?? "America/New_York";
+    const today = n(new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date()));
+    return { data: [{ points: mine.reduce((s, r) => s + Number(r.points), 0), current_streak: lastDay >= today - 1 ? lastRun : 0, longest_streak: longest }], error: null };
+  }
   const rpc = async (fn: string, args: Record<string, unknown> = {}) =>
-    ["pick_topic", "pause_pick", "reconcile_picks", "owner_set_business"].includes(fn) ? picksFn(fn, args) :
+    fn === "record_item_completion" ? recordCompletion(args) :
+    fn === "learner_progress_totals" ? progressTotals(args) :
+    fn === "leaderboard_adults" ? { data: [], error: null } :
+    ["pick_topic", "pause_pick", "reconcile_picks", "owner_set_business", "owner_set_pick"].includes(fn) ? picksFn(fn, args) :
     fn === "request_course" ? requestCourse(args) :
     fn === "publish_module_activities" ? publishModuleActivities(args) :
     fn === "count_mentor_message" ? countMentorMessage(args) :
