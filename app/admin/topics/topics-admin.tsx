@@ -113,10 +113,12 @@ export function TopicsAdmin() {
 function StartCourse({ t, onDone }: { t: AdminTopic; onDone: (message: string) => void }) {
   const [quote, setQuote] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
+  // C2: the course size (Compact 3-4 modules, Standard 5-6, Large 7-9); the Blueprint is built to fit it.
+  const [sizeTier, setSizeTier] = useState("standard");
   const url = `/api/v1/topics/${t.id}/course`;
   async function ask() {
     setBusy(true);
-    const r = await call("POST", url, {});
+    const r = await call("POST", url, { sizeTier });
     setBusy(false);
     const total = (r.quote as { totalUsd?: number } | undefined)?.totalUsd;
     if (r._status === 200 && typeof total === "number") setQuote(total);
@@ -124,12 +126,19 @@ function StartCourse({ t, onDone }: { t: AdminTopic; onDone: (message: string) =
   }
   async function confirm() {
     setBusy(true);
-    const r = await call("POST", url, { confirm: true, expectedTotalUsd: quote });
+    const r = await call("POST", url, { confirm: true, expectedTotalUsd: quote, sizeTier });
     setBusy(false);
     setQuote(null);
     onDone(r._status < 300 ? `${t.name}: course queued. It runs overnight and stops when a person is needed: source approval, Blueprint approval, review, then your approval of each module.` : r.reason ?? "Nothing was queued.");
   }
-  if (quote === null) return <div><button type="button" className="link small" disabled={busy} onClick={ask}>Start course<span className="sr-only">: {t.name}</span></button></div>;
+  if (quote === null) return (
+    <div className="small">
+      <label>Size <select value={sizeTier} onChange={(e) => setSizeTier(e.target.value)}>
+        <option value="compact">Compact (3-4 modules)</option><option value="standard">Standard (5-6 modules)</option><option value="large">Large (7-9 modules)</option>
+      </select><span className="sr-only"> for {t.name}</span></label>{" "}
+      <button type="button" className="link small" disabled={busy} onClick={ask}>Start course<span className="sr-only">: {t.name}</span></button>
+    </div>
+  );
   return (
     <div className="small">
       Estimated AI cost: up to ${quote.toFixed(2)}.{" "}

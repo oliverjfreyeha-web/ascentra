@@ -109,6 +109,7 @@ const GLOBAL: Record<string, RoleKey[]> = {
   // C2: the leaderboard's moderation, the community links, the teen mission allow-list.
   "leaderboard.moderate": ["owner"],
   "community.manage": ["owner"],
+  "missions.view": ["owner"],
   "missions.allowlist": ["owner"],
   // L4: the safety review queue.
   "safety.view": ["owner", "superAdmin"],
@@ -183,7 +184,7 @@ const REASON = new Set([
   // C1: publishing or unpublishing a whole course.
   "courses.publish_course",
   // C2: removing a nickname; turning a mission type on or off for teens in a state.
-  "leaderboard.moderate", "missions.allowlist",
+  "leaderboard.moderate", "missions.allowlist", "community.manage",
 ]);
 
 function ctx(role: RoleKey, { verified = true, courses }: { verified?: boolean; courses?: string[] } = {}): AuthContext {

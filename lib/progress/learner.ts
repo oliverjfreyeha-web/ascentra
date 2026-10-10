@@ -4,7 +4,7 @@ import { getDb } from "@/lib/db";
 import { isUuid, refused, type Result } from "@/lib/courses/common";
 import { learnerSlot } from "@/lib/courses/videos";
 import { missionGate, spendContactApproval } from "@/lib/missions";
-import { DEFAULT_TIME_ZONE, IMPORTANCE, MISSION_TYPES, isMissionType } from "./config";
+import { DEFAULT_TIME_ZONE, IMPORTANCE, MISSION_TYPES, TEEN_MISSION_LIMITS, isMissionType } from "./config";
 import { courseState, itemGate, lessonGate, planOf, recordCompletion, totalsOf, type ItemRef } from "./progress";
 import { localDay, pointsFor, rankOf, streaks } from "./rules";
 
@@ -92,9 +92,14 @@ export async function lessonExtras(actor: Account, lessonId: string) {
   }
   return {
     module: { position: m.position, title: m.title, state: m.state, reason: m.reason, doneCount: m.doneCount, itemCount: m.itemCount },
-    items: items.map((i) => ({ kind: i.kind, id: i.id, importance: i.importance, importanceLabel: i.importance ? IMPORTANCE[i.importance].label : null, done: i.done, open: i.open, missionType: i.missionType })),
+    items: items.map((i) => ({
+      kind: i.kind, id: i.id, importance: i.importance, importanceLabel: i.importance ? IMPORTANCE[i.importance].label : null, done: i.done, open: i.open, missionType: i.missionType,
+      mission: isMissionType(i.missionType) ? { label: MISSION_TYPES[i.missionType].label, contacts: MISSION_TYPES[i.missionType].contacts } : null,
+    })),
     notices,
     rank: { name: st.rank.name, index: st.rank.index },
+    // A teen's real-world missions need their Guardian; these limits always apply to them.
+    teen: actor.isMinor, missionLimits: actor.isMinor ? TEEN_MISSION_LIMITS : [],
   };
 }
 
@@ -132,7 +137,7 @@ export async function myProgress(actor: Account, now = new Date()) {
     const done = st.modules.reduce((n, m) => n + m.doneCount, 0);
     const coursePoints = completions.filter((c) => c.course_id === live.id).reduce((s, c) => s + c.points, 0);
     courses.push({
-      slug: a.slug, name: a.name, kind: topic?.kind ?? null, pickStatus: pick?.status ?? null, tier: st.course.tierLabel, plan,
+      courseId: live.id, slug: a.slug, name: a.name, kind: topic?.kind ?? null, pickStatus: pick?.status ?? null, tier: st.course.tierLabel, plan,
       percent: items ? Math.round((done / items) * 100) : 0, done, items, complete: st.complete, bonus: st.bonus,
       capstone: st.capstone, points: coursePoints, skillRank: topic?.kind === "skill" ? rankOf(coursePoints) : null,
       modules: st.modules.map((m) => ({ position: m.position, title: m.title, state: m.state, reason: m.reason, gated: m.gated, done: m.done, doneCount: m.doneCount, itemCount: m.itemCount })),

@@ -5,6 +5,8 @@ import { call } from "../../call";
 import { attemptFrom, feedbackFrom, type AttemptResult, type LearnerActivity, type Selection } from "../../activities-api";
 import { activityModeFrom } from "../../path-api";
 import { ActivityIcon } from "../../ui/activity-icon";
+import type { LessonProgress } from "../../progress-api";
+import "../c2.css";
 
 type Strs = string[];
 const list = (v: unknown): Strs => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : []);
@@ -14,10 +16,14 @@ const list = (v: unknown): Strs => (Array.isArray(v) ? v.filter((x): x is string
  * show the correct answer with a cited explanation; only they count toward the lesson's score. Everything else is
  * "Practice, not graded": the learner can see a sample or key points after trying, and ask for AI feedback (counted
  * against their Mentor allowance; never a grade). Native form controls, labels and a live region for results.
+ * C2: in a course with the unlock rules, each item shows its importance label and whether it's done; a quiz counts as
+ * done at 80% or more; other practice is marked done after trying it; an item not open yet says why. A real-world
+ * mission shows its kind, and for a teen the limits and the Guardian requests.
  */
-export function Practice({ items, score, selection, onScore, onModeChanged }: {
+export function Practice({ items, score, selection, onScore, onModeChanged, progress, onProgress }: {
   items: LearnerActivity[]; score: { graded: number; correct: number }; selection: Selection;
   onScore: (s: { graded: number; correct: number }) => void; onModeChanged: () => void;
+  progress?: LessonProgress | null; onProgress?: () => void;
 }) {
   const [message, setMessage] = useState<string | null>(null);
   if (!items.length) return null;
@@ -35,13 +41,18 @@ export function Practice({ items, score, selection, onScore, onModeChanged }: {
       {selection.personalized && <p><button type="button" className="link" onClick={() => void switchTo("default")}>Show the default set</button></p>}
       {selection.mode === "default" && selection.canPersonalize && <p><button type="button" className="link" onClick={() => void switchTo("personal")}>Pick practice for my answers again</button></p>}
       {message && <p role="status">{message}</p>}
+      {progress && <p className="small muted">A quiz counts as done at 80% or more. Other practice counts once you try it and mark it done.</p>}
       {score.graded > 0 && <p className="small ui-act-score">Graded items right: {score.correct} of {score.graded}. Only graded items count toward your progress.</p>}
-      {items.map((a) => <ItemView key={a.id} item={a} onScore={onScore} />)}
+      {items.map((a) => <ItemView key={a.id} item={a} onScore={onScore} progress={progress ?? null} onProgress={onProgress} />)}
     </section>
   );
 }
 
-function ItemView({ item: a, onScore }: { item: LearnerActivity; onScore: (s: { graded: number; correct: number }) => void }) {
+function ItemView({ item: a, onScore, progress, onProgress }: {
+  item: LearnerActivity; onScore: (s: { graded: number; correct: number }) => void; progress: LessonProgress | null; onProgress?: () => void;
+}) {
+  const x = progress?.items.find((i) => i.kind === "activity" && i.id === a.id) ?? null;
+  const locked = !!x && !x.open;
   const [answer, setAnswer] = useState<Record<string, unknown>>({});
   const [text, setText] = useState("");
   const [result, setResult] = useState<AttemptResult | null>(null);
@@ -60,6 +71,21 @@ function ItemView({ item: a, onScore }: { item: LearnerActivity; onScore: (s: { 
     setMessage(null);
     setResult(res);
     if (res.graded) onScore(res.score);
+    // C2: a quiz at 80% or more is done; the server decides, the page reloads the states.
+    if (x && res.graded) onProgress?.();
+  }
+  async function markDone() {
+    setBusy(true);
+    const r = await call("POST", `/api/v1/learn/activities/${a.id}/complete`, {});
+    setBusy(false);
+    setMessage(r._status === 200 ? "Marked as done." : r.reason ?? "Couldn't mark it done.");
+    if (r._status === 200) onProgress?.();
+  }
+  async function askGuardian(scope: "course" | "contact") {
+    setBusy(true);
+    const r = await call("POST", "/api/v1/learn/missions/request", { itemId: a.id, scope });
+    setBusy(false);
+    setMessage(r._status === 201 ? "Asked. Your Guardian sees the request in their Guardian Center." : r.reason ?? "Couldn't send the request.");
   }
   async function getFeedback() {
     setBusy(true);
@@ -89,7 +115,24 @@ function ItemView({ item: a, onScore }: { item: LearnerActivity; onScore: (s: { 
         <span className="ui-act__grade">{a.graded ? "Graded" : a.label}</span>
         <span className="ui-act__sep"> · </span>
         <span className="ui-act__level">{a.level}</span>
+        {x?.importanceLabel && <><span className="ui-act__sep"> · </span><span className="ui-badge">{x.importanceLabel}</span></>}
+        {x?.done && <><span className="ui-act__sep"> · </span><span className="ui-badge ui-badge--accent">Done</span></>}
       </legend>
+      {locked && <p className="small muted">Not open yet. {progress?.module.reason ?? ""}</p>}
+      {x?.mission && (
+        <div className="small">
+          <p><strong>Real-world mission:</strong> {x.mission.label}.</p>
+          {progress?.teen && (
+            <>
+              <ul>{(progress.missionLimits ?? []).map((l) => <li key={l}>{l}</li>)}</ul>
+              <p className="ui-actions">
+                <button type="button" className="ui-btn ui-btn--quiet" disabled={busy} onClick={() => void askGuardian("course")}>Ask my Guardian to approve missions in this course</button>
+                {x.mission.contacts && <> <button type="button" className="ui-btn ui-btn--quiet" disabled={busy} onClick={() => void askGuardian("contact")}>Ask my Guardian to approve this mission</button></>}
+              </p>
+            </>
+          )}
+        </div>
+      )}
       {a.why && <p className="small muted">Why this one: {a.why.join("; ")}.</p>}
       <p id={`${name}-prompt`} className="ui-act__prompt">{a.prompt}</p>
       {/* Graded types */}
@@ -140,17 +183,18 @@ function ItemView({ item: a, onScore }: { item: LearnerActivity; onScore: (s: { 
       {a.graded ? (
         a.type === "flashcard" ? (
           <p className="ui-actions">
-            <button type="button" className="ui-btn" disabled={busy || !!result} onClick={() => void submit({ answer: { knew: true } })}>I knew it</button>{" "}
-            <button type="button" className="ui-btn" disabled={busy || !!result} onClick={() => void submit({ answer: { knew: false } })}>I didn&apos;t know it</button>
+            <button type="button" className="ui-btn" disabled={busy || locked || !!result} onClick={() => void submit({ answer: { knew: true } })}>I knew it</button>{" "}
+            <button type="button" className="ui-btn" disabled={busy || locked || !!result} onClick={() => void submit({ answer: { knew: false } })}>I didn&apos;t know it</button>
           </p>
         ) : (
-          <p className="ui-actions"><button type="button" className="ui-btn ui-btn--primary" disabled={busy || !Object.keys(answer).length} onClick={() => void submit({ answer })}>Check my answer</button></p>
+          <p className="ui-actions"><button type="button" className="ui-btn ui-btn--primary" disabled={busy || locked || !Object.keys(answer).length} onClick={() => void submit({ answer })}>Check my answer</button></p>
         )
       ) : (
         <>
           <p className="ui-act__answer"><label>Your answer (practice; not saved){" "}<textarea className="ui-input" value={text} onChange={(e) => setText(e.target.value)} rows={3} cols={60} aria-describedby={`${name}-prompt`} /></label></p>
           <p className="ui-actions">
-            <button type="button" className="ui-btn" disabled={busy} onClick={() => void submit({})}>Show the sample</button>{" "}
+            <button type="button" className="ui-btn" disabled={busy || locked} onClick={() => void submit({})}>Show the sample</button>{" "}
+            {x && !x.done && (result || (a.result?.attempts ?? 0) > 0) && <><button type="button" className="ui-btn ui-btn--primary" disabled={busy || locked} onClick={() => void markDone()}>Mark as done</button>{" "}</>}
             <button type="button" className="ui-btn ui-btn--quiet" disabled={busy || text.trim().length < 3} onClick={() => void getFeedback()}>Get feedback (AI)</button>{" "}
             <span className="small muted">AI feedback uses your Mentor allowance. It&apos;s never a grade.</span>
           </p>

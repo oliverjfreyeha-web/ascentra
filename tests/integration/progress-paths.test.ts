@@ -46,6 +46,10 @@ import * as picksRoute from "@/app/api/v1/learn/picks/route";
 import * as topicRoute from "@/app/api/v1/topics/[id]/route";
 import * as communityRoute from "@/app/api/v1/community/route";
 import { RIVAL_LABEL } from "@/lib/leaderboard-rules";
+import { allowListFrom, capstoneFrom, communityFrom, guardianMissionsFrom, leaderboardFrom, lessonProgressFrom, notebookFrom, progressFrom } from "@/app/progress-api";
+import { adminTopicsFrom, chooserFrom } from "@/app/picks-api";
+import * as topicsRoute from "@/app/api/v1/topics/route";
+import * as submitRoute from "@/app/api/v1/courses/[slug]/versions/[id]/submit/route";
 import { aiConfigured } from "@/lib/ai";
 
 let stack: Stack;
@@ -71,10 +75,8 @@ const lesson = (m: number, who: Who = "learner") => call(lessonRoute, "GET", `/a
 const attempt = (id: string, body: unknown = {}, who: Who = "learner") => call(attemptRoute, "POST", `/api/v1/learn/activities/${id}/attempt`, who, body, { id });
 const complete = (id: string, who: Who = "learner") => call(completeRoute, "POST", `/api/v1/learn/activities/${id}/complete`, who, {}, { id });
 const watched = (id: string, who: Who = "learner") => call(watchedRoute, "POST", `/api/v1/learn/videos/${id}/watched`, who, {}, { id });
-const progress = async (who: Who = "learner") => (await call(progressRoute, "GET", "/api/v1/learn/progress", who)).body as unknown as {
-  rank: { name: string; points: number }; streak: { current: number; longest: number }; plan: string;
-  courses: { slug: string; bonus: boolean; complete: boolean; modules: { position: number; state: string; reason: string | null; gated: boolean }[] }[];
-};
+// Every answer goes through the page's own reader (app/progress-api.ts), so the pages can't drift from the routes.
+const progress = async (who: Who = "learner") => progressFrom((await call(progressRoute, "GET", "/api/v1/learn/progress", who)).body)!;
 const states = async (who: Who = "learner") => (await progress(who)).courses.find((c) => c.slug === SLUG)!.modules.map((m) => m.state);
 /** Every item in a module, done the way a learner does it. */
 async function finish(m: number, who: Who = "learner") {
@@ -345,10 +347,54 @@ describe("C2 picks and topic facts", () => {
   });
 
   it("community links are shown to teens unless the Owner hides them", async () => {
-    expect((await call(communityRoute, "PUT", "/api/v1/community", "owner", { discordUrl: "https://example.org/discord", socialLinks: [], hideFromTeens: false, reason: "Test" })).status).toBe(200);
+    expect((await call(communityRoute, "PUT", "/api/v1/community", "owner", { discordUrl: "https://example.org/discord", socialLinks: [], hideFromTeens: false, reason: "Test: counsel review" })).status).toBe(200);
     expect((await call(communityRoute, "GET", "/api/v1/community", "teen")).body).toMatchObject({ links: [{ label: "Discord" }], hidden: false });
-    await call(communityRoute, "PUT", "/api/v1/community", "owner", { discordUrl: "https://example.org/discord", socialLinks: [], hideFromTeens: true, reason: "Test" });
+    await call(communityRoute, "PUT", "/api/v1/community", "owner", { discordUrl: "https://example.org/discord", socialLinks: [], hideFromTeens: true, reason: "Test: counsel review" });
     expect((await call(communityRoute, "GET", "/api/v1/community", "teen")).body).toMatchObject({ links: [], hidden: true });
     expect((await call(communityRoute, "GET", "/api/v1/community", "learner")).body).toMatchObject({ links: [{ label: "Discord" }] });
+  });
+});
+
+describe("C2 page readers against the real routes", () => {
+  it("every reader accepts what its route sends", async () => {
+    expect(progressFrom((await call(progressRoute, "GET", "/api/v1/learn/progress", "learner")).body)).not.toBeNull();
+    expect(lessonProgressFrom((await lesson(0)).body.progress2)).toMatchObject({ module: { position: 1 }, rank: { name: expect.any(String) } });
+    expect(lessonProgressFrom((await lesson(0, "teen")).body.progress2)).toMatchObject({ teen: true, missionLimits: expect.arrayContaining(["No meeting anyone in person."]) });
+    expect(notebookFrom((await call(notebookRoute, "GET", "/api/v1/learn/notebook", "learner")).body)).not.toBeNull();
+    expect(leaderboardFrom((await call(boardRoute, "GET", "/api/v1/leaderboard", "learner")).body)).toMatchObject({ kind: "public" });
+    expect(leaderboardFrom((await call(boardRoute, "GET", "/api/v1/leaderboard", "teen")).body)).toMatchObject({ kind: "practice" });
+    expect(communityFrom((await call(communityRoute, "GET", "/api/v1/community", "owner")).body)).toMatchObject({ settings: { hideFromTeens: true } });
+    expect(capstoneFrom((await call(capstoneRoute, "GET", `/api/v1/learn/capstones/${courseId}`, "learner", undefined, { courseId })).body)).not.toBeNull();
+    expect(guardianMissionsFrom((await call(guardianRoute, "GET", "/api/v1/guardian/missions", "guardian")).body)).not.toBeNull();
+    expect(allowListFrom((await call(allowRoute, "GET", "/api/v1/missions/allowlist", "owner")).body)).not.toBeNull();
+    const c = chooserFrom((await call(picksRoute, "GET", "/api/v1/learn/picks", "teen")).body)!;
+    expect(c.sideHustle).toMatchObject({ slug: "newsletter", locked: true });
+    expect(c.sideHustles!.find((t) => t.slug === "newsletter")?.facts?.cost).toMatchObject({ range: "$0 to $50", checkedOn: "2026-10-01" });
+    const admin = adminTopicsFrom((await call(topicsRoute, "GET", "/api/v1/topics", "owner")).body)!;
+    expect(admin.topics.find((t) => t.slug === "newsletter")).toMatchObject({ kind: "side_hustle", facts: { costLow: 0, costHigh: 50 } });
+  });
+});
+
+describe("C2 importance labels before review", () => {
+  it("a lesson in a sized course can't go to review while an item in its module has no label; labelled, it can", async () => {
+    const slug = "label-check";
+    const academy = (await q("insert into public.academies (slug, name) values ($1, 'Label check (test)') returning id", [slug])).rows[0].id;
+    const plan = { structure: 2, sizeTier: "compact", title: "Label check (test)", outcome: "Test", modules: [1, 2, 3].map((n) => ({
+      title: `Test module ${n}`, stage: "Foundations", recipe: { videos: 1, quizzes: 1, assignments: 1, sandboxes: 1, sequences: 0, boosters: [] },
+      lessons: [{ title: `Test lesson ${n}`, minutes: 10, objectives: ["Test"], keyClaims: [{ claim: "Test claim.", sourceId: source }] }], skills: [], videos: [{ title: `Test video ${n}`, brief: { points: [{ text: "Test" }] } }] })) };
+    const bp = (await q(`insert into public.academy_blueprints (account_id, academy_id, kind, topic, audience_level, plan, generated_by, source_ids)
+      values ($1, $2, 'course', 'Label', 'beginner', $3, 'ai', $4) returning id`, [ROLE_ID.owner, academy, JSON.stringify(plan), [source]])).rows[0].id;
+    const course = (await q("select public.approve_course_blueprint($1, $2) as id", [bp, ROLE_ID.owner])).rows[0].id;
+    const m = (await q("select id from public.modules where course_id = $1 and position = 1", [course])).rows[0].id;
+    const l = (await q("select id from public.lessons where module_id = $1", [m])).rows[0].id;
+    const v = (await q(`insert into public.lesson_versions (lesson_id, course_id, version, title, body, citations, created_by_account_id)
+      values ($1, $2, 1, 'Test lesson', $3, $4, $5) returning id`, [l, course, JSON.stringify({ summary: "Test summary.", sections: [{ heading: "Test", paragraphs: [{ text: "Test text.", refs: [1] }] }], takeaways: [] }),
+      JSON.stringify([{ ref: 1, sourceId: source, title: "Test search study", url: "https://example.org/search", license: "web_summarize_only", lastChecked: "2026-09-01" }]), ROLE_ID.owner])).rows[0].id;
+    const submit = () => call(submitRoute, "POST", `/api/v1/courses/${slug}/versions/${v}/submit`, "owner", {}, { slug, id: v });
+    const r = await submit();
+    expect(r.status).toBe(409);
+    expect(r.reason).toMatch(/Label every video and practice item in this module first \(1 without an importance label/);
+    await q("update public.video_slots set importance = 'should_know' where module_id = $1", [m]);
+    expect((await submit()).status).toBe(200);
   });
 });

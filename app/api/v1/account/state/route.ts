@@ -1,6 +1,9 @@
 import { withCap } from "@/lib/auth";
 import { ok, refuse } from "@/lib/http";
-import { setState } from "@/lib/missions";
+import { setState, stateOf } from "@/lib/missions";
+
+/** C2: the learner's own US state, for their Account page (private: the learner, the server and authorized staff only). */
+export const GET = withCap("self.view", async (_req, _ctx, account) => ok({ state: await stateOf(account.id) }));
 
 /** C2: the learner's US state (private: the learner, the server and authorized staff only). Body: { state }. Audited without the state itself. */
 export const PUT = withCap("self.view", async (_req, _ctx, account, x) => {
