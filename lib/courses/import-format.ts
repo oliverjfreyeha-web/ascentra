@@ -425,3 +425,6 @@ function toPlan(d: ImportDoc, ctx: ImportContext): ImportPlan {
 export const PROBLEM_GROUPS: Record<ProblemGroup, string> = {
   format: "File format", course: "Course", sources: "Sources", modules: "Modules", items: "Items", capstone: "Capstone", income: "Income claims and attorney wording", links: "Links",
 };
+
+/** The resources a learner may see: only those whose terms the Owner checked (the rest are stored, never shown). */
+export const learnerResources = <T extends { termsChecked: boolean }>(resources: readonly T[]) => resources.filter((r) => r.termsChecked === true);

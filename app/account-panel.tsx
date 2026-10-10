@@ -9,6 +9,7 @@ import { SignOut } from "./sign-out";
 import { meFrom, type Me } from "./me";
 import { useOnboardingGuard } from "./onboarding";
 import { ProtectTip } from "./ui/protect-tip";
+import { isStaff } from "./admin-links";
 
 // Who is signed in, read only through /api/v1/me. A Clerk session the API refuses goes to /welcome, which says why
 // (the sign-up step, a teen waiting for their Guardian, a missing second factor, or no access).
@@ -61,6 +62,12 @@ export function AccountPanel() {
     <>
     <p className="muted">
       {me ? `Signed in as ${me.displayName} (${ROLE_LABEL[me.roleKey]}) · ` : failed ? "Couldn't load your account. " : "Checking your account… "}
+      {/* I1: one Admin link for the Owner and staff (not learners or Guardians), to the admin home's list of pages. */}
+      {isStaff(me?.roleKey) && (
+        <>
+          <Link href="/admin">Admin</Link> ·{" "}
+        </>
+      )}
       {me?.roleKey === "owner" && (
         <>
           <Link href="/admin">Administrators</Link> ·{" "}

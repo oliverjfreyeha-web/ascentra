@@ -7,6 +7,7 @@ import { call, when } from "../../call";
 import { meFrom } from "../../me";
 import { adminTopicsFrom, learnerPicksFrom, type AdminTopic, type LearnerPicks, type Source } from "../../picks-api";
 import { Loading } from "../../ui/loading";
+import "./topics.css";
 
 /**
  * L8: the Owner and authorized staff (Super Admin, Course Admin) manage topics; the Owner alone changes a learner's business.
@@ -38,15 +39,18 @@ export function TopicsAdmin() {
     void load();
   }, [load]);
 
-  async function send(method: string, url: string, body: unknown, done: string) {
+  /** Sends a change; the page-top message says what happened. Returns null when saved, else the refusal (I1: forms also show it next to their Save button). */
+  async function save(method: string, url: string, body: unknown, done: string): Promise<string | null> {
     setBusy(true);
     const r = await call(method, url, body);
     setBusy(false);
     const t = r._status < 300 ? adminTopicsFrom(r) : null;
     if (t) setTopics(t.topics);
-    setMessage(t ? done : r.reason ?? "Nothing was changed.");
-    return !!t;
+    const refusal = t ? null : r.reason ?? "Nothing was changed.";
+    setMessage(t ? done : refusal);
+    return refusal;
   }
+  const send = async (method: string, url: string, body: unknown, done: string) => (await save(method, url, body, done)) === null;
 
   if (role && !["owner", "superAdmin", "courseAdmin"].includes(role)) return <p>Topics are managed by the Owner, Super Admins and Course Admins.</p>;
   const list = (topics ?? []).filter((t) => t.kind === kind).sort((a, b) => a.sortOrder - b.sortOrder);
@@ -66,15 +70,15 @@ export function TopicsAdmin() {
       {note && <p className="small muted">{note}</p>}
       {topics === null ? <Loading shape="table" /> : (
         <div className="ui-table-wrap">
-          <table>
+          <table className="topics__table">
             <caption className="sr-only">{KINDS.find((k) => k.key === kind)!.label}</caption>
             <thead><tr><th scope="col">Topic</th><th scope="col">Shown</th><th scope="col">Teens</th><th scope="col">Course (none, drafting, in review, published)</th><th scope="col">Demand (30 days / all)</th><th scope="col">Picked now</th><th scope="col">Order</th></tr></thead>
             <tbody>
               {list.map((t, i) => (
                 <tr key={t.id}>
                   <td>
-                    <EditTopic t={t} busy={busy} onSave={(name, blurb) => send("PATCH", `/api/v1/topics/${t.id}`, { name, blurb }, `${name}: saved.`)} />
-                    {t.kind !== "skill" && t.facts && <EditFacts t={t} busy={busy} onSave={(body) => send("PATCH", `/api/v1/topics/${t.id}`, body, `${t.name}: estimates saved.`)} />}
+                    <EditTopic t={t} busy={busy} onSave={(name, blurb) => save("PATCH", `/api/v1/topics/${t.id}`, { name, blurb }, `${name}: saved.`)} />
+                    {t.kind !== "skill" && t.facts && <EditFacts t={t} busy={busy} onSave={(body) => save("PATCH", `/api/v1/topics/${t.id}`, body, `${t.name}: estimates saved.`)} />}
                   </td>
                   <td><button type="button" className="link" disabled={busy} onClick={() => toggle(t, "published", t.published ? "unpublished" : "published")}>{t.published ? "Published" : "Unpublished"}<span className="sr-only">: {t.name}. Select to {t.published ? "unpublish" : "publish"}.</span></button></td>
                   <td><button type="button" className="link" disabled={busy} onClick={() => toggle(t, "teenHidden", t.teenHidden ? "shown to teens" : "hidden from teens")}>{t.teenHidden ? "Hidden from teens" : "Shown to teens"}<span className="sr-only">: {t.name}. Select to {t.teenHidden ? "show to teens" : "hide from teens"}.</span></button></td>
@@ -100,7 +104,7 @@ export function TopicsAdmin() {
           </table>
         </div>
       )}
-      <AddTopic kind={kind} busy={busy} onAdd={(body) => send("POST", "/api/v1/topics", body, `Added ${String(body.name)} (unpublished until you publish it).`)} />
+      <AddTopic kind={kind} busy={busy} onAdd={(body) => save("POST", "/api/v1/topics", body, `Added ${String(body.name)} (unpublished until you publish it).`)} />
       {role === "owner" && <LearnerBusiness />}
     </>
   );
@@ -148,8 +152,9 @@ function StartCourse({ t, onDone }: { t: AdminTopic; onDone: (message: string) =
   );
 }
 
-function EditTopic({ t, busy, onSave }: { t: AdminTopic; busy: boolean; onSave: (name: string, blurb: string) => Promise<boolean> }) {
+function EditTopic({ t, busy, onSave }: { t: AdminTopic; busy: boolean; onSave: (name: string, blurb: string) => Promise<string | null> }) {
   const [open, setOpen] = useState(false);
+  const [refusal, setRefusal] = useState<string | null>(null);
   const [name, setName] = useState(t.name);
   const [blurb, setBlurb] = useState(t.blurb);
   if (!open) return (
@@ -160,14 +165,19 @@ function EditTopic({ t, busy, onSave }: { t: AdminTopic; busy: boolean; onSave: 
     </>
   );
   return (
-    <form className="ui-form" aria-label={`Edit ${t.name}`} onSubmit={(e) => { e.preventDefault(); void onSave(name, blurb).then((ok) => { if (ok) setOpen(false); }); }}>
+    <form className="ui-form" aria-label={`Edit ${t.name}`} onSubmit={(e) => { e.preventDefault(); void onSave(name, blurb).then((r) => { setRefusal(r); if (r === null) setOpen(false); }); }}>
       <label>Name <input value={name} onChange={(e) => setName(e.target.value)} maxLength={80} /></label>
       <label>Description <textarea value={blurb} onChange={(e) => setBlurb(e.target.value)} maxLength={300} rows={2} /></label>
-      <p className="ui-actions"><button type="submit" disabled={busy || name.trim().length < 2}>Save</button> <button type="button" onClick={() => setOpen(false)}>Cancel</button></p>
+      <p className="ui-actions">
+        <button type="submit" disabled={busy || name.trim().length < 2}>Save</button> <button type="button" onClick={() => { setRefusal(null); setOpen(false); }}>Cancel</button>
+        {refusal && <span role="alert" className="topics__refusal">{refusal}</span>}
+      </p>
     </form>
   );
 }
 
+/** I1: the exact line format for a source, shown as placeholder text. */
+export const SOURCE_PLACEHOLDER = "Title | https://link";
 const sourcesText = (list: Source[]) => list.map((x) => `${x.title} | ${x.url}`).join("\n");
 const sourcesFrom = (text: string): Source[] => text.split("\n").map((l) => l.trim()).filter(Boolean).map((l) => {
   const [title, url] = l.split("|").map((x) => x.trim());
@@ -175,9 +185,10 @@ const sourcesFrom = (text: string): Source[] => text.split("\n").map((l) => l.tr
 });
 
 /** C2: the card estimates, entered by the Owner (or staff) with sources and the date checked. Never invented. */
-function EditFacts({ t, busy, onSave }: { t: AdminTopic; busy: boolean; onSave: (body: Record<string, unknown>) => Promise<boolean> }) {
+function EditFacts({ t, busy, onSave }: { t: AdminTopic; busy: boolean; onSave: (body: Record<string, unknown>) => Promise<string | null> }) {
   const f = t.facts!;
   const [open, setOpen] = useState(false);
+  const [refusal, setRefusal] = useState<string | null>(null);
   const [v, setV] = useState({
     costLow: f.costLow?.toString() ?? "", costHigh: f.costHigh?.toString() ?? "", costItems: f.costItems.join("\n"), costSources: sourcesText(f.costSources), costCheckedOn: f.costCheckedOn ?? "",
     outlookLabel: f.outlookLabel ?? "", outlookSources: sourcesText(f.outlookSources), outlookCheckedOn: f.outlookCheckedOn ?? "", difficulty: f.difficulty?.toString() ?? "", riskNotes: f.riskNotes ?? "",
@@ -197,7 +208,7 @@ function EditFacts({ t, busy, onSave }: { t: AdminTopic; busy: boolean; onSave: 
       costLow: num(v.costLow), costHigh: num(v.costHigh), costItems: v.costItems.split("\n").map((x) => x.trim()).filter(Boolean), costSources: sourcesFrom(v.costSources),
       costCheckedOn: v.costCheckedOn || null, outlookLabel: v.outlookLabel || null, outlookSources: sourcesFrom(v.outlookSources), outlookCheckedOn: v.outlookCheckedOn || null,
       difficulty: num(v.difficulty), riskNotes: v.riskNotes,
-    }).then((ok) => { if (ok) setOpen(false); });
+    }).then((r) => { setRefusal(r); if (r === null) setOpen(false); });
   }
   return (
     <form className="ui-form" aria-label={`Estimates for ${t.name}`} onSubmit={submit}>
@@ -207,7 +218,7 @@ function EditFacts({ t, busy, onSave }: { t: AdminTopic; busy: boolean; onSave: 
         <label>Lowest <input inputMode="decimal" value={v.costLow} onChange={set("costLow")} size={8} /></label>{" "}
         <label>Highest <input inputMode="decimal" value={v.costHigh} onChange={set("costHigh")} size={8} /></label>
         <label>What it covers (one per line) <textarea id={`${id}-items`} rows={2} value={v.costItems} onChange={set("costItems")} /></label>
-        <label>Sources (one per line: title | https link) <textarea rows={2} value={v.costSources} onChange={set("costSources")} /></label>
+        <label>Sources (one per line: title | https link) <textarea rows={2} value={v.costSources} onChange={set("costSources")} placeholder={SOURCE_PLACEHOLDER} /></label>
         <label>Checked on <input type="date" value={v.costCheckedOn} onChange={set("costCheckedOn")} /></label>
       </fieldset>
       <fieldset>
@@ -215,24 +226,31 @@ function EditFacts({ t, busy, onSave }: { t: AdminTopic; busy: boolean; onSave: 
         <label>Outlook <select value={v.outlookLabel} onChange={set("outlookLabel")}>
           <option value="">Not set (Estimate coming)</option><option value="growing">Growing</option><option value="steady">Steady</option><option value="shrinking">Shrinking</option><option value="unclear">Unclear</option>
         </select></label>
-        <label>Sources (one per line: title | https link) <textarea rows={2} value={v.outlookSources} onChange={set("outlookSources")} /></label>
+        <label>Sources (one per line: title | https link) <textarea rows={2} value={v.outlookSources} onChange={set("outlookSources")} placeholder={SOURCE_PLACEHOLDER} /></label>
         <label>Checked on <input type="date" value={v.outlookCheckedOn} onChange={set("outlookCheckedOn")} /></label>
       </fieldset>
       <label>Difficulty (1 easiest to 5) <select value={v.difficulty} onChange={set("difficulty")}><option value="">Not set</option>{[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n}</option>)}</select></label>
       <label>Risks <textarea rows={2} maxLength={600} value={v.riskNotes} onChange={set("riskNotes")} /></label>
-      <p className="ui-actions"><button type="submit" disabled={busy}>Save estimates</button> <button type="button" onClick={() => setOpen(false)}>Cancel</button></p>
+      <p className="ui-actions">
+        <button type="submit" disabled={busy} aria-describedby={refusal ? `${id}-refusal` : undefined}>Save estimates</button> <button type="button" onClick={() => { setRefusal(null); setOpen(false); }}>Cancel</button>
+        {refusal && <span id={`${id}-refusal`} role="alert" className="topics__refusal">{refusal}</span>}
+      </p>
     </form>
   );
 }
 
-function AddTopic({ kind, busy, onAdd }: { kind: Kind; busy: boolean; onAdd: (body: Record<string, unknown>) => Promise<boolean> }) {
+function AddTopic({ kind, busy, onAdd }: { kind: Kind; busy: boolean; onAdd: (body: Record<string, unknown>) => Promise<string | null> }) {
   const one = KINDS.find((k) => k.key === kind)!.one;
   const [name, setName] = useState("");
   const [blurb, setBlurb] = useState("");
   const [teenHidden, setTeenHidden] = useState(false);
+  const [refusal, setRefusal] = useState<string | null>(null);
   async function submit(e: FormEvent) {
     e.preventDefault();
-    if (await onAdd({ kind, name, blurb, teenHidden })) { setName(""); setBlurb(""); setTeenHidden(false); }
+    // A refusal keeps what was typed and says why next to the button.
+    const r = await onAdd({ kind, name, blurb, teenHidden });
+    setRefusal(r);
+    if (r === null) { setName(""); setBlurb(""); setTeenHidden(false); }
   }
   return (
     <form onSubmit={submit} className="ui-block ui-form" aria-label={`Add a ${one}`}>
@@ -241,7 +259,10 @@ function AddTopic({ kind, busy, onAdd }: { kind: Kind; busy: boolean; onAdd: (bo
       <label>Name <input value={name} onChange={(e) => setName(e.target.value)} maxLength={80} /></label>
       <label>Description <textarea value={blurb} onChange={(e) => setBlurb(e.target.value)} maxLength={300} rows={2} /></label>
       <label><input type="checkbox" checked={teenHidden} onChange={(e) => setTeenHidden(e.target.checked)} /> Hide from teens (14 to 17)</label>
-      <p className="ui-actions"><button type="submit" disabled={busy || name.trim().length < 2}>Add</button></p>
+      <p className="ui-actions">
+        <button type="submit" disabled={busy || name.trim().length < 2}>Add</button>
+        {refusal && <span role="alert" className="topics__refusal">{refusal}</span>}
+      </p>
     </form>
   );
 }

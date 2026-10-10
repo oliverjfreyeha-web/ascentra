@@ -8,7 +8,7 @@
  */
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { checkImport, stripHtml, type ImportContext } from "@/lib/courses/import-format";
+import { checkImport, learnerResources, stripHtml, type ImportContext } from "@/lib/courses/import-format";
 import { sampleCourse } from "../fixtures/course-import";
 
 const ctx = (over: Partial<NonNullable<ImportContext["topic"]>> | null = {}): ImportContext => ({
@@ -44,6 +44,13 @@ describe("a valid file", () => {
     expect(plan.capstone.automation).toEqual({ what: expect.any(String), prompts: ["Test headline helper: Test: suggest three short headlines for a practice flyer."], plans: [] });
     // No topic cost or outlook fields are ever in the plan.
     expect(JSON.stringify(plan)).not.toMatch(/cost_low|costLow|outlook/);
+  });
+
+  it("a resource whose terms weren't checked is stored but never offered to learners", () => {
+    const plan = check(sampleCourse()).plan!;
+    const stored = (plan.blueprint.imported as { resources: { name: string; termsChecked: boolean }[] }).resources;
+    expect(stored.map((r) => r.name)).toEqual(["Test checklist", "Test unchecked resource"]);
+    expect(learnerResources(stored).map((r) => r.name)).toEqual(["Test checklist"]);
   });
 
   it("docs/COURSE-IMPORT.md shows this same sample file", () => {
