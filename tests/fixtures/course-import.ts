@@ -93,3 +93,78 @@ export function sampleCourse(topicSlug = "graphic-design") {
   };
 }
 export type SampleCourse = ReturnType<typeof sampleCourse>;
+
+/**
+ * S1: a small, valid, clearly fake skill track file (format version 2): Rounds of 5 sections, each a little harder than
+ * the same section of the Round before. Every link is on example.org and every title says "Test". docs/COURSE-IMPORT.md
+ * shows the one-Round version of this file as its v2 sample (tests/unit/track-import.test.ts checks they stay the same).
+ */
+export function sampleTrack(topicSlug = "copywriting", rounds: number[] = [1]) {
+  const section = (round: number, n: number) => ({
+    number: n,
+    title: `Test section ${n}: plain words`,
+    difficulty: Math.min(5, Math.ceil(n / 2) + round - 1),
+    bigQuestion: `Test question ${round}.${n}: what makes a sentence clear?`,
+    canDo: [`Test: rewrite sentence ${n} in plain words`],
+    hours: 2,
+    keyTerms: ["Test term"],
+    examples: ["Test example: a product note for a fictional lamp."],
+    mistakes: ["Test mistake: three ideas in one sentence."],
+    sourceIds: ["s1"],
+    recipe: { videos: 1, quizzes: 1, assignments: 1, sandboxes: 1, sequences: 1, boosters: [] },
+    lessons: [{
+      title: `Test lesson ${round}.${n}`,
+      minutes: 8,
+      summary: `Test summary ${round}.${n}: one idea per sentence.`,
+      sections: [{ heading: "Test heading", paragraphs: [{ text: "Test paragraph: a short sentence says one thing.", sourceIds: ["s1"] }] }],
+      takeaways: [{ text: "Test takeaway: cut what the reader doesn't need.", sourceIds: ["s1"] }],
+    }],
+    items: [
+      {
+        kind: "quiz", title: `Test quiz ${round}.${n}`, taskType: "multiple_choice", importance: "very_important", sourceIds: ["s1"],
+        notebookNote: "Test note: one idea per sentence reads faster.",
+        prompt: "Test question: how many ideas should one sentence carry?", content: { options: ["One", "Four"] }, answerKey: { correct: 0 },
+        explanation: "Test explanation: one idea is easier to follow.",
+      },
+      {
+        kind: "sandbox", title: `Test sandbox ${round}.${n}`, taskType: "spot_the_mistake", importance: "important", sourceIds: ["s1"],
+        prompt: "Test task: find the mistake in this made-up product note.", content: { passage: "Test passage: This lamp is bright and it also folds and it ships fast and it is blue.", mistake: "Test: four ideas in one sentence." },
+        explanation: "Test explanation: split it into short sentences.",
+      },
+      {
+        kind: "sequence", title: `Test sequence ${round}.${n}`, taskType: "ordering", importance: "should_know", sourceIds: ["s1"],
+        prompt: "Test task: put the editing steps in order.", content: { steps: ["Find the main idea", "Cut extra words", "Read it aloud"] }, answerKey: { order: [0, 1, 2] },
+        explanation: "Test explanation: the main idea comes first.",
+      },
+      {
+        kind: "task", title: `Test hands-on task ${round}.${n}`, taskType: "mini_project", importance: "important", sourceIds: ["s1"],
+        prompt: "Test task: rewrite a made-up product note for a fictional lamp.", content: { checklist: ["One idea per sentence", "Under 50 words"] },
+        explanation: "Test explanation: short sentences are easier to scan.",
+      },
+    ],
+  });
+  return {
+    formatVersion: 2,
+    topicSlug,
+    track: {
+      title: "Test skill track (fake example)",
+      audience: "Test audience: complete beginners.",
+      outcomes: ["Test outcome: write a clear short product note for practice."],
+      requirements: { ageLimits: "Test: none beyond the site's." },
+      glossary: [{ term: "Test plain words", meaning: "Test meaning: everyday words a reader knows." }],
+      commonMistakes: ["Test: long sentences."],
+      teenStatus: { status: "open", reason: "Test: simulated practice only." },
+      skillsTaught: [],
+    },
+    sources: [{ id: "s1", kind: "article", title: "Test plain writing article", link: "https://example.org/test-plain-writing", creditLine: "Test credit: Example Org", licenseClass: "web_summarize_only" }],
+    resources: [{ name: "Test word list", link: "https://example.org/test-word-list", license: "Test license", termsChecked: true, okToUseText: true, checkedOn: "2026-10-01" }],
+    freshnessWatch: [],
+    rounds: rounds.map((r) => ({
+      roundNumber: r,
+      label: `Round ${r}: test practice`,
+      goal: `Test goal ${r}: write clearer sentences than in the Round before.`,
+      sections: [1, 2, 3, 4, 5].map((n) => section(r, n)),
+    })),
+  };
+}
+export type SampleTrack = ReturnType<typeof sampleTrack>;

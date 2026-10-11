@@ -18,7 +18,7 @@ describe("the I1 bundle on the live C2 database", () => {
     const r = checkImport(JSON.stringify(doc), { topic: { slug: "graphic-design", name: "Freelance graphic design", kind: "business", teenHidden: false, published: false, draftVersions: 0 },
       skillSlugs: new Set(), boosters: [], today: "2026-10-10" });
     if (!r.plan) throw new Error(JSON.stringify(r.problems));
-    return r.plan;
+    return r.plan as ImportPlan;
   };
   const run = (plan: unknown, actor = owner) => q("select public.import_course($1, $2) as r", [actor, JSON.stringify(plan)]);
   const counts = async () => (await q(`select (select count(*) from public.courses)::int as courses, (select count(*) from public.modules)::int as modules,
