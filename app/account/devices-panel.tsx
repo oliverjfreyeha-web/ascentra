@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useClerk } from "@clerk/nextjs";
 import { AppealForm } from "../device-gate";
-import { call, when } from "../call";
+import { call, when, whenKnown } from "../call";
 import { Loading } from "../ui/loading";
 
 type Device = { id: string; name: string; kind: string; region: string | null; trustedAt: string | null; lastSeenAt: string | null; current: boolean; active: boolean };
@@ -60,7 +60,7 @@ export function DevicesPanel() {
                 <span className="muted">{d.active ? "Session open" : "No open session"}</span>
               </div>
               <div className="muted">
-                Trusted {when(d.trustedAt)} · last active {when(d.lastSeenAt)}{d.region ? ` · approximately ${d.region}` : ""}
+                Trusted {whenKnown(d.trustedAt)} · last active {whenKnown(d.lastSeenAt)}{d.region ? ` · approximately ${d.region}` : ""}
               </div>
               {confirm?.id === d.id ? (
                 <div>

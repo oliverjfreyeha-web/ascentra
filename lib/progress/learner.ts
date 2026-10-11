@@ -140,7 +140,9 @@ export async function myProgress(actor: Account, now = new Date()) {
       courseId: live.id, slug: a.slug, name: a.name, kind: topic?.kind ?? null, pickStatus: pick?.status ?? null, tier: st.course.tierLabel, plan,
       percent: items ? Math.round((done / items) * 100) : 0, done, items, complete: st.complete, bonus: st.bonus,
       capstone: st.capstone, points: coursePoints, skillRank: topic?.kind === "skill" ? rankOf(coursePoints) : null,
-      modules: st.modules.map((m) => ({ position: m.position, title: m.title, state: m.state, reason: m.reason, gated: m.gated, done: m.done, doneCount: m.doneCount, itemCount: m.itemCount })),
+      modules: st.modules.map((m) => ({ position: m.position, title: m.title, state: m.state, reason: m.reason, gated: m.gated, done: m.done, doneCount: m.doneCount, itemCount: m.itemCount, round: m.round ?? null })),
+      // S1: a skill track's Rounds ("Round complete", never "Course complete"); null for a module course.
+      track: st.course.isTrack ? { rounds: st.rounds.map((r) => ({ round: r.round, state: r.state, reason: r.reason, complete: r.complete, doneCount: r.doneCount, itemCount: r.itemCount })) } : null,
     });
   }
   // Scores over time: the best score per quiz, by day; and points per day for the last 30 days.

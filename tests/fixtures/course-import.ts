@@ -154,7 +154,7 @@ export function sampleTrack(topicSlug = "copywriting", rounds: number[] = [1]) {
       glossary: [{ term: "Test plain words", meaning: "Test meaning: everyday words a reader knows." }],
       commonMistakes: ["Test: long sentences."],
       teenStatus: { status: "open", reason: "Test: simulated practice only." },
-      skillsTaught: [],
+      skillsTaught: [] as string[],
     },
     sources: [{ id: "s1", kind: "article", title: "Test plain writing article", link: "https://example.org/test-plain-writing", creditLine: "Test credit: Example Org", licenseClass: "web_summarize_only" }],
     resources: [{ name: "Test word list", link: "https://example.org/test-word-list", license: "Test license", termsChecked: true, okToUseText: true, checkedOn: "2026-10-01" }],

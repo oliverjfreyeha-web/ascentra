@@ -90,7 +90,10 @@ export function TopicsAdmin() {
                     ) : (
                       <button type="button" className="link" disabled={busy} onClick={() => toggle(t, "hasCourse", t.hasCourse ? "course coming" : "has a course")}>{t.hasCourse ? "Has a course" : "Course coming"}<span className="sr-only">: {t.name}. Select to mark {t.hasCourse ? "course coming" : "has a course"}.</span></button>
                     )}
-                    {(role === "owner" || role === "courseAdmin") && (!t.course || t.course.status === "none") && <StartCourse t={t} onDone={(m) => { setMessage(m); void load(); }} />}
+                    {t.kind === "skill"
+                      // S1: a skill is one track of 3 Rounds, made by importing it; it has no size.
+                      ? <div className="small">Track (3 Rounds){role === "owner" && (!t.course || t.course.status === "none") ? <> · <Link href="/admin/import">Import it<span className="sr-only">: track for {t.name}</span></Link></> : null}</div>
+                      : (role === "owner" || role === "courseAdmin") && (!t.course || t.course.status === "none") && <StartCourse t={t} onDone={(m) => { setMessage(m); void load(); }} />}
                   </td>
                   <td>{t.demand30} / {t.demandAll}</td>
                   <td>{t.activePicks}</td>

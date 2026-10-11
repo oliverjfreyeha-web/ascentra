@@ -16,7 +16,7 @@ const GROUPS: Record<string, string> = {
   format: "File format", course: "Course", sources: "Sources", modules: "Modules", items: "Items", capstone: "Capstone",
   income: "Income claims and attorney wording", links: "Links",
 };
-const KINDS: Record<string, string> = { video: "videos", quiz: "quizzes", assignment: "assignments", sandbox: "sandboxes", sequence: "sequences", booster: "boosters" };
+const KINDS: Record<string, string> = { video: "videos", quiz: "quizzes", assignment: "assignments", sandbox: "sandboxes", sequence: "sequences", booster: "boosters", task: "hands-on tasks" };
 const MAX = 2 * 1024 * 1024;
 
 export function ImportPage() {
@@ -88,13 +88,19 @@ export function ImportPage() {
           <h3>What {result.created ? "was" : "would be"} created</h3>
           <ul className="import__summary">
             <li>Topic: {result.summary.topic ?? "unknown"}{result.summary.newDraftVersion ? " (it has a Draft already: this becomes the next version)" : ""}</li>
-            <li>Course: {result.summary.title ?? "untitled"}{result.summary.sizeTier ? ` · ${result.summary.sizeTier}` : ""}</li>
-            <li>{result.summary.modules} modules, {result.summary.lessons} lessons (Draft lesson versions)</li>
+            {result.summary.format === 2 ? (<>
+              <li>Skill track: {result.summary.title ?? "untitled"} · Round{(result.summary.rounds ?? []).length === 1 ? "" : "s"} {(result.summary.rounds ?? []).join(", ") || "none"} in the file</li>
+              {(result.summary.carriedRounds ?? []).length > 0 && <li>Round{result.summary.carriedRounds!.length === 1 ? "" : "s"} {result.summary.carriedRounds!.join(", ")} carried from the stored version, as Drafts (the published version is never changed)</li>}
+              <li>{result.summary.modules} sections, {result.summary.lessons} lessons (Draft lesson versions)</li>
+            </>) : (<>
+              <li>Course: {result.summary.title ?? "untitled"}{result.summary.sizeTier ? ` · ${result.summary.sizeTier}` : ""}</li>
+              <li>{result.summary.modules} modules, {result.summary.lessons} lessons (Draft lesson versions)</li>
+            </>)}
             <li>Items: {Object.entries(result.summary.items).map(([k, n]) => `${n} ${KINDS[k] ?? k}`).join(", ") || "none"}</li>
             <li>{result.summary.videoSlots} video slots, each &ldquo;Waiting for video&rdquo;</li>
             <li>{result.summary.sources} sources (new ones are added as &ldquo;proposed&rdquo; for the usual approval)</li>
             <li>{result.summary.resources} resources ({result.summary.resourcesHidden} not shown to learners until their terms are checked)</li>
-            <li>The capstone{result.summary.notices ? ` and ${result.summary.notices} notice${result.summary.notices === 1 ? "" : "s"}` : ""}</li>
+            {result.summary.format !== 2 && <li>The capstone{result.summary.notices ? ` and ${result.summary.notices} notice${result.summary.notices === 1 ? "" : "s"}` : ""}</li>}
           </ul>
           {result.created && (
             <p className="ui-actions">
