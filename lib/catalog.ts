@@ -78,11 +78,12 @@ export type CourseStatus = "none" | "drafting" | "in_review" | "published" | "un
 export const COURSE_STATUS_LABEL: Record<CourseStatus, string> = { none: "None", drafting: "Drafting", in_review: "In review", published: "Published", unpublished: "Unpublished" };
 
 /** The course status of each catalog slug, and the first published lesson of a live course. */
-export async function courseStatuses(slugs: string[]): Promise<Map<string, { status: CourseStatus; label: string; firstLessonId: string | null }>> {
-  const out = new Map<string, { status: CourseStatus; label: string; firstLessonId: string | null }>();
+export async function courseStatuses(slugs: string[]): Promise<Map<string, { status: CourseStatus; label: string; firstLessonId: string | null; track?: boolean }>> {
+  const out = new Map<string, { status: CourseStatus; label: string; firstLessonId: string | null; track?: boolean }>();
   if (!slugs.length) return out;
   const db = getDb();
   const academies = ((await db.from("academies").select("id, slug").in("slug", slugs)).data ?? []) as { id: string; slug: string }[];
+  const trackOf = new Map<string, boolean>();
   const jobs = ((await db.from("catalog_jobs").select("topic_slug, status, waiting_for").in("topic_slug", slugs)).data ?? []) as Pick<Job, "topic_slug" | "status" | "waiting_for">[];
   for (const slug of slugs) {
     const a = academies.find((x) => x.slug === slug);
@@ -90,7 +91,10 @@ export async function courseStatuses(slugs: string[]): Promise<Map<string, { sta
     let status: CourseStatus = "none";
     let firstLessonId: string | null = null;
     if (a) {
-      const courses = ((await db.from("courses").select("id, version, status, unpublished_at").eq("academy_id", a.id)).data ?? []) as { id: string; version: number; status: string; unpublished_at: string | null }[];
+      const all = ((await db.from("courses").select("*").eq("academy_id", a.id)).data ?? []) as { status: string; is_track?: boolean; version: number }[];
+      const latest = [...all].sort((x, y) => y.version - x.version)[0];
+      if (latest?.is_track) trackOf.set(slug, true);
+      const courses = ((await db.from("courses").select("*").eq("academy_id", a.id)).data ?? []) as { id: string; version: number; status: string; unpublished_at: string | null; is_track?: boolean }[];
       const live = courses.filter((c) => c.status === "published" || c.status === "restored").sort((x, y) => y.version - x.version)[0];
       if (live && !live.unpublished_at) {
         status = "published";
@@ -106,7 +110,8 @@ export async function courseStatuses(slugs: string[]): Promise<Map<string, { sta
         status = st === "no_course" ? "none" : st === "in_review" ? "in_review" : "drafting";
       }
     } else if (job) status = catalogState(job, null) === "in_review" ? "in_review" : "drafting";
-    out.set(slug, { status, label: COURSE_STATUS_LABEL[status], firstLessonId });
+    // S1: a skill track opens on its track page, not a lesson.
+    out.set(slug, { status, label: COURSE_STATUS_LABEL[status], firstLessonId, ...(trackOf.get(slug) ? { track: true } : {}) });
   }
   return out;
 }

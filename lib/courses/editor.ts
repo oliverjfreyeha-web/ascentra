@@ -20,7 +20,8 @@ import type { ItemType } from "@/lib/activities/types";
  * a published one is revised as a new Draft that replaces it when published.
  */
 
-type CourseRow = { id: string; academy_id: string; version: number; status: string; owner_review_required: boolean; size_tier?: string | null };
+const TRACK_SECTIONS = "A skill track has 5 sections in each Round, set by its Rounds. Import a Round to change its sections.";
+type CourseRow = { id: string; academy_id: string; version: number; status: string; owner_review_required: boolean; size_tier?: string | null; is_track?: boolean };
 type ModuleRow = { id: string; course_id: string; position: number; code: string; title: string; stage: string | null; recipe: Record<string, unknown>; recommended_pace: string };
 
 const reason = (msg: string) => msg.replace(/^ASCENTRA: /, "");
@@ -35,7 +36,7 @@ async function draftCourse(actor: Account, slug: string, A: string): Promise<{ c
   const academy = await academyOf(slug);
   if (!academy) return refused(404, "No such course.", A);
   if (scope) return refused(403, scope, A, { type: "course", id: slug, label: academy.name });
-  const course = (((await getDb().from("courses").select("id, academy_id, version, status, owner_review_required, size_tier").eq("academy_id", academy.id)).data ?? []) as CourseRow[])
+  const course = (((await getDb().from("courses").select("*").eq("academy_id", academy.id)).data ?? []) as CourseRow[])
     .sort((a, b) => b.version - a.version)[0];
   if (!course) return refused(404, "This course has no version yet. Approve a Blueprint first.", A, { type: "course", id: slug, label: academy.name });
   if (course.status !== "draft") return refused(409, `Version ${course.version} is live. Start a new version to edit it; learners keep seeing the live one until the new version is published.`, A, { type: "course", id: slug, label: academy.name });
@@ -109,6 +110,8 @@ export async function reorderModules(actor: Account, slug: string, body: Record<
   const A = "courses.module.reorder";
   const dc = await draftCourse(actor, slug, A);
   if (isRefusal(dc)) return dc;
+  // S1: a skill track's sections are set by its Rounds (5 each): import a Round to change them.
+  if (dc.course.is_track) return refused(409, TRACK_SECTIONS, A);
   const ids = Array.isArray(body.ids) ? body.ids.filter(isUuid) : [];
   const target = { type: "course", id: slug, label: `${dc.name} v${dc.course.version}` };
   if (!ids.length) return refused(400, "Send the modules in their new order.", A, target);
@@ -153,6 +156,8 @@ export async function addModule(actor: Account, slug: string, body: Record<strin
   const A = "courses.module.add";
   const dc = await draftCourse(actor, slug, A);
   if (isRefusal(dc)) return dc;
+  // S1: a skill track's sections are set by its Rounds (5 each): import a Round to change them.
+  if (dc.course.is_track) return refused(409, TRACK_SECTIONS, A);
   const target = { type: "course", id: slug, label: `${dc.name} v${dc.course.version}` };
   const title = clean(body.title, 200);
   if (title.length < 3) return refused(400, "A module title needs at least 3 characters.", A, target);
@@ -182,6 +187,8 @@ export async function removeModule(actor: Account, slug: string, moduleId: strin
   const A = "courses.module.remove";
   const dc = await draftCourse(actor, slug, A);
   if (isRefusal(dc)) return dc;
+  // S1: a skill track's sections are set by its Rounds (5 each): import a Round to change them.
+  if (dc.course.is_track) return refused(409, TRACK_SECTIONS, A);
   const m = await moduleOf(dc.course.id, moduleId);
   if (!m) return refused(404, "No such module in this course version.", A);
   const target = { type: "module", id: m.id, label: `${slug} v${dc.course.version}: ${m.title}` };
@@ -398,6 +405,8 @@ export async function setSizeTier(actor: Account, slug: string, body: Record<str
   const A = "courses.size_tier";
   const dc = await draftCourse(actor, slug, A);
   if (isRefusal(dc)) return dc;
+  // S1: a skill track's sections are set by its Rounds (5 each): import a Round to change them.
+  if (dc.course.is_track) return refused(409, TRACK_SECTIONS, A);
   const target = { type: "course", id: slug, label: `${dc.name} v${dc.course.version}` };
   if (!isSizeTier(body.tier)) return refused(400, "Choose Compact, Standard or Large.", A, target);
   const n = ((await getDb().from("modules").select("id").eq("course_id", dc.course.id)).data ?? []).length;

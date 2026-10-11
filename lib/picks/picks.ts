@@ -71,9 +71,10 @@ async function answersOf(accountId: string): Promise<PathAnswers | null> {
 }
 
 /** C1: a topic linked to a published course opens it (its first lesson); otherwise it shows "Course coming". */
-const topicView = (t: TopicDb, links: Map<string, { status: string; firstLessonId: string | null }> = new Map()) => {
+const topicView = (t: TopicDb, links: Map<string, { status: string; firstLessonId: string | null; track?: boolean }> = new Map()) => {
   const c = t.catalog_slug ? links.get(t.catalog_slug) : undefined;
-  const href = t.has_course && c?.status === "published" && c.firstLessonId ? `/learn/${c.firstLessonId}` : null;
+  // S1: a published skill track opens on its track page.
+  const href = t.has_course && c?.status === "published" ? (c.track && t.catalog_slug ? `/learn/track/${t.catalog_slug}` : c.firstLessonId ? `/learn/${c.firstLessonId}` : null) : null;
   // C2: businesses and side hustles show the cost to start and the outlook (or "Estimate coming"); skills don't.
   return { slug: t.slug, name: t.name, blurb: t.blurb, hasCourse: t.has_course, courseHref: href, sortOrder: t.sort_order, ...(t.kind !== "skill" ? { facts: cardFacts(t) } : {}) };
 };

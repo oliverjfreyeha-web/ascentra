@@ -97,3 +97,18 @@ export const US_STATES: Record<string, string> = {
   VT: "Vermont", VA: "Virginia", WA: "Washington", WV: "West Virginia", WI: "Wisconsin", WY: "Wyoming",
 };
 export const isStateCode = (v: unknown): v is string => typeof v === "string" && Object.prototype.hasOwnProperty.call(US_STATES, v);
+
+// ============ S1: skill tracks (STARTER numbers; change them here only) ============
+
+/** A skill is one track: this many Rounds, each with this many sections (the importer refuses any other count). */
+export const TRACK_ROUNDS = 3;
+export const SECTIONS_PER_ROUND = 5;
+/** Points for an item in a Round: its importance points times this. Each item earns its points once per Round. */
+export const ROUND_MULTIPLIER: Record<number, number> = { 1: 1, 2: 2, 3: 3 };
+/**
+ * The Rounds each plan includes. The trial includes the first half of Round 1's items (in order, rounded up); Basic
+ * Rounds 1 and 2; Pro (and the Owner's full access) all 3. Nothing is lost when a plan changes.
+ */
+export const ROUNDS_BY_PLAN: Record<"none" | "trial" | "basic" | "pro" | "full", number> = { none: 0, trial: 1, basic: 2, pro: 3, full: 3 };
+/** Which plans include a Round, for the truthful "locked" label. */
+export const ROUND_PLANS: Record<number, string> = { 1: "every plan and the free trial", 2: "Basic and Pro", 3: "Pro" };

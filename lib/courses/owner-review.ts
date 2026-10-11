@@ -4,6 +4,8 @@ import { getDb } from "@/lib/db";
 import { canSeeCourse, clean, isUuid, refused, type Result } from "./common";
 import type { LessonBody } from "./lessons";
 import { INCOME_BLOCK, scanTexts, textsOf, type Finding } from "./income";
+import { SECTIONS_PER_ROUND } from "@/lib/progress/config";
+import { sectionNumber } from "@/lib/progress/tracks";
 import { RECOMMENDED_PACE, briefText, checkModuleCount, coverage, defaultPartOf, isSizeTier, type Coverage, type Recipe, type SizeTier, type VideoBrief } from "./structure";
 import type { ItemType } from "@/lib/activities/types";
 
@@ -20,9 +22,9 @@ import type { ItemType } from "@/lib/activities/types";
 
 type CourseRow = {
   id: string; academy_id: string; version: number; status: string; owner_review_required: boolean; unpublished_at: string | null; published_at: string | null;
-  size_tier?: string | null; license_notice?: string | null; software_notice?: string | null;
+  size_tier?: string | null; license_notice?: string | null; software_notice?: string | null; is_track?: boolean;
 };
-type ModuleRow = { id: string; course_id: string; position: number; title: string; stage: string | null; recipe: Partial<Recipe>; recommended_pace: string };
+type ModuleRow = { id: string; course_id: string; position: number; title: string; stage: string | null; recipe: Partial<Recipe>; recommended_pace: string; round?: number | null };
 type LessonRow = { id: string; module_id: string; position: number; title: string; minutes: number | null };
 type VersionRow = {
   id: string; lesson_id: string; version: number; status: string; title: string; body: LessonBody; submitted_at: string | null; verified_at: string | null;
@@ -52,7 +54,7 @@ const isLive = (c: CourseRow) => c.status === "published" || c.status === "resto
 /** Everything about one course version that the studio and the review need, in one read. */
 export async function loadVersion(courseId: string) {
   const db = getDb();
-  const modules = ((await db.from("modules").select("id, course_id, position, title, stage, recipe, recommended_pace").eq("course_id", courseId)).data ?? []) as ModuleRow[];
+  const modules = ((await db.from("modules").select("*").eq("course_id", courseId)).data ?? []) as ModuleRow[];
   modules.sort((a, b) => a.position - b.position);
   const mids = modules.map((m) => m.id);
   const none = ["00000000-0000-4000-8000-000000000000"];
@@ -161,13 +163,15 @@ export async function courseStudio(actor: Account, slug: string) {
   const l = await loadVersion(latest.id);
   // C2: a course with a size tier also checks its capstone and notices, and needs every item labelled.
   const sized = isSizeTier(latest.size_tier);
+  // S1: a skill track needs every item labelled too; it has Rounds of 5 sections, and no size tier or capstone.
+  const isTrack = latest.is_track === true;
   const extra = sized ? await courseExtras(latest, academy.slug) : null;
   const findings = [...incomeFindings(l), ...(extra?.findings ?? [])];
   const boosters = await activeBoosters();
   const modules = l.modules.map((m) => {
-    const st = moduleState(l, m, findings, sized);
+    const st = moduleState(l, m, findings, sized || isTrack);
     return {
-      id: m.id, position: m.position, title: m.title, stage: m.stage, recipe: { ...m.recipe }, recommendedPace: m.recommended_pace || RECOMMENDED_PACE,
+      id: m.id, position: m.position, round: m.round ?? null, title: m.title, stage: m.stage, recipe: { ...m.recipe }, recommendedPace: m.recommended_pace || RECOMMENDED_PACE,
       state: st,
       lessons: l.lessons.filter((x) => x.module_id === m.id).map((x) => {
         const vs = l.versions.filter((v) => v.lesson_id === x.id).sort((a, b) => a.version - b.version);
@@ -192,21 +196,54 @@ export async function courseStudio(actor: Account, slug: string) {
   const emptySlots = l.slots.filter((s) => s.status !== "approved").length;
   const publishBlockers: string[] = [];
   if (latest.owner_review_required) {
-    const count = checkModuleCount(l.modules.length, sized ? (latest.size_tier as SizeTier) : null);
-    if (count) publishBlockers.push(count);
+    if (isTrack) publishBlockers.push(...trackBlockers(l.modules));
+    else {
+      const count = checkModuleCount(l.modules.length, sized ? (latest.size_tier as SizeTier) : null);
+      if (count) publishBlockers.push(count);
+    }
     if (extra && !extra.capstone) publishBlockers.push("Add the course's capstone (every course has one).");
     if (extra?.capstone && extra.business && !extra.capstone.automation) publishBlockers.push("A business course's capstone needs its \"Automation with AI\" part.");
-    for (const m of modules) if (!m.state.review?.current) publishBlockers.push(`Module ${m.position} "${m.title}" needs the Owner's approval${m.state.review?.decision === "sent_back" ? " (it was sent back)" : ""}.`);
+    for (const m of modules) if (!m.state.review?.current) publishBlockers.push(`${moduleName(m)} "${m.title}" needs the Owner's approval${m.state.review?.decision === "sent_back" ? " (it was sent back)" : ""}.`);
     if (findings.length) publishBlockers.push(INCOME_BLOCK);
   } else publishBlockers.push("This course version uses the earlier flow: publish its lessons one by one below. A new version uses the Owner's review.");
   return {
     course: academy,
     version: { id: latest.id, version: latest.version, status: latest.status, ownerReviewRequired: latest.owner_review_required, isDraft: latest.status === "draft", publishedAt: latest.published_at, unpublishedAt: latest.unpublished_at,
-      sizeTier: sized ? latest.size_tier : null },
+      sizeTier: sized ? latest.size_tier : null, isTrack, rounds: isTrack ? roundStatuses(l, latest.status) : [] },
     capstone: extra?.capstone ?? null, business: extra?.business ?? false, notices: { license: latest.license_notice ?? null, software: latest.software_notice ?? null },
     live: liveVersion ? { id: liveVersion.id, version: liveVersion.version, unpublishedAt: liveVersion.unpublished_at } : null,
     modules, findings, emptySlots, boosters, canPublish: !publishBlockers.length, publishBlockers,
   };
+}
+
+/** S1: "Module 3", or in a track "Round 2 · Section 3". */
+const moduleName = (m: { position: number; round?: number | null }) => (m.round ? `Round ${m.round} · Section ${sectionNumber(m.position)}` : `Module ${m.position}`);
+
+/** S1: a track's Rounds: each present Round has 5 sections, and Round r needs Round r-1. */
+function trackBlockers(modules: ModuleRow[]): string[] {
+  const out: string[] = [];
+  const rounds = [...new Set(modules.map((m) => m.round).filter((r): r is number => !!r))].sort();
+  for (const r of rounds) {
+    const n = modules.filter((m) => m.round === r).length;
+    if (n !== SECTIONS_PER_ROUND) out.push(`Round ${r} has ${n} sections; a Round has ${SECTIONS_PER_ROUND}.`);
+    if (r > 1 && !rounds.includes(r - 1)) out.push(`Round ${r} needs Round ${r - 1} first.`);
+  }
+  if (modules.some((m) => !m.round)) out.push("Every section of a track belongs to a Round.");
+  if (!rounds.length) out.push("A track needs Round 1.");
+  return out;
+}
+
+/** S1: each Round's status in this version: Published, Review (a lesson is in review or verified) or Draft. */
+function roundStatuses(l: Loaded, courseStatus: string) {
+  const rounds = [...new Set(l.modules.map((m) => m.round).filter((r): r is number => !!r))].sort();
+  return rounds.map((r) => {
+    const mods = l.modules.filter((m) => m.round === r);
+    const lessonIds = new Set(l.lessons.filter((x) => mods.some((m) => m.id === x.module_id)).map((x) => x.id));
+    const versions = l.versions.filter((v) => lessonIds.has(v.lesson_id));
+    const status = courseStatus === "published" || courseStatus === "restored" ? "Published"
+      : versions.some((v) => v.status === "review" || !!v.verified_at) ? "Review" : "Draft";
+    return { round: r, sections: mods.length, status };
+  });
 }
 
 /** C2: the capstone and notices of a course version, and the income-claims check over them. */
@@ -247,7 +284,7 @@ async function moduleInCourse(slug: string, moduleId: string) {
   const academy = await academyOf(slug);
   if (!academy) return null;
   const db = getDb();
-  const m = (await db.from("modules").select("id, course_id, position, title, stage, recipe, recommended_pace").eq("id", moduleId).maybeSingle()).data as ModuleRow | null;
+  const m = (await db.from("modules").select("*").eq("id", moduleId).maybeSingle()).data as ModuleRow | null;
   if (!m) return null;
   const c = (await db.from("courses").select("*").eq("id", m.course_id).maybeSingle()).data as CourseRow | null;
   return c && c.academy_id === academy.id ? { academy, course: c, module: m } : null;
@@ -262,7 +299,7 @@ export async function approveModule(actor: Account, slug: string, moduleId: stri
   if (actor.roleKey !== "owner") return refused(403, "Only the Owner gives the final approval.", A, target);
   if (!found.course.owner_review_required) return refused(409, "This course version uses the earlier flow (no Owner review step). Start a new version to use it.", A, target);
   const l = await loadVersion(found.course.id);
-  const st = moduleState(l, found.module, incomeFindings(l), isSizeTier(found.course.size_tier));
+  const st = moduleState(l, found.module, incomeFindings(l), isSizeTier(found.course.size_tier) || found.course.is_track === true);
   if (st.review?.current) return refused(409, "You've already approved this module as it is now.", A, target);
   if (!st.ready) return refused(409, `Not ready for your approval: ${st.blockers.join(" ")}`, A, target);
   const { data, error } = await getDb().from("module_reviews").insert({
@@ -382,12 +419,15 @@ export async function reviewChecklist(actor: Account) {
     if (!latest?.owner_review_required) continue;
     const l = await loadVersion(latest.id);
     const findings = incomeFindings(l);
-    const modules = l.modules.map((m) => ({ m, st: moduleState(l, m, findings, isSizeTier(latest.size_tier)) }));
+    const modules = l.modules.map((m) => ({ m, st: moduleState(l, m, findings, isSizeTier(latest.size_tier) || latest.is_track === true) }));
+    // S1: in a track, each section says its Round ("Round 2 · Section 3").
+    const tag = (m: ModuleRow) => (m.round ? { round: m.round, label: moduleName(m) } : {});
     out.push({
       slug: a.slug, name: a.name, version: latest.version, status: latest.status, unpublished: !!latest.unpublished_at,
-      waiting: modules.filter(({ st }) => st.ready && !st.review?.current).map(({ m }) => ({ id: m.id, position: m.position, title: m.title })),
-      notReady: modules.filter(({ st }) => !st.ready && st.review?.decision !== "sent_back").map(({ m, st }) => ({ id: m.id, position: m.position, title: m.title, blockers: st.blockers })),
-      sentBack: modules.filter(({ st }) => st.review?.decision === "sent_back").map(({ m, st }) => ({ id: m.id, position: m.position, title: m.title, note: st.review!.note, at: st.review!.decidedAt })),
+      ...(latest.is_track ? { track: true, rounds: roundStatuses(l, latest.status) } : {}),
+      waiting: modules.filter(({ st }) => st.ready && !st.review?.current).map(({ m }) => ({ id: m.id, position: m.position, title: m.title, ...tag(m) })),
+      notReady: modules.filter(({ st }) => !st.ready && st.review?.decision !== "sent_back").map(({ m, st }) => ({ id: m.id, position: m.position, title: m.title, blockers: st.blockers, ...tag(m) })),
+      sentBack: modules.filter(({ st }) => st.review?.decision === "sent_back").map(({ m, st }) => ({ id: m.id, position: m.position, title: m.title, note: st.review!.note, at: st.review!.decidedAt, ...tag(m) })),
       approved: modules.filter(({ st }) => st.review?.current).length,
       modules: l.modules.length,
       emptySlots: l.slots.filter((s) => s.status !== "approved").map((s) => ({ id: s.id, title: s.title, status: s.status, module: l.modules.find((m) => m.id === s.module_id)?.position ?? 0 })),
