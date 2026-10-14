@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
 import { ROLE_LABEL } from "@/lib/caps";
 import { SignOut } from "./sign-out";
-import { meFrom, type Me } from "./me";
+import type { Me } from "./me";
+import { useMe } from "./use-me";
 import { useOnboardingGuard } from "./onboarding";
 import { ProtectTip } from "./ui/protect-tip";
 
@@ -15,42 +16,21 @@ import { ProtectTip } from "./ui/protect-tip";
 export function AccountPanel() {
   const { isLoaded, isSignedIn } = useAuth();
   const router = useRouter();
-  const [me, setMe] = useState<Me | null>(null);
-  const [failed, setFailed] = useState(false);
+  // Bug fix: one shared read (app/use-me.ts) that waits for Clerk, refreshes the session token and retries, instead of
+  // a bare fetch whose first 401 sent a signed-in Owner to /welcome.
+  const state = useMe();
+  const me: Me | null = state.status === "ready" ? state.me : null;
+  const failed = state.status === "refused" || state.status === "secondFactor";
   useOnboardingGuard();
 
   useEffect(() => {
-    if (!isSignedIn) return;
-    let live = true;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    // Right after sign-in, the first answer can be a refusal while this browser's device check is still
-    // settling; try a few more times before saying the account couldn't be loaded. The API still decides.
-    const load = (attempt: number) =>
-      fetch("/api/v1/me", { cache: "no-store" })
-        .then(async (res) => {
-          if (!live) return;
-          if (res.status === 401) router.replace("/welcome");
-          else if (res.ok) {
-            const account = meFrom(await res.json());
-            if (!account) throw new Error("unexpected /api/v1/me answer");
-            setMe(account);
-          }
-          else throw new Error(String(res.status));
-        })
-        .catch(() => {
-          if (!live) return;
-          if (attempt < 4) timer = setTimeout(() => void load(attempt + 1), 1000 * (attempt + 1));
-          else setFailed(true);
-        });
-    void load(0);
-    return () => {
-      live = false;
-      if (timer) clearTimeout(timer);
-    };
-  }, [isSignedIn, router]);
+    // A Clerk session the API still refuses after the retries goes to /welcome, which says why.
+    if (isSignedIn && failed) router.replace("/welcome");
+  }, [isSignedIn, failed, router]);
 
   if (!isLoaded) return null;
-  if (!isSignedIn) {
+  // The server is the authority: someone it knows is signed in sees their line even if Clerk's browser state lags.
+  if (!isSignedIn && !me) {
     return (
       <p>
         <Link href="/sign-in" className="ui-btn ui-btn--primary">Sign in</Link>

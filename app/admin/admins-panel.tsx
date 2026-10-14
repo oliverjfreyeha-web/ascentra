@@ -4,11 +4,13 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useReverification } from "@clerk/nextjs";
 import { ADMIN_ROLES, ROLE_LABEL, type AdminRole } from "@/lib/caps";
 import { Loading } from "../ui/loading";
+import { useMe } from "../use-me";
 
 type Admin = { accountId: string; email: string; displayName: string; role: AdminRole; courses: string[]; state: "active" | "awaiting_second_factor" };
 type Invite = { id: string; email: string; role: AdminRole; courses: string[]; expiresAt: string; expired: boolean };
 type ApiResult = { _status: number; reason?: string } & Record<string, unknown>;
 
+const SECOND_FACTOR = "Admin needs your second factor. Set it up under Account → Sign-in methods → Security.";
 const NEEDS_COURSES: AdminRole[] = ["courseAdmin", "reviewer"];
 const REASON_MIN = 5;
 const parseCourses = (s: string) => s.split(",").map((c) => c.trim().toLowerCase()).filter(Boolean);
@@ -84,10 +86,16 @@ export function AdminsPanel() {
     } else setBlocked(r._status === 401 ? "Sign in to continue." : (r.reason ?? "This page isn't available."));
   }, []);
 
+  // Bug fix: load once the shared read (app/use-me.ts) knows who is signed in, not on mount (when an early 401 from a
+  // session cookie not yet refreshed showed "Sign in to continue." to a signed-in Owner). The API still decides.
+  const me = useMe();
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial load from the API
-    void load();
-  }, [load]);
+    if (me.status === "ready") void load();
+    else if (me.status === "signedOut") setBlocked("Sign in to continue.");
+    else if (me.status === "secondFactor") setBlocked(SECOND_FACTOR);
+    else if (me.status === "refused") setBlocked(me.reason ?? "This page isn't available.");
+  }, [load, me]);
 
   async function act(label: string, method: string, url: string, body: Record<string, unknown>) {
     setMessage(null);
