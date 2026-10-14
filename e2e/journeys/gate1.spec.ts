@@ -62,8 +62,9 @@ test.describe("sign-in", () => {
     await owner.goto("/");
     await pageReady(owner);
     await expect(owner.getByText(/Signed in as .*\(Owner\)/)).toBeVisible();
-    for (const name of ["Administrators", "Audit log", "Account safeguards", "Account and devices"]) {
-      await expect(owner.getByRole("link", { name })).toBeVisible();
+    // S1: the one Admin link (the staff navigation) replaced the duplicate "Administrators" link.
+    for (const name of ["Admin", "Audit log", "Account safeguards", "Account and devices"]) {
+      await expect(owner.getByRole("link", { name, exact: true })).toBeVisible();
     }
   });
 

@@ -18,7 +18,7 @@ describe("the I1 bundle on the live C2 database", () => {
     const r = checkImport(JSON.stringify(doc), { topic: { slug: "graphic-design", name: "Freelance graphic design", kind: "business", teenHidden: false, published: false, draftVersions: 0 },
       skillSlugs: new Set(), boosters: [], today: "2026-10-10" });
     if (!r.plan) throw new Error(JSON.stringify(r.problems));
-    return r.plan;
+    return r.plan as ImportPlan;
   };
   const run = (plan: unknown, actor = owner) => q("select public.import_course($1, $2) as r", [actor, JSON.stringify(plan)]);
   const counts = async () => (await q(`select (select count(*) from public.courses)::int as courses, (select count(*) from public.modules)::int as modules,
@@ -36,8 +36,8 @@ describe("the I1 bundle on the live C2 database", () => {
   });
   afterAll(() => db.drop());
 
-  it("applies in one go; verify.sql is OK", async () => {
-    expect((await q(readSql("db/verify.sql"))).rows[0].table_name).toMatch(/^OK: all 82 tables.*C2 progress, side hustles and unlock rules are in place; I1 course import is in place$/);
+  it("applies in one go; verify.sql reports I1 applied (S1 is the next bundle)", async () => {
+    expect((await q(readSql("db/verify.sql"))).rows[0].table_name).toMatch(/^PROBLEM: 0 missing, 0 without RLS, 0 unexpected.*C2 applied, I1 applied, S1 NOT applied$/);
   });
 
   it("creates the Draft course and everything in it, in the existing tables, publishing and approving nothing", async () => {

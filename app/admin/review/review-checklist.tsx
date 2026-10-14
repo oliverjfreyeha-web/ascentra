@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { call, when } from "../../call";
-import { checklistFrom, SLOT_STATUS, type Checklist } from "../../studio-api";
+import { checklistFrom, SLOT_STATUS, unitName, type Checklist } from "../../studio-api";
 import { Loading } from "../../ui/loading";
 
 /** C1: what waits for the Owner: modules ready for approval, modules sent back, empty video slots, and the income-claims check. */
@@ -25,14 +25,15 @@ export function ReviewChecklist() {
       <h2 id="checklist-h">Checklist</h2>
       {data.courses.map((c) => (
         <article key={c.slug} className="studio__module" aria-labelledby={`cl-${c.slug}`}>
-          <h3 id={`cl-${c.slug}`}><Link href={`/admin/courses/${c.slug}`}>{c.name}</Link> <span className="muted small">· version {c.version}, {c.status}{c.unpublished ? ", unpublished" : ""} · {c.approved} of {c.modules} modules approved</span></h3>
+          <h3 id={`cl-${c.slug}`}><Link href={`/admin/courses/${c.slug}`}>{c.name}</Link> <span className="muted small">· version {c.version}, {c.status}{c.unpublished ? ", unpublished" : ""} · {c.approved} of {c.modules} {c.track ? "sections" : "modules"} approved</span></h3>
+          {c.track && c.rounds && <p className="small">Track (3 Rounds): {c.rounds.map((r) => `Round ${r.round} ${r.status}`).join(" · ")}</p>}
           <dl className="studio__checklist">
             <dt>Waiting for your approval</dt>
-            <dd>{c.waiting.length ? <ul>{c.waiting.map((m) => <li key={m.id}>Module {m.position}: {m.title}</li>)}</ul> : <span className="muted">None</span>}</dd>
+            <dd>{c.waiting.length ? <ul>{c.waiting.map((m) => <li key={m.id}>{unitName(m)}: {m.title}</li>)}</ul> : <span className="muted">None</span>}</dd>
             <dt>Sent back</dt>
-            <dd>{c.sentBack.length ? <ul>{c.sentBack.map((m) => <li key={m.id}>Module {m.position}: {m.title} <span className="muted small">({when(m.at)}): {m.note}</span></li>)}</ul> : <span className="muted">None</span>}</dd>
+            <dd>{c.sentBack.length ? <ul>{c.sentBack.map((m) => <li key={m.id}>{unitName(m)}: {m.title} <span className="muted small">({when(m.at)}): {m.note}</span></li>)}</ul> : <span className="muted">None</span>}</dd>
             <dt>Not ready yet</dt>
-            <dd>{c.notReady.length ? <ul>{c.notReady.map((m) => <li key={m.id}>Module {m.position}: {m.title} <span className="muted small">({m.blockers.length} thing{m.blockers.length === 1 ? "" : "s"} to finish)</span></li>)}</ul> : <span className="muted">None</span>}</dd>
+            <dd>{c.notReady.length ? <ul>{c.notReady.map((m) => <li key={m.id}>{unitName(m)}: {m.title} <span className="muted small">({m.blockers.length} thing{m.blockers.length === 1 ? "" : "s"} to finish)</span></li>)}</ul> : <span className="muted">None</span>}</dd>
             <dt>Video slots without an approved video</dt>
             <dd>{c.emptySlots.length ? <ul>{c.emptySlots.map((s) => <li key={s.id}>Module {s.module}: {s.title} <span className="muted small">({SLOT_STATUS[s.status as keyof typeof SLOT_STATUS] ?? s.status})</span></li>)}</ul> : <span className="muted">None</span>}</dd>
             <dt>Income-claims check</dt>

@@ -10,6 +10,7 @@
 import { z } from "zod";
 import { MIN_MODULE_TYPES, TYPE_LABEL, checkItem, gradingOf, isItemType, ITEM_TYPES, type ItemType } from "@/lib/activities/types";
 import { ATTORNEY, NO_ATTORNEY } from "@/lib/courses/wording";
+import { SECTIONS_PER_ROUND, TRACK_ROUNDS } from "@/lib/progress/config";
 import { findIncomeClaims } from "@/lib/courses/income";
 import { CORE_PARTS, RECIPE_CAPS, SANDBOX_LABEL, SIZE_TIERS, checkModuleCount, checkRecipe, typeFits, type ItemPart, type SizeTier } from "@/lib/courses/structure";
 
@@ -97,6 +98,34 @@ const Module = z.strictObject({
   examples: list(text(600), 20).default([]), mistakes: list(text(400), 20).default([]), sourceIds: list(id, 30, 1),
   recipe: Recipe, lessons: list(Lesson, 6, 1), items: list(Item, 40, 1),
 });
+// S1 (format 2): a section is a module of a Round, with the same fields; items may also be hands-on tasks.
+const ItemV2 = Item.extend({ kind: z.enum(["video", "quiz", "assignment", "sandbox", "sequence", "booster", "task"]) });
+const Section = Module.extend({ number: z.number().int().min(1).max(SECTIONS_PER_ROUND), items: list(ItemV2, 40, 1) });
+const RoundIn = z.strictObject({
+  roundNumber: z.number().int().min(1).max(TRACK_ROUNDS), label: text(120), goal: text(600),
+  sections: z.array(Section).min(SECTIONS_PER_ROUND, `a Round has exactly ${SECTIONS_PER_ROUND} sections`).max(SECTIONS_PER_ROUND, `a Round has exactly ${SECTIONS_PER_ROUND} sections`),
+});
+export const ImportTrackFile = z.strictObject({
+  formatVersion: z.literal(2, { error: "must be 2" }),
+  topicSlug: slug,
+  track: z.strictObject({
+    title: text(200, 3), audience: text(2000), outcomes: list(text(300), 12, 1),
+    requirements: z.strictObject({ ageLimits: optText(1000), licenses: optText(1000), taxes: optText(1000), platformAccounts: optText(1000) }),
+    glossary: list(z.strictObject({ term: text(100), meaning: text(600) }), 100).default([]),
+    commonMistakes: list(text(400), 30).default([]),
+    teenStatus: z.strictObject({ status: z.enum(["open", "hidden"]), reason: text(600) }),
+    skillsTaught: list(slug, 20).default([]),
+  }),
+  sources: list(z.strictObject({
+    id, kind: z.enum(["youtube", "official", "article", "owner_tip"]), title: text(300), link, creditLine: text(300),
+    licenseClass: z.enum(["open", "owner_supplied", "web_summarize_only"]),
+  }), 200, 1),
+  resources: list(z.strictObject({ name: text(200), link, license: text(100), termsChecked: z.boolean(), okToUseText: z.boolean(), checkedOn: day }), 100).default([]),
+  freshnessWatch: list(z.strictObject({ what: text(300), link, howOften: text(60) }), 50).default([]),
+  rounds: list(RoundIn, TRACK_ROUNDS, 1),
+});
+export type ImportTrackDoc = z.infer<typeof ImportTrackFile>;
+
 export const ImportFile = z.strictObject({
   formatVersion: z.literal(IMPORT_FORMAT_VERSION, { error: `must be ${IMPORT_FORMAT_VERSION}` }),
   topicSlug: slug,
@@ -138,20 +167,27 @@ export type ImportContext = {
   skillSlugs: ReadonlySet<string>;
   boosters: readonly { key: string; itemTypes: readonly string[] }[];
   today?: string;
+  /** S1: the Rounds already in the topic's latest version (Draft or Published), with each section's difficulty. */
+  track?: { rounds: number[]; meta: TrackRoundMeta[] } | null;
 };
+export type TrackRoundMeta = { roundNumber: number; label: string; goal: string; sections: { number: number; title: string; difficulty: number }[] };
 
 export type ImportSummary = {
   topic: string | null; title: string | null; sizeTier: SizeTier | null; modules: number; lessons: number;
   items: Record<string, number>; videoSlots: number; sources: number; resources: number; resourcesHidden: number;
   capstone: boolean; notices: number; newDraftVersion: boolean;
+  /** S1: format 2 only: the Rounds in the file, and the stored Rounds carried into the new version. */
+  format?: 1 | 2; rounds?: number[]; carriedRounds?: number[];
 };
 export type ImportCheck = {
-  ok: boolean; problems: Problem[]; warnings: { path: string; message: string }[]; summary: ImportSummary; plan: ImportPlan | null;
+  ok: boolean; problems: Problem[]; warnings: { path: string; message: string }[]; summary: ImportSummary; plan: ImportPlan | TrackPlan | null;
   bytes: number;
 };
 
 // ============ The check ============
 
+/** S1: the existing types a hands-on task (v2 kind "task") can be. New hands-on types come in the H stages. */
+export const HANDS_ON = ["build_it", "mini_project"] as const;
 const ITEM_PART: Record<string, ItemPart> = { quiz: "quiz", assignment: "assignment", sandbox: "sandbox", sequence: "sequence", booster: "booster" };
 const SOURCE_TYPE = { youtube: "YouTube video", official: "Official source", article: "Article", owner_tip: "Owner tip" } as const;
 const SPONSORED = /\b(sponsor|affiliate link|promo code|use code)\b/i;
@@ -171,6 +207,80 @@ function proseOf(value: unknown, path: (string | number)[] = []): { path: string
 const ideaKey = (s: string, i: number) => `${s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 50) || "item"}-${i + 1}`.slice(0, 60);
 const srcRef = (key: string) => `@@src:${key}@@`;
 
+/** The checks every module (v1) or section (v2) gets: numbering, difficulty order, recipe, sources, labels, task types, content. */
+type Unit = z.infer<typeof Module> | z.infer<typeof Section>;
+type Env = {
+  ctx: ImportContext; add: (group: ProblemGroup, path: string, message: string) => void; warnings: { path: string; message: string }[];
+  summary: ImportSummary; refs: (path: string, ids: readonly string[]) => void;
+};
+function checkUnits(list: Unit[], prefix: (i: number) => string, unit: "module" | "section", { ctx, add, warnings, summary, refs }: Env) {
+  const boosterTypes = (key: string) => ctx.boosters.find((b) => b.key === key)?.itemTypes ?? [];
+  const activeBoosters = ctx.boosters.map((b) => b.key);
+  const numbers = new Set<number>();
+  list.forEach((m, mi) => {
+    const at = prefix(mi);
+    if (m.number !== mi + 1) add("modules", `${at}.number`, `${unit}s are numbered 1, 2, 3… in order (expected ${mi + 1})`);
+    if (numbers.has(m.number)) add("modules", `${at}.number`, `duplicate ${unit} number ${m.number}`);
+    numbers.add(m.number);
+    if (mi > 0 && m.difficulty < list[mi - 1].difficulty) add("modules", `${at}.difficulty`, `difficulty can't go down (${unit} ${mi} is ${list[mi - 1].difficulty}, this is ${m.difficulty})`);
+    const r = checkRecipe(m.recipe, activeBoosters);
+    if ("problem" in r) add("modules", `${at}.recipe`, r.problem);
+    refs(`${at}.sourceIds`, m.sourceIds);
+    m.lessons.forEach((l, li) => {
+      l.sections.forEach((s, si) => s.paragraphs.forEach((p, pi) => refs(`${at}.lessons[${li}].sections[${si}].paragraphs[${pi}].sourceIds`, p.sourceIds)));
+      l.takeaways.forEach((tk, ti) => refs(`${at}.lessons[${li}].takeaways[${ti}].sourceIds`, tk.sourceIds));
+    });
+    const types = new Set<string>();
+    const counts: Record<string, number> = {};
+    m.items.forEach((it, ii) => {
+      const ip = `${at}.items[${ii}]`;
+      counts[it.kind] = (counts[it.kind] ?? 0) + 1;
+      summary.items[it.kind] = (summary.items[it.kind] ?? 0) + 1;
+      refs(`${ip}.sourceIds`, it.sourceIds);
+      if (it.lesson > m.lessons.length) add("items", `${ip}.lesson`, `this ${unit} has ${m.lessons.length} lesson(s)`);
+      if (it.importance === "very_important" && (!it.notebookNote || it.notebookNote.length < 20)) add("items", `${ip}.notebookNote`, "a Very important item needs its Notebook note (20 to 800 characters)");
+      if (it.kind === "video") {
+        if (!it.videoBrief) add("items", `${ip}.videoBrief`, "a video item needs its brief (mustCover, lengthMinutes, tone, onScreenExamples, sourceIds, avoid)");
+        else refs(`${ip}.videoBrief.sourceIds`, it.videoBrief.sourceIds);
+        for (const k of ["taskType", "prompt", "explanation", "content", "answerKey"] as const) if (it[k] !== undefined) add("items", `${ip}.${k}`, "a video item has a videoBrief, not this field");
+        summary.videoSlots++;
+        return;
+      }
+      if (it.videoBrief) add("items", `${ip}.videoBrief`, "only a video item has a brief");
+      if (!it.taskType || !isItemType(it.taskType)) {
+        add("items", `${ip}.taskType`, `${it.taskType ? `"${it.taskType}" isn't a task type the app supports` : "needs a task type"}. Use one of: ${ITEM_TYPES.join(", ")}`);
+        return;
+      }
+      const type: ItemType = it.taskType;
+      types.add(type);
+      // S1: a hands-on task (v2) is one of the existing hands-on types; it fills the part that type fills.
+      const part = it.kind === "task" ? (type === "build_it" ? "sandbox" : "assignment") : ITEM_PART[it.kind];
+      if (it.kind === "task") {
+        if (!(HANDS_ON as readonly string[]).includes(type)) add("items", `${ip}.taskType`, `a hands-on task is one of: ${HANDS_ON.join(", ")}`);
+        if (it.booster !== undefined) add("items", `${ip}.booster`, "only a booster item names a booster");
+      } else if (it.kind === "booster") {
+        if (!it.booster || !activeBoosters.includes(it.booster)) add("items", `${ip}.booster`, `a booster item names an active learning booster: ${activeBoosters.join(", ")}`);
+        else if (!typeFits(type, "booster", boosterTypes(it.booster))) add("items", `${ip}.taskType`, `"${it.booster}" uses ${boosterTypes(it.booster).join(" or ")}`);
+      } else {
+        if (it.booster !== undefined) add("items", `${ip}.booster`, "only a booster item names a booster");
+        if (!typeFits(type, part)) add("items", `${ip}.taskType`, `a ${it.kind} can't be a ${TYPE_LABEL[type]}`);
+      }
+      if (!it.prompt || it.prompt.length < 3) add("items", `${ip}.prompt`, "needs the question or task (3 to 2000 characters)");
+      if (!it.explanation || it.explanation.length < 3) add("items", `${ip}.explanation`, "needs the explanation shown after trying (3 to 2000 characters)");
+      const content = it.content ?? {};
+      const key = it.answerKey === undefined ? null : it.answerKey;
+      const bad = checkItem(type, content, key);
+      if (bad) add("items", gradingOf(type) === "code" && /answer key/.test(bad) ? `${ip}.answerKey` : `${ip}.content`, bad);
+      if (it.kind === "sandbox") warnings.push({ path: ip, message: `Shown to learners as "${SANDBOX_LABEL}".` });
+    });
+    if (types.size < MIN_MODULE_TYPES) add("items", `${at}.items`, `needs at least ${MIN_MODULE_TYPES} different task types (has ${types.size})`);
+    if ("recipe" in r) {
+      const want = { video: r.recipe.videos, quiz: r.recipe.quizzes, assignment: r.recipe.assignments, sandbox: r.recipe.sandboxes, sequence: r.recipe.sequences } as const;
+      for (const [k, n] of Object.entries(want)) if ((counts[k] ?? 0) < n) warnings.push({ path: `${at}.items`, message: `the recipe asks for ${n} ${k} item(s); the file has ${counts[k] ?? 0}. The Owner's review shows what's short.` });
+    }
+  });
+}
+
 /** Parses and checks a file's text. Writes nothing. */
 export function checkImport(raw: string, ctx: ImportContext): ImportCheck {
   const bytes = new TextEncoder().encode(raw).length;
@@ -180,7 +290,7 @@ export function checkImport(raw: string, ctx: ImportContext): ImportCheck {
     topic: null, title: null, sizeTier: null, modules: 0, lessons: 0, items: {}, videoSlots: 0, sources: 0, resources: 0, resourcesHidden: 0,
     capstone: false, notices: 0, newDraftVersion: false,
   };
-  const done = (plan: ImportPlan | null = null): ImportCheck => ({ ok: !problems.length && !!plan, problems, warnings, summary, plan: problems.length ? null : plan, bytes });
+  const done = (plan: ImportPlan | TrackPlan | null = null): ImportCheck => ({ ok: !problems.length && !!plan, problems, warnings, summary, plan: problems.length ? null : plan, bytes });
   if (bytes > IMPORT_MAX_BYTES) { problems.push({ path: "(file)", message: `The file is ${(bytes / 1024 / 1024).toFixed(1)} MB; 2 MB at most.`, group: "format" }); return done(); }
   let json: unknown;
   try { json = JSON.parse(raw); } catch (e) {
@@ -190,6 +300,11 @@ export function checkImport(raw: string, ctx: ImportContext): ImportCheck {
   const stripped: string[] = [];
   const clean = sanitize(json, [], stripped);
   if (stripped.length) warnings.push({ path: stripped.slice(0, 5).join(", ") + (stripped.length > 5 ? ` and ${stripped.length - 5} more` : ""), message: `HTML or script was removed from ${stripped.length} field(s). Only plain text is kept.` });
+  // S1: format 2 is a skill track; format 1 a business or side hustle course.
+  if (clean && typeof clean === "object" && (clean as Record<string, unknown>).formatVersion === 2) {
+    return done(checkTrack(clean, ctx, { problems, warnings, summary }));
+  }
+  summary.format = 1;
   const parsed = ImportFile.safeParse(clean);
   if (!parsed.success) {
     for (const i of parsed.error.issues.slice(0, 200)) {
@@ -207,6 +322,7 @@ export function checkImport(raw: string, ctx: ImportContext): ImportCheck {
 
   // The topic.
   if (!ctx.topic) add("course", "topicSlug", `unknown topic "${d.topicSlug}". Use the slug of an existing business, side hustle or skill from /admin/topics.`);
+  else if (ctx.topic.kind === "skill") add("course", "formatVersion", `"${ctx.topic.name}" is a skill. A skill is a track of 3 Rounds: use format version 2 (see docs/COURSE-IMPORT.md).`);
   else {
     summary.topic = ctx.topic.name;
     summary.newDraftVersion = ctx.topic.draftVersions > 0;
@@ -257,67 +373,7 @@ export function checkImport(raw: string, ctx: ImportContext): ImportCheck {
   const refs = (path: string, ids: readonly string[]) => ids.forEach((x, i) => { if (!sourceIds.has(x)) add("sources", `${path}[${i}]`, `unknown source "${x}"`); });
 
   // Modules and items.
-  const boosterTypes = (key: string) => ctx.boosters.find((b) => b.key === key)?.itemTypes ?? [];
-  const activeBoosters = ctx.boosters.map((b) => b.key);
-  const numbers = new Set<number>();
-  d.modules.forEach((m, mi) => {
-    const at = `modules[${mi}]`;
-    if (m.number !== mi + 1) add("modules", `${at}.number`, `modules are numbered 1, 2, 3… in order (expected ${mi + 1})`);
-    if (numbers.has(m.number)) add("modules", `${at}.number`, `duplicate module number ${m.number}`);
-    numbers.add(m.number);
-    if (mi > 0 && m.difficulty < d.modules[mi - 1].difficulty) add("modules", `${at}.difficulty`, `difficulty can't go down (module ${mi} is ${d.modules[mi - 1].difficulty}, this is ${m.difficulty})`);
-    const r = checkRecipe(m.recipe, activeBoosters);
-    if ("problem" in r) add("modules", `${at}.recipe`, r.problem);
-    refs(`${at}.sourceIds`, m.sourceIds);
-    m.lessons.forEach((l, li) => {
-      l.sections.forEach((s, si) => s.paragraphs.forEach((p, pi) => refs(`${at}.lessons[${li}].sections[${si}].paragraphs[${pi}].sourceIds`, p.sourceIds)));
-      l.takeaways.forEach((tk, ti) => refs(`${at}.lessons[${li}].takeaways[${ti}].sourceIds`, tk.sourceIds));
-    });
-    const types = new Set<string>();
-    const counts: Record<string, number> = {};
-    m.items.forEach((it, ii) => {
-      const ip = `${at}.items[${ii}]`;
-      counts[it.kind] = (counts[it.kind] ?? 0) + 1;
-      summary.items[it.kind] = (summary.items[it.kind] ?? 0) + 1;
-      refs(`${ip}.sourceIds`, it.sourceIds);
-      if (it.lesson > m.lessons.length) add("items", `${ip}.lesson`, `this module has ${m.lessons.length} lesson(s)`);
-      if (it.importance === "very_important" && (!it.notebookNote || it.notebookNote.length < 20)) add("items", `${ip}.notebookNote`, "a Very important item needs its Notebook note (20 to 800 characters)");
-      if (it.kind === "video") {
-        if (!it.videoBrief) add("items", `${ip}.videoBrief`, "a video item needs its brief (mustCover, lengthMinutes, tone, onScreenExamples, sourceIds, avoid)");
-        else refs(`${ip}.videoBrief.sourceIds`, it.videoBrief.sourceIds);
-        for (const k of ["taskType", "prompt", "explanation", "content", "answerKey"] as const) if (it[k] !== undefined) add("items", `${ip}.${k}`, "a video item has a videoBrief, not this field");
-        summary.videoSlots++;
-        return;
-      }
-      if (it.videoBrief) add("items", `${ip}.videoBrief`, "only a video item has a brief");
-      if (!it.taskType || !isItemType(it.taskType)) {
-        add("items", `${ip}.taskType`, `${it.taskType ? `"${it.taskType}" isn't a task type the app supports` : "needs a task type"}. Use one of: ${ITEM_TYPES.join(", ")}`);
-        return;
-      }
-      const type: ItemType = it.taskType;
-      types.add(type);
-      const part = ITEM_PART[it.kind];
-      if (it.kind === "booster") {
-        if (!it.booster || !activeBoosters.includes(it.booster)) add("items", `${ip}.booster`, `a booster item names an active learning booster: ${activeBoosters.join(", ")}`);
-        else if (!typeFits(type, "booster", boosterTypes(it.booster))) add("items", `${ip}.taskType`, `"${it.booster}" uses ${boosterTypes(it.booster).join(" or ")}`);
-      } else {
-        if (it.booster !== undefined) add("items", `${ip}.booster`, "only a booster item names a booster");
-        if (!typeFits(type, part)) add("items", `${ip}.taskType`, `a ${it.kind} can't be a ${TYPE_LABEL[type]}`);
-      }
-      if (!it.prompt || it.prompt.length < 3) add("items", `${ip}.prompt`, "needs the question or task (3 to 2000 characters)");
-      if (!it.explanation || it.explanation.length < 3) add("items", `${ip}.explanation`, "needs the explanation shown after trying (3 to 2000 characters)");
-      const content = it.content ?? {};
-      const key = it.answerKey === undefined ? null : it.answerKey;
-      const bad = checkItem(type, content, key);
-      if (bad) add("items", gradingOf(type) === "code" && /answer key/.test(bad) ? `${ip}.answerKey` : `${ip}.content`, bad);
-      if (it.kind === "sandbox") warnings.push({ path: ip, message: `Shown to learners as "${SANDBOX_LABEL}".` });
-    });
-    if (types.size < MIN_MODULE_TYPES) add("items", `${at}.items`, `needs at least ${MIN_MODULE_TYPES} different task types (has ${types.size})`);
-    if ("recipe" in r) {
-      const want = { video: r.recipe.videos, quiz: r.recipe.quizzes, assignment: r.recipe.assignments, sandbox: r.recipe.sandboxes, sequence: r.recipe.sequences } as const;
-      for (const [k, n] of Object.entries(want)) if ((counts[k] ?? 0) < n) warnings.push({ path: `${at}.items`, message: `the recipe asks for ${n} ${k} item(s); the file has ${counts[k] ?? 0}. The Owner's review shows what's short.` });
-    }
-  });
+  checkUnits(d.modules, (mi) => `modules[${mi}]`, "module", { ctx, add, warnings, summary, refs });
   summary.modules = d.modules.length;
   summary.lessons = d.modules.reduce((n, m) => n + m.lessons.length, 0);
 
@@ -355,10 +411,10 @@ export type ImportPlan = {
   blueprint: Record<string, unknown>;
 };
 
-function toPlan(d: ImportDoc, ctx: ImportContext): ImportPlan {
-  const src = new Map(d.sources.map((s) => [s.id, s]));
+type SourceIn = { id: string; title: string; link: string; licenseClass: string; creditLine: string };
+/** One module (v1) or section (v2) as the database function stores it. */
+function unitPlan(m: Unit, src: Map<string, SourceIn>, position: number) {
   const cite = (key: string) => ({ sourceId: srcRef(key), title: src.get(key)!.title, url: src.get(key)!.link });
-  const modules = d.modules.map((m) => {
     const level = m.difficulty <= 2 ? "beginner" : "intermediate";
     const lessons = m.lessons.map((l, li) => {
       // The lesson's citations: each source it cites once, numbered in order of first use.
@@ -383,12 +439,17 @@ function toPlan(d: ImportDoc, ctx: ImportContext): ImportPlan {
       return {
         lessonPosition: it.lesson, ideaKey: ideaKey(it.title, ii), itemType: type, grading: gradingOf(type), level: it.level ?? level, goal: it.title, prompt: it.prompt!,
         content: it.content ?? {}, answerKey: gradingOf(type) === "code" ? it.answerKey ?? null : null, explanation: it.explanation!, citation: cite(it.sourceIds[0]),
-        part: it.kind, booster: it.kind === "booster" ? it.booster! : null, importance: it.importance, notebookNote: it.notebookNote ?? null,
+        // S1: a hands-on task fills the part its type fills.
+        part: it.kind === "task" ? (type === "build_it" ? "sandbox" : "assignment") : it.kind, booster: it.kind === "booster" ? it.booster! : null, importance: it.importance, notebookNote: it.notebookNote ?? null,
       };
     });
     const recipe = { ...Object.fromEntries(CORE_PARTS.map((p) => [p, m.recipe[p]])), boosters: [...new Set(m.recipe.boosters)].slice(0, RECIPE_CAPS.boosters.max) };
-    return { position: m.number, title: m.title, recipe, lessons, videos, items };
-  });
+    return { position, title: m.title, recipe, lessons, videos, items };
+}
+
+function toPlan(d: ImportDoc, ctx: ImportContext): ImportPlan {
+  const src = new Map(d.sources.map((s) => [s.id, s]));
+  const modules = d.modules.map((m) => unitPlan(m, src, m.number));
   const a = d.capstone.automation;
   const automation = a ? { what: a.whatAutomated, prompts: a.masterPrompts.map((p) => `${p.title}: ${p.purpose}`), plans: a.aiPlans.map((p) => ({ name: p.name, price: p.price, sourceUrl: p.link, checkedOn: p.checkedOn })) } : null;
   const outcome = d.course.outcomes.join(" ");
@@ -416,6 +477,127 @@ function toPlan(d: ImportDoc, ctx: ImportContext): ImportPlan {
         formatVersion: IMPORT_FORMAT_VERSION, topicKind: ctx.topic?.kind ?? null, guide, resources: d.resources, freshnessWatch: d.freshnessWatch,
         moduleDetails: d.modules.map((m) => ({ number: m.number, difficulty: m.difficulty, bigQuestion: m.bigQuestion, canDo: m.canDo, hours: m.hours, keyTerms: m.keyTerms, examples: m.examples, mistakes: m.mistakes, sourceIds: m.sourceIds.map(srcRef) })),
         capstoneMasterPrompts: a?.masterPrompts ?? [],
+      },
+    },
+  };
+}
+
+// ============ S1: format 2, a skill track ============
+
+export type TrackPlan = {
+  format: 2; topicSlug: string; title: string; summary: string; audienceLevel: "beginner" | "intermediate";
+  rounds: { roundNumber: number; label: string; goal: string }[];
+  sources: ImportPlan["sources"];
+  modules: (ImportPlan["modules"][number] & { round: number })[];
+  blueprint: Record<string, unknown>;
+};
+const issueGroup = (p: string): ProblemGroup => (/link/.test(p) ? "links" : /items/.test(p) ? "items" : /^rounds/.test(p) ? "modules" : /^sources/.test(p) ? "sources" : /^track/.test(p) ? "course" : "format");
+
+function checkTrack(clean: unknown, ctx: ImportContext, out: { problems: Problem[]; warnings: { path: string; message: string }[]; summary: ImportSummary }): TrackPlan | null {
+  const { problems, warnings, summary } = out;
+  summary.format = 2;
+  const add = (group: ProblemGroup, path: string, message: string) => problems.push({ path, message, group });
+  const parsed = ImportTrackFile.safeParse(clean);
+  if (!parsed.success) {
+    for (const i of parsed.error.issues.slice(0, 200)) {
+      const p = pathOf(i.path);
+      add(issueGroup(p), p, i.code === "unrecognized_keys" ? `unknown field(s): ${(i as { keys: string[] }).keys.join(", ")}` : i.message);
+    }
+    return null;
+  }
+  const d = parsed.data;
+  const today = ctx.today ?? new Date().toISOString().slice(0, 10);
+  summary.title = d.track.title;
+  // The topic: a skill only.
+  if (!ctx.topic) add("course", "topicSlug", `unknown topic "${d.topicSlug}". Use the slug of an existing skill from /admin/topics.`);
+  else {
+    summary.topic = ctx.topic.name;
+    summary.newDraftVersion = ctx.topic.draftVersions > 0 || !!ctx.track?.rounds.length;
+    if (ctx.topic.kind !== "skill") add("course", "formatVersion", `Format version 2 is for skills only; "${ctx.topic.name}" is a ${ctx.topic.kind.replace("_", " ")}. Businesses and side hustles use format version 1.`);
+    if ((d.track.teenStatus.status === "hidden") !== ctx.topic.teenHidden) {
+      warnings.push({ path: "track.teenStatus", message: `The file says ${d.track.teenStatus.status} for teens, but the topic is ${ctx.topic.teenHidden ? "hidden from" : "shown to"} teens. The import doesn't change the topic: set it in /admin/topics.` });
+    }
+  }
+  d.track.skillsTaught.forEach((x, i) => { if (!ctx.skillSlugs.has(x)) add("course", `track.skillsTaught[${i}]`, `unknown skill "${x}"`); });
+  d.resources.forEach((x, i) => { if (x.checkedOn > today) add("course", `resources[${i}].checkedOn`, "a checked-on date can't be in the future"); });
+
+  // Sources and resources (as in format 1).
+  const sourceIds = new Map<string, number>();
+  const seenUrl = new Map<string, number>();
+  d.sources.forEach((x, i) => {
+    if (sourceIds.has(x.id)) add("sources", `sources[${i}].id`, `duplicate source id "${x.id}" (also sources[${sourceIds.get(x.id)}])`);
+    else sourceIds.set(x.id, i);
+    const u = x.link.toLowerCase();
+    if (seenUrl.has(u)) add("sources", `sources[${i}].link`, `the same link as sources[${seenUrl.get(u)}]`);
+    else seenUrl.set(u, i);
+    if (x.licenseClass === "web_summarize_only") warnings.push({ path: `sources[${i}]`, message: `"${x.title}" may only be summarized and credited, never copied.` });
+  });
+  summary.sources = d.sources.length;
+  summary.resources = d.resources.length;
+  summary.resourcesHidden = d.resources.filter((r) => !r.termsChecked).length;
+  d.resources.forEach((r, i) => { if (!r.termsChecked) warnings.push({ path: `resources[${i}]`, message: `"${r.name}": terms not checked, so it is stored but not shown to learners.` }); });
+  const refs = (path: string, ids: readonly string[]) => ids.forEach((x, i) => { if (!sourceIds.has(x)) add("sources", `${path}[${i}]`, `unknown source "${x}"`); });
+
+  // Rounds: each once; Round r needs Round r-1 (in this file, or already stored as a Draft or Published).
+  const inFile = d.rounds.map((r) => r.roundNumber);
+  const stored = ctx.track?.rounds ?? [];
+  d.rounds.forEach((r, ri) => {
+    if (inFile.indexOf(r.roundNumber) !== ri) add("modules", `rounds[${ri}].roundNumber`, `Round ${r.roundNumber} is in the file twice`);
+    if (r.roundNumber > 1 && !inFile.includes(r.roundNumber - 1) && !stored.includes(r.roundNumber - 1)) {
+      add("modules", `rounds[${ri}].roundNumber`, `Round ${r.roundNumber} can't be created before Round ${r.roundNumber - 1} exists (as a Draft or Published). Import Round ${r.roundNumber - 1} first, or both together.`);
+    }
+    checkUnits(r.sections, (si) => `rounds[${ri}].sections[${si}]`, "section", { ctx, add, warnings, summary, refs });
+  });
+  // Difficulty: section k of Round r at least as hard as section k of Round r-1, and Round r harder on average.
+  const diffs = (n: number): number[] | null => {
+    const f = d.rounds.find((r) => r.roundNumber === n);
+    if (f) return f.sections.map((x) => x.difficulty);
+    const m = ctx.track?.meta.find((x) => x.roundNumber === n);
+    return m && m.sections.length ? [...m.sections].sort((a, b) => a.number - b.number).map((x) => x.difficulty) : null;
+  };
+  const avg = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
+  d.rounds.forEach((r, ri) => {
+    const prev = diffs(r.roundNumber - 1);
+    if (!prev || r.roundNumber === 1) return;
+    r.sections.forEach((x, si) => {
+      if (prev[si] !== undefined && x.difficulty < prev[si]) add("modules", `rounds[${ri}].sections[${si}].difficulty`, `section ${si + 1} of Round ${r.roundNumber} can't be easier than section ${si + 1} of Round ${r.roundNumber - 1} (${prev[si]})`);
+    });
+    const a = avg(r.sections.map((x) => x.difficulty));
+    if (!(a > avg(prev))) add("modules", `rounds[${ri}]`, `Round ${r.roundNumber} must be harder on average than Round ${r.roundNumber - 1} (${avg(prev).toFixed(1)}); this one is ${a.toFixed(1)}`);
+  });
+  summary.modules = d.rounds.reduce((n, r) => n + r.sections.length, 0);
+  summary.lessons = d.rounds.reduce((n, r) => n + r.sections.reduce((m, x) => m + x.lessons.length, 0), 0);
+  summary.rounds = [...inFile].sort();
+  summary.carriedRounds = stored.filter((x) => !inFile.includes(x)).sort();
+
+  // Income claims, attorney wording and script links, on every text field.
+  for (const p of proseOf(d)) {
+    if (ATTORNEY.test(p.text)) add("income", p.path, NO_ATTORNEY);
+    for (const c of findIncomeClaims(p.text)) add("income", p.path, `reads as ${c.claim}: "${c.text}". Reword it.`);
+  }
+  for (const p of proseOf(clean)) if (/\b(javascript|data|vbscript):/i.test(p.text)) add("links", p.path, "contains a script or data link; only https links are allowed");
+  if (problems.length) return null;
+
+  const src = new Map(d.sources.map((x) => [x.id, x]));
+  const modules = d.rounds.flatMap((r) => r.sections.map((x) => ({ ...unitPlan(x, src, (r.roundNumber - 1) * SECTIONS_PER_ROUND + x.number), round: r.roundNumber })));
+  const meta: TrackRoundMeta[] = [
+    ...(ctx.track?.meta ?? []).filter((m) => !inFile.includes(m.roundNumber)),
+    ...d.rounds.map((r) => ({ roundNumber: r.roundNumber, label: r.label, goal: r.goal, sections: r.sections.map((x) => ({ number: x.number, title: x.title, difficulty: x.difficulty })) })),
+  ].sort((a, b) => a.roundNumber - b.roundNumber);
+  const outcome = d.track.outcomes.join(" ");
+  return {
+    format: 2, topicSlug: d.topicSlug, title: d.track.title, summary: outcome.slice(0, 2000),
+    audienceLevel: d.rounds[0].sections[0].difficulty <= 2 ? "beginner" : "intermediate",
+    rounds: d.rounds.map((r) => ({ roundNumber: r.roundNumber, label: r.label, goal: r.goal })),
+    sources: d.sources.map((x) => ({ key: x.id, title: x.title, url: x.link, sourceType: SOURCE_TYPE[x.kind], licenseClass: x.licenseClass, creditLine: x.creditLine })),
+    modules,
+    // The import record: the Rounds' labels, goals and section difficulties (the stored Rounds' kept), and what has no other home.
+    blueprint: {
+      structure: 3, track: true, title: d.track.title, outcome, rounds: meta,
+      modules: modules.map((m) => ({ title: m.title, stage: null, recipe: m.recipe, skills: [], round: m.round, lessons: m.lessons.map((l) => ({ title: l.title, minutes: l.minutes, objectives: l.objectives, keyClaims: [] })), videos: m.videos.map((v) => ({ title: v.title, brief: v.brief })) })),
+      imported: {
+        formatVersion: 2, topicKind: "skill", guide: d.track, resources: d.resources, freshnessWatch: d.freshnessWatch,
+        sectionDetails: d.rounds.flatMap((r) => r.sections.map((x) => ({ round: r.roundNumber, number: x.number, difficulty: x.difficulty, bigQuestion: x.bigQuestion, canDo: x.canDo, hours: x.hours, keyTerms: x.keyTerms, examples: x.examples, mistakes: x.mistakes, sourceIds: x.sourceIds.map(srcRef) }))),
       },
     },
   };

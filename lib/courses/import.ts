@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import type { Account } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { refused, type Result } from "@/lib/courses/common";
-import { IMPORT_MAX_BYTES, checkImport, type ImportCheck, type ImportContext } from "./import-format";
+import { IMPORT_MAX_BYTES, checkImport, type ImportCheck, type ImportContext, type TrackRoundMeta } from "./import-format";
 
 /**
  * I1: the Owner's Import course tool. "Check file" parses and checks the file and says what would be created; nothing
@@ -22,16 +22,30 @@ async function contextFor(topicSlug: unknown): Promise<ImportContext> {
   const skills = ((await db.from("topics").select("slug").eq("kind", "skill")).data ?? []) as { slug: string }[];
   const boosters = ((await db.from("booster_types").select("key, item_types, active").eq("active", true)).data ?? []) as { key: string; item_types: string[] }[];
   let topic: ImportContext["topic"] = null;
+  let track: ImportContext["track"] = null;
   if (typeof topicSlug === "string" && /^[a-z0-9-]{2,60}$/.test(topicSlug)) {
     const t = (await db.from("topics").select("slug, name, kind, teen_hidden, catalog_slug").eq("slug", topicSlug).maybeSingle()).data as
       { slug: string; name: string; kind: "business" | "side_hustle" | "skill"; teen_hidden: boolean; catalog_slug: string | null } | null;
     if (t) {
       const academy = t.catalog_slug ? ((await db.from("academies").select("id").eq("slug", t.catalog_slug).maybeSingle()).data as { id: string } | null) : null;
-      const courses = academy ? (((await db.from("courses").select("status, published_at").eq("academy_id", academy.id)).data ?? []) as { status: string; published_at: string | null }[]) : [];
+      const courses = academy ? (((await db.from("courses").select("*").eq("academy_id", academy.id)).data ?? []) as { id: string; version: number; status: string; published_at: string | null; is_track?: boolean }[]) : [];
       topic = { slug: t.slug, name: t.name, kind: t.kind, teenHidden: t.teen_hidden, published: courses.some((c) => !!c.published_at), draftVersions: courses.filter((c) => c.status === "draft").length };
+      // S1: a skill's stored Rounds come from its latest version (Draft or Published), which the import builds on.
+      const latest = [...courses].sort((a, b) => b.version - a.version)[0];
+      if (t.kind === "skill" && latest?.is_track) track = await storedTrack(latest.id);
     }
   }
-  return { topic, skillSlugs: new Set(skills.map((s) => s.slug)), boosters: boosters.map((b) => ({ key: b.key, itemTypes: b.item_types })) };
+  return { topic, track, skillSlugs: new Set(skills.map((s) => s.slug)), boosters: boosters.map((b) => ({ key: b.key, itemTypes: b.item_types })) };
+}
+
+/** S1: the Rounds in a stored track version, and their labels, goals and section difficulties from its import record. */
+async function storedTrack(courseId: string): Promise<NonNullable<ImportContext["track"]>> {
+  const db = getDb();
+  const mods = ((await db.from("modules").select("*").eq("course_id", courseId)).data ?? []) as { round?: number | null }[];
+  const rounds = [...new Set(mods.map((m) => m.round).filter((r): r is number => typeof r === "number"))].sort();
+  const bps = ((await db.from("academy_blueprints").select("plan, course_id").eq("course_id", courseId)).data ?? []) as { plan: { rounds?: TrackRoundMeta[] } | null }[];
+  const meta = (bps.flatMap((b) => b.plan?.rounds ?? [])).filter((m) => rounds.includes(m.roundNumber));
+  return { rounds, meta: rounds.map((r) => meta.find((m) => m.roundNumber === r)).filter((m): m is TrackRoundMeta => !!m) };
 }
 
 type Input = { fileName: string; content: string };
@@ -43,7 +57,8 @@ function input(body: Record<string, unknown>): Input | string {
 }
 const topicOf = (raw: string) => { try { const j = JSON.parse(raw) as { topicSlug?: unknown }; return j && typeof j === "object" ? j.topicSlug : null; } catch { return null; } };
 const kb = (n: number) => `${Math.max(1, Math.round(n / 1024))} KB`;
-const counted = (c: ImportCheck) => `${c.summary.modules} modules, ${c.summary.lessons} lessons, ${Object.values(c.summary.items).reduce((a, b) => a + b, 0)} items (${c.summary.videoSlots} video slots), ${c.summary.sources} sources, ${c.summary.resources} resources`;
+const roundsOf = (c: ImportCheck) => c.summary.format === 2 ? ` (Round${(c.summary.rounds ?? []).length === 1 ? "" : "s"} ${(c.summary.rounds ?? []).join(", ")} in the file${c.summary.carriedRounds?.length ? `; Round${c.summary.carriedRounds.length === 1 ? "" : "s"} ${c.summary.carriedRounds.join(", ")} carried from the stored version` : ""})` : "";
+const counted = (c: ImportCheck) => `${c.summary.format === 2 ? `${c.summary.modules} sections${roundsOf(c)}` : `${c.summary.modules} modules`}, ${c.summary.lessons} lessons, ${Object.values(c.summary.items).reduce((a, b) => a + b, 0)} items (${c.summary.videoSlots} video slots), ${c.summary.sources} sources, ${c.summary.resources} resources`;
 const view = (c: ImportCheck) => ({ ok: c.ok, problems: c.problems, warnings: c.warnings, summary: c.summary, bytes: c.bytes });
 
 /** "Check file": a dry run. Body: { fileName, content }. Audited (with problems counted), never the contents. */
@@ -75,23 +90,29 @@ export async function createCourseFromFile(actor: Account, body: Record<string, 
   if (!c.ok || !c.plan) {
     return { ok: true, status: 422, body: { ...view(c), sha256: sha, created: null }, event: { action: A_CREATE, result: "Blocked", target, previous: null, next: null, context: `Refused ${what}: ${c.problems.length} problem(s). Nothing was created.` } };
   }
-  const { data, error } = await getDb().rpc("import_course", { p_actor: actor.id, p_plan: c.plan });
+  const isTrack = "format" in c.plan && c.plan.format === 2;
+  const { data, error } = isTrack
+    ? await getDb().rpc("import_track", { p_actor: actor.id, p_plan: c.plan })
+    : await getDb().rpc("import_course", { p_actor: actor.id, p_plan: c.plan });
   if (error) {
     // The transaction rolled back: nothing was created. The database's own message is plain (it starts "ASCENTRA:").
     const reason = /^ASCENTRA: /.test(error.message) ? error.message.replace(/^ASCENTRA: /, "") : "The import couldn't be saved. Nothing was created.";
-    return { ok: false, status: /already has a published course|unknown topic|linked to another/.test(reason) ? 409 : 500, reason, event: { action: A_CREATE, result: "Blocked", target, context: `Import of ${what} failed and was rolled back: ${reason}` } };
+    return { ok: false, status: /already has a published course|unknown topic|linked to another|can't be added before|for skills only/.test(reason) ? 409 : 500, reason, event: { action: A_CREATE, result: "Blocked", target, context: `Import of ${what} failed and was rolled back: ${reason}` } };
   }
-  const r = data as { courseId: string; academySlug: string; version: number; blueprintId: string; counts: Record<string, number> };
+  const r = data as { courseId: string; academySlug: string; version: number; blueprintId: string; counts: Record<string, number>; rounds?: number[]; carriedRounds?: number[] };
+  const made = isTrack
+    ? `${r.counts.sections} sections in Round${(r.rounds ?? []).length === 1 ? "" : "s"} ${(r.rounds ?? []).join(", ")}${r.carriedRounds?.length ? ` (plus ${r.counts.carriedSections} sections of Round${r.carriedRounds.length === 1 ? "" : "s"} ${r.carriedRounds.join(", ")} carried as Drafts)` : ""}`
+    : `${r.counts.modules} modules`;
   return {
     ok: true, status: 201,
     body: {
       ...view(c), sha256: sha,
-      created: { courseId: r.courseId, version: r.version, academySlug: r.academySlug, counts: r.counts, editor: `/admin/courses/${r.academySlug}`, checklist: "/admin/review" },
+      created: { courseId: r.courseId, version: r.version, academySlug: r.academySlug, counts: r.counts, rounds: r.rounds ?? null, carriedRounds: r.carriedRounds ?? null, editor: `/admin/courses/${r.academySlug}`, checklist: "/admin/review" },
     },
     event: {
       action: A_CREATE, result: "Completed", target: { type: "course", id: r.academySlug, label: c.summary.title ?? r.academySlug },
       previous: null, next: `version ${r.version} (Draft)`,
-      context: `Imported ${what} as a Draft, version ${r.version}: ${r.counts.modules} modules, ${r.counts.lessons} lessons, ${r.counts.items} practice items, ${r.counts.videoSlots} video slots, ${r.counts.sources} sources (${r.counts.newSources} new, proposed), ${c.summary.resources} resources. Nothing was published or approved.`,
+      context: `Imported ${what} as a Draft, version ${r.version}: ${made}, ${r.counts.lessons} lessons, ${r.counts.items} practice items, ${r.counts.videoSlots} video slots, ${r.counts.sources} sources (${r.counts.newSources} new, proposed), ${c.summary.resources} resources. Nothing was published or approved.`,
     },
   };
 }

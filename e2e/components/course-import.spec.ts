@@ -202,6 +202,18 @@ test.describe("C2 live-check fixes", () => {
       await expect(page.getByText(/Signed in as/)).toBeVisible();
       await expect(page.getByRole("link", { name: "Admin", exact: true })).toHaveCount(shown ? 1 : 0);
       if (shown) await expect(page.getByRole("link", { name: "Admin", exact: true })).toHaveAttribute("href", "/admin");
+      // S1: one Admin link only: the duplicate "Administrators" link is gone.
+      await expect(page.getByRole("link", { name: "Administrators" })).toHaveCount(0);
+    });
+    test(`S1: on a page without the account line (the Account page), the Admin link is ${shown ? "shown" : "not shown"} to ${role}`, async ({ page }) => {
+      const sent = await mount(page, "account", 1280, role);
+      await expect(page.getByRole("heading", { name: "Account" })).toBeVisible();
+      const nav = page.getByRole("navigation", { name: "Staff" });
+      if (shown) await expect(nav.getByRole("link", { name: "Admin", exact: true })).toHaveAttribute("href", "/admin");
+      else {
+        await expect.poll(() => sent.some((x) => x.path === "/api/v1/me")).toBe(true);
+        await expect(nav).toHaveCount(0);
+      }
     });
   }
 

@@ -387,6 +387,15 @@ table.plain td {
   margin-bottom: var(--space-3);
 }
 
+/* S1: the staff navigation (the one Admin link, Owner and staff only) on every signed-in page. */
+.staff-nav {
+  max-width: var(--width-prose);
+  margin: var(--space-2) auto 0;
+  padding: 0 var(--space-4);
+  text-align: right;
+  font-size: var(--text-sm);
+}
+
 /* Account → Billing */
 dl.kv {
   display: grid;

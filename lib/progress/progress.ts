@@ -5,6 +5,7 @@ import { tierOf } from "@/lib/billing";
 import { shownItems } from "@/lib/activities/learn";
 import { SIZE_TIERS, isSizeTier, type SizeTier } from "@/lib/courses/structure";
 import { CAPSTONE_POINTS, IMPORTANCE, isImportance, type Importance } from "./config";
+import { trackPoints, unlockTrack, type RoundState } from "./tracks";
 import {
   courseComplete, earnsTrialBonus, moduleDone, notebookCategory, pointsFor, rankOf, unlockModules, type ModuleInput, type ModuleUnlock, type PlanKind,
 } from "./rules";
@@ -22,8 +23,10 @@ export type ItemRef = {
   kind: "video" | "activity"; id: string; lessonId: string | null; moduleId: string; title: string; importance: Importance | null; points: number;
   part: string | null; itemType: string | null; grading: string | null; notebookNote: string | null; missionType: string | null; key: string;
 };
-type CourseRow = { id: string; academy_id: string; version: number; status: string; size_tier: string | null; license_notice?: string | null; software_notice?: string | null };
-type ModuleRow = { id: string; course_id: string; position: number; title: string };
+type CourseRow = { id: string; academy_id: string; version: number; status: string; size_tier: string | null; license_notice?: string | null; software_notice?: string | null; is_track?: boolean };
+type ModuleRow = { id: string; course_id: string; position: number; title: string; round?: number | null };
+/** S1: the unlock rules (C2 for a sized course, the track rules for a skill track) apply; older courses stay fully open. */
+export const hasRules = (c: { size_tier?: string | null; is_track?: boolean } | null | undefined) => !!c && (!!c.size_tier || c.is_track === true);
 type LessonRow = { id: string; module_id: string; position: number; title: string };
 type SlotRow = { id: string; module_id: string; lesson_id: string | null; position: number; title: string; status: string; importance: string | null; notebook_note: string | null };
 type ItemRow = { id: string; lesson_id: string; module_id: string; idea_key: string; item_type: string; grading: string; recipe_part: string | null; prompt: string;
@@ -56,9 +59,11 @@ const vidKey = (modulePos: number, slotPos: number) => `v:${modulePos}:${slotPos
 /** A module's items for this learner, in order: the module's general videos first, then each lesson's videos and practice. */
 async function moduleItems(actor: Account, m: ModuleRow, lessons: LessonRow[], slots: SlotRow[]): Promise<ItemRef[]> {
   const out: ItemRef[] = [];
+  // S1: in a track, an item's points are its importance points times its Round's multiplier.
+  const pts = (importance: Importance | null) => (m.round ? trackPoints(importance, m.round) : pointsFor(importance));
   const video = (s: SlotRow): ItemRef => {
     const importance = isImportance(s.importance) ? s.importance : null;
-    return { kind: "video", id: s.id, lessonId: s.lesson_id, moduleId: m.id, title: s.title, importance, points: pointsFor(importance), part: "video", itemType: null,
+    return { kind: "video", id: s.id, lessonId: s.lesson_id, moduleId: m.id, title: s.title, importance, points: pts(importance), part: "video", itemType: null,
       grading: null, notebookNote: s.notebook_note, missionType: null, key: vidKey(m.position, s.position) };
   };
   // Only approved videos are items a learner can finish ("Video coming" isn't one).
@@ -69,7 +74,7 @@ async function moduleItems(actor: Account, m: ModuleRow, lessons: LessonRow[], s
     const { items } = await shownItems(actor, l.id);
     for (const i of items as unknown as ItemRow[]) {
       const importance = isImportance(i.importance) ? i.importance : null;
-      out.push({ kind: "activity", id: i.id, lessonId: l.id, moduleId: m.id, title: i.prompt.slice(0, 140), importance, points: pointsFor(importance), part: i.recipe_part,
+      out.push({ kind: "activity", id: i.id, lessonId: l.id, moduleId: m.id, title: i.prompt.slice(0, 140), importance, points: pts(importance), part: i.recipe_part,
         itemType: i.item_type, grading: i.grading, notebookNote: i.notebook_note ?? null, missionType: i.mission_type ?? null, key: actKey(m.position, l.position, i.idea_key, i.item_type) });
     }
   }
@@ -104,10 +109,10 @@ export type CourseState = Awaited<ReturnType<typeof courseState>>;
 /** One course, for one learner: modules, items (done, open), unlock reasons, the capstone and whether it is complete. */
 export async function courseState(actor: Account, courseId: string, now = new Date()) {
   const db = getDb();
-  const course = (await db.from("courses").select("id, academy_id, version, status, size_tier, license_notice, software_notice").eq("id", courseId).maybeSingle()).data as CourseRow | null;
+  const course = (await db.from("courses").select("*").eq("id", courseId).maybeSingle()).data as CourseRow | null;
   if (!course) return null;
   const versions = ((await db.from("courses").select("id").eq("academy_id", course.academy_id)).data ?? []) as { id: string }[];
-  const modules = (((await db.from("modules").select("id, course_id, position, title").eq("course_id", course.id)).data ?? []) as ModuleRow[]).sort((a, b) => a.position - b.position);
+  const modules = (((await db.from("modules").select("*").eq("course_id", course.id)).data ?? []) as ModuleRow[]).sort((a, b) => a.position - b.position);
   const lessons = ((await db.from("lessons").select("id, module_id, position, title").in("module_id", ids(modules.map((m) => m.id)))).data ?? []) as LessonRow[];
   const slots = ((await db.from("video_slots").select("id, module_id, lesson_id, position, title, status, importance, notebook_note").in("module_id", ids(modules.map((m) => m.id)))).data ?? []) as SlotRow[];
   const items = new Map<string, ItemRef[]>();
@@ -129,20 +134,26 @@ export async function courseState(actor: Account, courseId: string, now = new Da
     if (error && error.code !== "23505") throw new Error(`trial bonus failed: ${error.message}`);
     bonus = true;
   }
+  // S1: a skill track has its own rules (Rounds and sections, by plan); no rank gates and no trial bonus.
+  const track = course.is_track === true ? unlockTrack(plan, inputs.map((x, i) => ({ ...x, round: modules[i].round ?? 1 }))) : null;
   // Older courses (no size tier) keep their earlier behaviour: every module open.
-  const unlock: ModuleUnlock[] = tier
-    ? unlockModules({ tier, plan, modules: inputs, rank: rank.index, bonus })
-    : inputs.map((m) => ({ position: m.position, state: "open", openItems: m.items, gated: false, requiredRank: null, reason: null, bonusHalf: false }));
+  const unlock: ModuleUnlock[] = track
+    ? track.sections.map((u) => ({ position: u.position, state: u.state, openItems: u.openItems, gated: false, requiredRank: null, reason: u.reason, bonusHalf: false }))
+    : tier
+      ? unlockModules({ tier, plan, modules: inputs, rank: rank.index, bonus })
+      : inputs.map((m) => ({ position: m.position, state: "open", openItems: m.items, gated: false, requiredRank: null, reason: null, bonusHalf: false }));
   const capstone = (await db.from("course_capstones").select("id, title").eq("course_id", course.id).maybeSingle()).data as { id: string; title: string } | null;
-  const allDone = courseComplete(inputs, fin.capstone);
+  // A track is complete Round by Round (no capstone); "Course complete" is for courses only.
+  const allDone = track ? false : courseComplete(inputs, fin.capstone);
   return {
-    course: { id: course.id, academyId: course.academy_id, version: course.version, tier, tierLabel: tier ? SIZE_TIERS[tier].label : null },
+    course: { id: course.id, academyId: course.academy_id, version: course.version, tier, tierLabel: tier ? SIZE_TIERS[tier].label : null, isTrack: !!track },
+    rounds: (track?.rounds ?? []) as RoundState[],
     plan, trialStart: trialStart?.toISOString() ?? null, bonus, rank, totals,
     modules: modules.map((m, i) => {
       const list = items.get(m.id)!;
       const u = unlock[i];
       return {
-        id: m.id, position: m.position, title: m.title, state: u.state, reason: u.reason, gated: u.gated, requiredRank: u.requiredRank, bonusHalf: u.bonusHalf,
+        id: m.id, position: m.position, round: m.round ?? null, title: m.title, state: u.state, reason: u.reason, gated: u.gated, requiredRank: u.requiredRank, bonusHalf: u.bonusHalf,
         done: moduleDone(inputs[i]), doneCount: inputs[i].done.filter(Boolean).length, itemCount: list.length,
         items: list.map((it, k) => ({ ...it, done: isDone(it), open: k < u.openItems })),
       };
@@ -176,8 +187,8 @@ export async function lessonGate(actor: Account, lessonId: string): Promise<{ ok
   const l = (await getDb().from("lessons").select("module_id").eq("id", lessonId).maybeSingle()).data as { module_id: string } | null;
   if (!l) return { ok: true };
   const courseId = await courseIdOfModule(l.module_id);
-  const c = courseId ? ((await getDb().from("courses").select("size_tier").eq("id", courseId).maybeSingle()).data as { size_tier: string | null } | null) : null;
-  if (!c?.size_tier) return { ok: true };
+  const c = courseId ? ((await getDb().from("courses").select("*").eq("id", courseId).maybeSingle()).data as { size_tier: string | null; is_track?: boolean } | null) : null;
+  if (!hasRules(c)) return { ok: true };
   const st = await courseState(actor, courseId!);
   const m = st?.modules.find((x) => x.id === l.module_id);
   return !m || m.state !== "locked" ? { ok: true } : { ok: false, reason: m.reason ?? "This module isn't open yet." };
@@ -223,8 +234,8 @@ export const IMPORTANCE_LABEL = Object.fromEntries(Object.entries(IMPORTANCE).ma
 export async function activityGate(actor: Account, item: { id: string; module_id: string; course_id: string; lesson_id: string; prompt: string; item_type: string; grading: string;
   recipe_part?: string | null; importance?: string | null; notebook_note?: string | null; mission_type?: string | null; idea_key?: string }):
   Promise<{ ok: true; ref: ItemRef; courseId: string } | { ok: false; reason: string }> {
-  const c = (await getDb().from("courses").select("size_tier").eq("id", item.course_id).maybeSingle()).data as { size_tier: string | null } | null;
-  if (c?.size_tier) {
+  const c = (await getDb().from("courses").select("*").eq("id", item.course_id).maybeSingle()).data as { size_tier: string | null; is_track?: boolean } | null;
+  if (hasRules(c)) {
     const g = await itemGate(actor, "activity", item.id, item.module_id);
     return g.ok ? { ok: true, ref: g.item, courseId: g.state.course.id } : g;
   }

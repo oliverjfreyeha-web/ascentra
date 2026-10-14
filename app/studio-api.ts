@@ -22,6 +22,8 @@ export type SlotView = {
   history: { id: string; name: string | null; size: number; status: string; reason: string | null; uploadedAt: string; replacedAt: string | null }[];
 };
 export type StudioModule = {
+  /** S1: a skill track's section has its Round (1-3); null for a module course. */
+  round?: number | null;
   id: string; position: number; title: string; stage: string | null; recipe: Partial<Recipe>; recommendedPace: string;
   state: {
     coverage: { counts: Record<string, number>; missing: string[]; short: { part: string; have: number; want: number }[]; boostersMissing: string[]; types: number; varietyOk: boolean };
@@ -43,16 +45,26 @@ export type StudioModule = {
 export type Booster = { key: string; name: string; description: string; itemTypes: string[] };
 export type Studio = {
   course: { id: string; slug: string; name: string };
-  version: { id: string; version: number; status: string; ownerReviewRequired: boolean; isDraft: boolean; publishedAt: string | null; unpublishedAt: string | null } | null;
+  version: {
+    id: string; version: number; status: string; ownerReviewRequired: boolean; isDraft: boolean; publishedAt: string | null; unpublishedAt: string | null;
+    /** S1: a skill track (3 Rounds of 5 sections), with each Round's status. */
+    isTrack?: boolean; rounds?: { round: number; sections: number; status: "Draft" | "Review" | "Published" }[];
+  } | null;
   live: { id: string; version: number; unpublishedAt: string | null } | null;
   modules: StudioModule[]; findings: Finding[]; emptySlots: number; boosters: Booster[]; canPublish: boolean; publishBlockers: string[];
 };
+type SectionTag = { round?: number; label?: string };
+/** S1: how a module or section is named in the studio and the checklist. */
+export const unitName = (m: { position: number; round?: number | null; label?: string }) =>
+  m.label ?? (m.round ? `Round ${m.round} · Section ${((m.position - 1) % 5) + 1}` : `Module ${m.position}`);
 export type Checklist = {
   courses: {
     slug: string; name: string; version: number; status: string; unpublished: boolean; approved: number; modules: number;
-    waiting: { id: string; position: number; title: string }[];
-    notReady: { id: string; position: number; title: string; blockers: string[] }[];
-    sentBack: { id: string; position: number; title: string; note: string | null; at: string }[];
+    /** S1: a skill track, with each Round's status; its sections carry their Round and a "Round r · Section k" label. */
+    track?: boolean; rounds?: { round: number; sections: number; status: "Draft" | "Review" | "Published" }[];
+    waiting: ({ id: string; position: number; title: string } & SectionTag)[];
+    notReady: ({ id: string; position: number; title: string; blockers: string[] } & SectionTag)[];
+    sentBack: ({ id: string; position: number; title: string; note: string | null; at: string } & SectionTag)[];
     emptySlots: { id: string; title: string; status: string; module: number }[];
     income: { ok: boolean; findings: Finding[] };
   }[];

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { call, when, type ApiResult } from "../../../call";
-import { courseApi, BOOSTERS_MAX, ITEM_PARTS, PART_NAMES, RECIPE_CAPS, type Booster, type StudioModule } from "../../../studio-api";
+import { courseApi, BOOSTERS_MAX, ITEM_PARTS, PART_NAMES, RECIPE_CAPS, unitName, type Booster, type StudioModule } from "../../../studio-api";
 import type { LessonBody } from "../../../courses-api";
 import { LabelEditor } from "./course-c2";
 import { VideoSlotEditor } from "./video-slot";
@@ -33,9 +33,9 @@ export function ModuleEditor({ slug, module: m, index, count, boosters, owner, e
   return (
     <article className="studio__module" aria-labelledby={headingId}>
       <header className="studio__module-head">
-        <h3 id={headingId}>Module {m.position}: {m.title}{m.stage ? <span className="muted small"> · {m.stage}</span> : null}</h3>
+        <h3 id={headingId}>{unitName(m)}: {m.title}{m.stage ? <span className="muted small"> · {m.stage}</span> : null}</h3>
         <span className={`studio__badge${st.review?.current ? " is-ok" : st.review?.decision === "sent_back" ? " is-back" : ""}`}>{status}</span>
-        {editable && (
+        {editable && !m.round && (
           <span className="studio__move">
             <button type="button" className="link" disabled={busy || index === 0} onClick={() => onMove(-1)} aria-label={`Move module ${m.position} up`}>Move up</button>
             <button type="button" className="link" disabled={busy || index === count - 1} onClick={() => onMove(1)} aria-label={`Move module ${m.position} down`}>Move down</button>

@@ -64,7 +64,7 @@ export function CourseStudio({ slug }: { slug: string }) {
       <p className="muted">
         Version {v.version}: {v.isDraft ? "Draft" : v.status}
         {studio.live ? ` · learners see version ${studio.live.version}${studio.live.unpublishedAt ? ` (unpublished ${when(studio.live.unpublishedAt)}: hidden from new learners)` : ""}` : " · not published yet"}
-        {" · "}{studio.modules.length} modules · recommended pace about 1 week per module, no time lock
+        {" · "}{v.isTrack ? `Track (3 Rounds) · ${studio.modules.length} sections` : `${studio.modules.length} modules · recommended pace about 1 week per module, no time lock`}
       </p>
       {message && <p role="status" className="notice">{message}</p>}
 
@@ -75,7 +75,7 @@ export function CourseStudio({ slug }: { slug: string }) {
         </div>
       )}
 
-      <TierPicker slug={slug} current={v.sizeTier ?? null} modules={studio.modules.length} editable={editable} busy={busy} act={act} />
+      {v.isTrack ? <TrackRounds rounds={v.rounds ?? []} /> : <TierPicker slug={slug} current={v.sizeTier ?? null} modules={studio.modules.length} editable={editable} busy={busy} act={act} />}
 
       <IncomeCheck findings={studio.findings} />
 
@@ -128,8 +128,24 @@ export function CourseStudio({ slug }: { slug: string }) {
           </li>
         ))}
       </ol>
-      {editable && studio.modules.length < (v.sizeTier ? SIZE_TIERS[v.sizeTier].modules.max : 6) && <AddModule busy={busy} onAdd={(title) => act(() => call("POST", `${base}/modules`, { title }), () => `Added the module "${title}".`)} />}
+      {editable && !v.isTrack && studio.modules.length < (v.sizeTier ? SIZE_TIERS[v.sizeTier].modules.max : 6) && <AddModule busy={busy} onAdd={(title) => act(() => call("POST", `${base}/modules`, { title }), () => `Added the module "${title}".`)} />}
     </section>
+  );
+}
+
+/** S1: a skill track's Rounds and their status. Sections come from importing a Round, so there is no size picker. */
+function TrackRounds({ rounds }: { rounds: NonNullable<NonNullable<Studio["version"]>["rounds"]> }) {
+  return (
+    <div className="studio__rounds">
+      <h3>Rounds</h3>
+      <ul className="small">
+        {[1, 2, 3].map((r) => {
+          const x = rounds.find((y) => y.round === r);
+          return <li key={r}>Round {r}: {x ? `${x.status} · ${x.sections} of 5 sections` : "not imported yet"}</li>;
+        })}
+      </ul>
+      <p className="muted small">A skill track has 5 sections in each Round. Import a Round (Admin → Import course) to add or change its sections; approval is still per section.</p>
+    </div>
   );
 }
 

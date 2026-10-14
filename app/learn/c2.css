@@ -31,3 +31,7 @@
 /* Practice items in a lesson: a fieldset never grows past the screen; long button text wraps (C2's mission buttons). */
 .ui-practice { min-width: 0; }
 .ui-practice .ui-actions .ui-btn { white-space: normal; text-align: left; height: auto; }
+/* S1: a track's steps (the short lesson, then its tasks). */
+.c2-step { margin-top: var(--space-2); padding-top: var(--space-2); border-top: var(--border-hairline); }
+.c2-step h4 { margin: 0; font-size: var(--text-sm); }
+.c2-modules h3.c2-state { margin: 0; }

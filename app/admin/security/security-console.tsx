@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useReverification } from "@clerk/nextjs";
-import { call, when } from "../../call";
+import { call, when, whenKnown } from "../../call";
 import { Loading } from "../../ui/loading";
 
 type Appeal = { id: string; reference: string; step: string; text: string; status: string; submittedAt: string; decisionReason: string | null; account?: { id: string; email: string; displayName: string; role: string } | null };
@@ -158,9 +158,9 @@ export function SecurityConsole() {
               {view.devices.map((d) => (
                 <tr key={d.id}>
                   <td>{d.name}{d.region ? <span className="muted"> · {d.region}</span> : null}</td>
-                  <td>{d.state === "trusted" ? "Trusted" : `Removed ${when(d.revokedAt)}`}</td>
-                  <td>{when(d.trustedAt)}</td>
-                  <td>{when(d.lastSeenAt)}</td>
+                  <td>{d.state === "trusted" ? "Trusted" : `Removed ${whenKnown(d.revokedAt)}`}</td>
+                  <td>{whenKnown(d.trustedAt)}</td>
+                  <td>{whenKnown(d.lastSeenAt)}</td>
                   <td>
                     {d.state === "trusted" && (pending?.kind === "free" && pending.deviceId === d.id ? reasonForm(`Free the slot held by ${d.name}`) : (
                       <button type="button" className="link" onClick={() => setPending({ kind: "free", deviceId: d.id, name: d.name })}>Free this slot</button>

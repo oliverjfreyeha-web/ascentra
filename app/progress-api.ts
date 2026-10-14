@@ -13,11 +13,14 @@ const bool = (v: unknown): v is boolean => typeof v === "boolean";
 const strOrNull = (v: unknown) => v === null || str(v);
 
 export type ModuleState = "open" | "half" | "locked";
-export type ProgressModule = { position: number; title: string; state: ModuleState; reason: string | null; gated: boolean; done: boolean; doneCount: number; itemCount: number };
+export type ProgressModule = { position: number; title: string; state: ModuleState; reason: string | null; gated: boolean; done: boolean; doneCount: number; itemCount: number; round?: number | null };
+export type ProgressRound = { round: number; state: "open" | "locked"; reason: string | null; complete: boolean; doneCount: number; itemCount: number };
 export type ProgressCourse = {
   courseId: string; slug: string; name: string; kind: string | null; pickStatus: string | null; tier: string | null; plan: string; percent: number; done: number; items: number;
   complete: boolean; bonus: boolean; capstone: { id: string; title: string; done: boolean } | null; points: number;
   skillRank: { index: number; name: string } | null; modules: ProgressModule[];
+  /** S1: a skill track's Rounds; null (or absent) for a module course. */
+  track?: { rounds: ProgressRound[] } | null;
 };
 export type MyProgress = {
   rank: { index: number; name: string; points: number; next: { name: string; needs: number } | null };

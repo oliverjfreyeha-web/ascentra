@@ -8,7 +8,7 @@
  */
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { checkImport, learnerResources, stripHtml, type ImportContext } from "@/lib/courses/import-format";
+import { checkImport, learnerResources, stripHtml, type ImportContext, type ImportPlan } from "@/lib/courses/import-format";
 import { sampleCourse } from "../fixtures/course-import";
 
 const ctx = (over: Partial<NonNullable<ImportContext["topic"]>> | null = {}): ImportContext => ({
@@ -33,7 +33,7 @@ describe("a valid file", () => {
   });
 
   it("the plan holds only what the file holds, with sources as placeholders the database replaces", () => {
-    const plan = check(sampleCourse()).plan!;
+    const plan = check(sampleCourse()).plan as ImportPlan;
     expect(plan.sizeTier).toBe("compact");
     expect(plan.modules[0].items.map((i) => [i.itemType, i.part, i.importance])).toEqual([
       ["multiple_choice", "quiz", "very_important"], ["short_answer", "assignment", "should_know"], ["spot_the_mistake", "sandbox", "important"], ["ordering", "sequence", "should_know"],
@@ -64,7 +64,7 @@ describe("refused files, with the exact path", () => {
   it("not JSON, too large, wrong version, unknown fields", () => {
     expect(checkImport("{ not json", ctx()).problems[0]).toMatchObject({ path: "(file)", message: expect.stringMatching(/isn't valid JSON/) });
     expect(checkImport("x".repeat(2 * 1024 * 1024 + 1), ctx()).problems[0].message).toMatch(/2 MB at most/);
-    expect(paths({ ...sampleCourse(), formatVersion: 2 })).toContain("formatVersion: must be 1");
+    expect(paths({ ...sampleCourse(), formatVersion: 3 })).toContain("formatVersion: must be 1");
     expect(paths({ ...sampleCourse(), extra: true })[0]).toMatch(/^\(file\): unknown field\(s\): extra/);
   });
 
@@ -127,10 +127,10 @@ describe("refused files, with the exact path", () => {
     expect(paths(edit((d) => { d.course.legalChecklist = ["Our contract is attorney-approved."]; }))).toContain("course.legalChecklist[0]: ASCENTRA never calls anything attorney-approved. Reword it.");
   });
 
-  it("a business course's capstone needs Automation with AI; a skill's doesn't", () => {
+  it("a business course's capstone needs Automation with AI; a skill takes no v1 file at all (S1: skills are tracks)", () => {
     const d = edit((x) => { delete (x.capstone as Record<string, unknown>).automation; });
     expect(paths(d)).toContain("capstone.automation: a business course's capstone needs \"Automation with AI\" (whatAutomated, masterPrompts, aiPlans)");
-    expect(check(d, ctx({ kind: "skill" })).ok).toBe(true);
+    expect(paths(sampleCourse(), ctx({ kind: "skill" }))[0]).toMatch(/^formatVersion: .*is a skill\. A skill is a track of 3 Rounds: use format version 2/);
   });
 
   it("unknown skills, and a teen setting that differs from the topic only warns (the topic isn't changed)", () => {

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNod
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth, useClerk, useReverification } from "@clerk/nextjs";
-import { DEVICE_EVENT, call, when, type ApiResult } from "./call";
+import { DEVICE_EVENT, call, when, whenKnown, type ApiResult } from "./call";
 
 type Device = { id: string; name: string; kind: string; region: string | null; trustedAt: string | null; lastSeenAt: string | null };
 type Enforcement = {
@@ -258,7 +258,7 @@ function NotTrusted({ beat, onDone }: { beat: Beat; onDone: () => void }) {
               <span>
                 <b>{x.name}</b>{" "}
                 <span className="muted">
-                  trusted {when(x.trustedAt)} · last active {when(x.lastSeenAt)}{x.region ? ` · approx. ${x.region}` : ""}{x.id === oldest?.id ? " · least recently used" : ""}
+                  trusted {whenKnown(x.trustedAt)} · last active {whenKnown(x.lastSeenAt)}{x.region ? ` · approx. ${x.region}` : ""}{x.id === oldest?.id ? " · least recently used" : ""}
                 </span>
               </span>
               <button type="button" className={x.id === oldest?.id ? "primary" : "link"} onClick={async () => {

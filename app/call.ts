@@ -31,3 +31,20 @@ export async function call(method: string, url: string, body?: unknown): Promise
 }
 
 export const when = (iso: string | null | undefined) => (iso ? new Date(iso).toLocaleString() : "—");
+
+/**
+ * S1: a device's date and time, or only the date when the time isn't known: a date-only value ("2026-10-01"), or one at
+ * exactly midnight (00:00:00.000, local or UTC), which is how a day without a time is stored. Never "12:00:00 AM".
+ */
+export function whenKnown(iso: string | null | undefined, locale?: string, timeZone?: string): string {
+  if (!iso) return "—";
+  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(iso);
+  const d = new Date(dateOnly ? `${iso}T00:00:00Z` : iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  const utcMidnight = d.getUTCHours() === 0 && d.getUTCMinutes() === 0 && d.getUTCSeconds() === 0 && d.getUTCMilliseconds() === 0;
+  const local = new Date(d.toLocaleString("en-US", { timeZone }));
+  const localMidnight = local.getHours() === 0 && local.getMinutes() === 0 && local.getSeconds() === 0 && d.getMilliseconds() === 0;
+  if (dateOnly || utcMidnight) return d.toLocaleDateString(locale, { timeZone: "UTC" });
+  if (localMidnight) return d.toLocaleDateString(locale, { timeZone });
+  return d.toLocaleString(locale, { timeZone });
+}

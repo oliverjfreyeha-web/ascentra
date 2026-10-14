@@ -291,8 +291,9 @@ export function diffLines(before: string[], after: string[]): { op: "same" | "ad
 /** C2: how many videos and practice items of a lesson's module lack their label (only in a course with a size tier). */
 async function unlabelledInModule(lessonId: string, courseId: string): Promise<number> {
   const db = getDb();
-  const c = (await db.from("courses").select("size_tier").eq("id", courseId).maybeSingle()).data as { size_tier?: string | null } | null;
-  if (!c?.size_tier) return 0;
+  const c = (await db.from("courses").select("*").eq("id", courseId).maybeSingle()).data as { size_tier?: string | null; is_track?: boolean } | null;
+  // S1: a skill track needs its labels too.
+  if (!c?.size_tier && !c?.is_track) return 0;
   const l = (await db.from("lessons").select("module_id").eq("id", lessonId).maybeSingle()).data as { module_id: string } | null;
   if (!l) return 0;
   const ok = (x: { importance?: string | null; notebook_note?: string | null }) => !!x.importance && (x.importance !== "very_important" || !!x.notebook_note);

@@ -116,6 +116,12 @@
       "migrations": [
         "0022_course_import"
       ]
+    },
+    "S1": {
+      "requires": "0022_course_import",
+      "migrations": [
+        "0023_skill_tracks"
+      ]
     }
   }
 }

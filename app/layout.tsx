@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import { BillingBanner } from "./billing-banner";
+import { StaffNav } from "./staff-nav";
 import { DeviceGate } from "./device-gate";
 import { clerkAppearance } from "./clerk-appearance";
 import { fontVariables } from "./fonts";
@@ -33,6 +34,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           {/* D2e: the ambient player lives here, outside every page and route segment, so navigation never stops it. */}
           <SoundProvider>
             <BillingBanner />
+            <StaffNav />
             <DeviceGate>{children}</DeviceGate>
           </SoundProvider>
         </body>

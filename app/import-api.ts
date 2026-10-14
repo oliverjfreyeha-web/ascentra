@@ -15,8 +15,10 @@ export type ImportResult = {
   summary: {
     topic: string | null; title: string | null; sizeTier: string | null; modules: number; lessons: number; items: Record<string, number>; videoSlots: number;
     sources: number; resources: number; resourcesHidden: number; capstone: boolean; notices: number; newDraftVersion: boolean;
+    /** S1: 2 for a skill track file; its Rounds, and the stored Rounds carried into the new version. */
+    format?: 1 | 2; rounds?: number[]; carriedRounds?: number[];
   };
-  created?: { courseId: string; version: number; academySlug: string; counts: Record<string, number>; editor: string; checklist: string } | null;
+  created?: { courseId: string; version: number; academySlug: string; counts: Record<string, number>; editor: string; checklist: string; rounds?: number[] | null; carriedRounds?: number[] | null } | null;
 };
 export function importResultFrom(body: unknown): ImportResult | null {
   if (!obj(body) || typeof body.ok !== "boolean" || !arr(body.problems) || !arr(body.warnings) || !obj(body.summary) || !num(body.bytes) || !str(body.sha256)) return null;

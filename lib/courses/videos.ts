@@ -295,8 +295,9 @@ export async function learnerVideoLink(actor: Account, slotId: string): Promise<
   if (slot.status !== "approved" || !slot.current_upload_id) return refused(404, "Video coming: this video isn't ready yet.", A2);
   // C2: in a course with the unlock rules, only an open video plays.
   const tiered = ((await getDb().from("modules").select("course_id").eq("id", slot.module_id).maybeSingle()).data as { course_id: string } | null)?.course_id;
-  const sized = tiered ? ((await getDb().from("courses").select("size_tier").eq("id", tiered).maybeSingle()).data as { size_tier?: string | null } | null)?.size_tier : null;
-  if (sized) {
+  const ruled = tiered ? ((await getDb().from("courses").select("*").eq("id", tiered).maybeSingle()).data as { size_tier?: string | null; is_track?: boolean } | null) : null;
+  // S1: a skill track has the same gate.
+  if (ruled && (ruled.size_tier || ruled.is_track)) {
     const gate = await itemGate(actor, "video", slot.id, slot.module_id);
     if (!gate.ok) return refused(403, gate.reason, A2);
   }

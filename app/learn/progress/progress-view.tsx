@@ -53,6 +53,21 @@ export function ProgressView() {
         {p.courses.map((c) => (
           <article key={c.slug} aria-labelledby={`pc-${c.slug}`} className="ui-module">
             <h3 id={`pc-${c.slug}`}>{c.name}</h3>
+            {c.track ? (
+              <>
+                <p className="small muted">Track (3 Rounds) · {c.done} of {c.items} items done · {c.percent}%</p>
+                <Meter value={c.done} max={Math.max(1, c.items)} />
+                <ul className="ui-rows" aria-label={`Rounds of ${c.name}`}>
+                  {c.track.rounds.map((r) => (
+                    <li key={r.round}>
+                      <span>{r.state === "locked" && <Icon name="lock" size={16} />} Round {r.round}</span>
+                      <span className="small muted">{r.complete ? "Round complete" : `${r.doneCount} of ${r.itemCount} items done`}{r.state === "locked" && r.reason ? ` · ${r.reason}` : ""}</span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="small"><Link href={`/learn/track/${c.slug}`}>Open the track<span className="sr-only">: {c.name}</span></Link> · <Link href={`/learn/track/${c.slug}/library`}>Library<span className="sr-only">: {c.name}</span></Link></p>
+              </>
+            ) : (<>
             <p className="small muted">
               {c.tier ? `${c.tier} course · ` : ""}{c.done} of {c.items} items done · {c.complete ? "Course complete" : `${c.percent}%`}
               {c.bonus ? " · Trial bonus: half of module 3" : ""}{c.pickStatus === "paused" ? " · Past course (set aside)" : ""}
@@ -72,6 +87,7 @@ export function ProgressView() {
                 </li>
               ))}
             </ol>
+            </>)}
             {c.capstone && (
               <p className="small">
                 Capstone: {c.capstone.title} · {c.capstone.done ? "done" : "not done yet"} · <Link href={`/learn/capstone/${c.courseId}`}>Open the capstone<span className="sr-only">: {c.name}</span></Link>
