@@ -18,8 +18,14 @@ const doneCount = (m: ModuleInput) => m.done.filter(Boolean).length;
 
 /** The truthful label for a Round the plan doesn't include. */
 export const roundLockLabel = (round: number) => `Round ${round} is part of ${ROUND_PLANS[round] ?? "Pro"}.`;
-/** An item's points in a Round. */
-export const trackPoints = (importance: Importance | null, round: number) => pointsFor(importance) * (ROUND_MULTIPLIER[round] ?? 1);
+/**
+ * An item's points in a Round: base points × the Round's multiplier, rounded to the nearest whole number with halves
+ * rounding up (points are stored as whole numbers), and never below the item's base points.
+ */
+export const trackPoints = (importance: Importance | null, round: number) => {
+  const base = pointsFor(importance);
+  return Math.max(base, Math.floor(base * (ROUND_MULTIPLIER[round] ?? 1) + 0.5));
+};
 /** Round r's sections sit at positions 5(r-1)+1 to 5r. */
 export const sectionPosition = (round: number, section: number) => (round - 1) * SECTIONS_PER_ROUND + section;
 export const sectionNumber = (position: number) => ((position - 1) % SECTIONS_PER_ROUND) + 1;

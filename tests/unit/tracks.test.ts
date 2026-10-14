@@ -22,9 +22,9 @@ const states = (plan: PlanKind, s: SectionInput[]) => {
 const ALL = [4, 4, 4, 4, 4];
 
 describe("the config", () => {
-  it("3 Rounds of 5 sections; multipliers 1, 2, 3; Basic has Rounds 1-2, Pro all 3", () => {
+  it("3 Rounds of 5 sections; multipliers 1, 1.5, 2; Basic has Rounds 1-2, Pro all 3", () => {
     expect([TRACK_ROUNDS, SECTIONS_PER_ROUND]).toEqual([3, 5]);
-    expect(ROUND_MULTIPLIER).toEqual({ 1: 1, 2: 2, 3: 3 });
+    expect(ROUND_MULTIPLIER).toEqual({ 1: 1, 2: 1.5, 3: 2 });
     expect(ROUNDS_BY_PLAN).toMatchObject({ none: 0, trial: 1, basic: 2, pro: 3 });
   });
   it("Round r's sections sit at positions 5(r-1)+1 to 5r", () => {
@@ -98,16 +98,22 @@ describe("plan access", () => {
 });
 
 describe("points per Round", () => {
-  it("an item's points are its importance points × the Round's multiplier", () => {
-    expect([1, 2, 3].map((r) => trackPoints("should_know", r))).toEqual([1, 2, 3]);
-    expect([1, 2, 3].map((r) => trackPoints("very_important", r))).toEqual([3, 6, 9]);
-    expect(trackPoints(null, 2)).toBe(pointsFor(null) * 2);
+  it("an item's points are its importance points × the Round's multiplier, a whole number with halves rounding up", () => {
+    // Should know 1: 1, 1.5 → 2, 2. Important 2: 2, 3, 4. Very important 3: 3, 4.5 → 5, 6.
+    expect([1, 2, 3].map((r) => trackPoints("should_know", r))).toEqual([1, 2, 2]);
+    expect([1, 2, 3].map((r) => trackPoints("important", r))).toEqual([2, 3, 4]);
+    expect([1, 2, 3].map((r) => trackPoints("very_important", r))).toEqual([3, 5, 6]);
+    expect(trackPoints(null, 2)).toBe(2);
+    for (const r of [1, 2, 3]) for (const imp of ["should_know", "important", "very_important"] as const) {
+      expect(Number.isInteger(trackPoints(imp, r))).toBe(true);
+      expect(trackPoints(imp, r)).toBeGreaterThanOrEqual(pointsFor(imp));
+    }
   });
   it("once per Round: each Round's items are their own rows, so the same section in Rounds 1 and 2 earns twice, an item once", () => {
     // Points come from distinct items; re-doing an item in a Round never adds (the attempt is recorded once).
     const r1 = 5 * 4 * trackPoints("important", 1);
     const r2 = 5 * 4 * trackPoints("important", 2);
-    expect([r1, r2]).toEqual([40, 80]);
+    expect([r1, r2]).toEqual([40, 60]);
   });
 });
 
