@@ -1,0 +1,22 @@
+/* ===== v13: checks pass. Mono realism, contrast, lighter paint cost. ===== */
+/* contrast */
+.tabs button{color:#D2D9E6}.wh b,.widget small,.widget .wh{color:#D3DAE8}.mini .big{color:#F7F9FE}
+.shell .h2,.shell h1,.stat b,.big{color:#F7F9FE}
+/* Mono: light sits right of centre so left-aligned titles are not behind the glare */
+.app[data-theme="mono"] .lightsrc{left:68%}
+.app[data-theme="mono"] .fl-bloom{background:radial-gradient(ellipse 58% 50% at 50% 50%,rgba(255,255,255,.52) 0,rgba(236,238,243,.24) 12%,rgba(168,172,182,.11) 30%,rgba(110,113,122,.05) 48%,transparent 66%)}
+.app[data-theme="mono"] .hud.g{background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,.01)),rgba(14,14,16,.78)}
+.app[data-theme="mono"] .tabs button{color:#E4E7EC}.app[data-theme="mono"] .tabs button[aria-current="true"]{color:#fff}
+.app[data-theme="mono"] .shell h1{text-shadow:0 2px 20px rgba(0,0,0,.7),0 0 2px rgba(0,0,0,.55)}
+.app[data-theme="mono"] .shell .lede{text-shadow:0 1px 14px rgba(0,0,0,.8)}
+/* paint cost: panels are nearly opaque, so skip their backdrop blur; keep it for the bar and popovers */
+.app .shell .g:not([data-lens]):not(.pop){-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+/* floor scrolls with transform instead of repainting a background */
+.scn .floor i{inset:-90px 0 0 0;animation:flmove 14s linear infinite;background-position:calc(var(--sx)*120px) 0}
+@keyframes flmove{to{transform:translateY(90px)}}
+/* cards fade and rise only; blur is kept for the page header */
+.wgrid>*,.courses>*,.tiles>*,.secgrid>*,.stats>*{animation-name:arrive2}
+@keyframes arrive2{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.app[data-theme="mono"] .rate .r,.app[data-theme="mono"] .rate .r small{color:#F2F4F8}
+.app[data-theme="mono"] .rate .r{background:linear-gradient(180deg,#2d2e33,#1a1b1e);border-color:rgba(255,255,255,.18)}
+.demo-hint,.democtl{color:#C9D0DD}

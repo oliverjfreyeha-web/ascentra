@@ -1,0 +1,20 @@
+@font-face{font-family:'Ascentra Display';src:url(/* embedded asset removed */) format('woff2');font-display:swap}
+/* ===== prototype 8: own display font, system body font, no hover movement, richer icons ===== */
+:root{--font:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,"Helvetica Neue",Arial,system-ui,sans-serif;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;--disp:"Ascentra Display",var(--font)}
+body{font-family:var(--font)}
+.shell h1{font-family:var(--disp);font-weight:400;letter-spacing:.035em;text-transform:none;font-size:clamp(34px,5vw,56px)}
+.brand{font-family:var(--disp);letter-spacing:.2em;font-size:15px}
+.big,.widget .big{font-family:var(--disp);letter-spacing:.03em}
+.app .shell .g>h2.h2,.herotxt h1,.rcard b,.tile b,.eyebrow,.wh b{font-family:var(--disp);letter-spacing:.06em}
+.app .shell .g>h2.h2{font-size:22px;font-weight:400}
+.tile b{font-size:17px;font-weight:400}.eyebrow{font-weight:400}
+.herotxt h1{font-weight:400;letter-spacing:.03em}
+/* nothing moves under the pointer: no lift, tilt, scale or sheen sweep. Light and rim glow still follow the cursor. */
+.tile,.seccard,.stat,.widget,.next,.g,.nextrow,.app .shell .g:not([data-lens]){transform:none!important}
+.tile:hover,.seccard:hover,.stat:hover,.widget:hover,.next:hover,.g:hover,.g:active,.app .shell .stack>.g:not([data-lens]):hover{transform:none!important}
+.sheen{display:none!important}
+/* icons: duotone gradient line + soft glow */
+.ic{overflow:visible;filter:drop-shadow(0 0 5px rgba(150,170,255,.45)) drop-shadow(0 1px 1px rgba(0,0,20,.5))}
+.tile .ico .ic,.ico3 .ic{filter:drop-shadow(0 2px 4px rgba(10,10,80,.55))}
+.tile .ico .ic path,.ico3 .ic path{stroke:#1A1A66;stroke-opacity:1}.tile .ico .ic{filter:none}
+.tile .ico .ic path:first-child:not(:last-child){fill:rgba(255,255,255,.22)}

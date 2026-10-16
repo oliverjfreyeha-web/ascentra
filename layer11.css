@@ -1,0 +1,56 @@
+/* ===== prototype 11: craft pass. Restraint, real depth, texture, themed browser surfaces. ===== */
+/* no kicker labels above headings; small labels stay plain */
+.shell .eyebrow:has(+ h1),.herotxt .eyebrow{display:none!important}
+.shell .eyebrow{font-family:var(--font);text-transform:none;letter-spacing:.01em;font-size:13.5px;font-weight:500;color:#B9C4D8;display:block}.shell .eyebrow::before{display:none}
+.eyebrow:has(+ h1)+h1{margin-top:0}
+/* emphasis from weight and size, not gradient fills */
+.shell h1,.stat b,.widget .big,.shell .g>h2.h2,.cico,.shell h1.h1{background:none!important;-webkit-background-clip:border-box!important;background-clip:border-box!important;-webkit-text-fill-color:currentColor!important;color:#F7F9FE!important;filter:none!important;animation-name:arrive!important;text-shadow:0 2px 28px rgba(6,8,36,.55)}
+.shell h1{font-size:clamp(36px,5.2vw,60px);line-height:1.04;letter-spacing:.03em;margin-bottom:6px}
+.app .shell .g>h2.h2{color:#EEF2FA!important}
+.weak .bar i,.wk i,.bar i{filter:none}
+/* depth: soft offset shadows only, no stacked slabs */
+.app .shell .g:not([data-lens]):not(.pop),.app .stat,.app .seccard.g{box-shadow:inset 0 1px 0 rgba(255,255,255,.20),inset 0 0 0 1px rgba(255,255,255,.045),inset 0 -30px 50px -34px color-mix(in srgb,var(--acc,#7B7FFF) 28%,transparent),0 1px 2px rgba(0,0,0,.45),0 14px 28px -10px rgba(2,3,22,.7),0 44px 70px -34px rgba(2,3,22,.95),0 26px 60px -40px color-mix(in srgb,var(--acc,#7B7FFF) 45%,transparent)!important}
+.app .shell .g:not([data-lens]):not(.pop),.app .stat,.app .seccard.g{background:radial-gradient(110% 80% at 0% 0%,color-mix(in srgb,var(--acc,#7B7FFF) 17%,transparent),transparent 60%),radial-gradient(80% 60% at 100% 100%,color-mix(in srgb,var(--acc,#7B7FFF) 9%,transparent),transparent 62%),linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,0) 22%),linear-gradient(160deg,rgba(34,40,88,.82),rgba(9,10,30,.92))!important}
+/* varied radii by role, not one radius everywhere */
+.widget.g,.fc.g,.course.g{border-radius:30px}.tile.g,.seccard.g{border-radius:22px}.mini.g{border-radius:20px}
+/* Home figures: one calm strip instead of four identical tiles */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-radius:26px;overflow:hidden;background:linear-gradient(160deg,rgba(34,40,88,.78),rgba(9,10,30,.9));box-shadow:inset 0 1px 0 rgba(255,255,255,.2),0 44px 70px -34px rgba(2,3,22,.95),0 14px 28px -10px rgba(2,3,22,.7)}
+.app .stats>.stat{background:none!important;box-shadow:none!important;border-radius:0;padding:24px 26px;position:relative}.stats>.stat+.stat{box-shadow:inset 1px 0 0 rgba(255,255,255,.09)!important}
+.stat b{font-size:44px;font-weight:400}
+@media (max-width:760px){.stats{grid-template-columns:repeat(2,1fr)}.stats>.stat:nth-child(3){box-shadow:none!important}}
+.secgrid{grid-template-columns:1fr 1.7fr 1fr 1fr 1fr}
+@media (max-width:1000px){.secgrid{grid-template-columns:repeat(auto-fill,minmax(200px,1fr))}}
+/* Admin and widget icon tiles: dark glass with a lit icon */
+.tile .ico,.ico3{background:linear-gradient(160deg,color-mix(in srgb,var(--acc,#7B7FFF) 42%,#15183f),#0a0b26)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.35),inset 0 0 0 1px rgba(255,255,255,.08),0 12px 22px -10px color-mix(in srgb,var(--acc,#7B7FFF) 70%,transparent)!important}
+.tile .ico .ic path.l,.ico3 .ic path.l{stroke:#F2F6FF!important}.tile .ico .ic path.a,.ico3 .ic path.a{stroke:color-mix(in srgb,var(--acc,#7B7FFF) 35%,#fff)!important;stroke-opacity:1}.tile .ico .ic path.f,.ico3 .ic path.f{fill:color-mix(in srgb,var(--acc,#7B7FFF) 55%,transparent)!important}.tile .ico .ic path.hi{display:none}
+.tile .ico .ic,.ico3 .ic{filter:drop-shadow(0 0 6px color-mix(in srgb,var(--acc,#7B7FFF) 60%,transparent))}
+/* Library covers: moodier, textured, one light streak */
+.cover{background:radial-gradient(85% 120% at 24% 0,color-mix(in srgb,var(--acc) 58%,#fff 6%),color-mix(in srgb,var(--acc) 34%,#0a0b22) 55%,#07081a)!important}
+.cover::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(112deg,transparent 38%,rgba(255,255,255,.16) 49%,transparent 60%),url(/* embedded asset removed */)' opacity='.55'/%3E%3C/svg%3E");mix-blend-mode:overlay;opacity:.55}
+.cico{background:linear-gradient(150deg,rgba(255,255,255,.26),rgba(255,255,255,.04))!important}
+/* filmic grain on the page a touch stronger */
+.grain{opacity:.1}
+/* browser surfaces carry the design */
+::selection{background:rgba(143,180,232,.38);color:#fff}
+input,textarea{caret-color:#A0BDDB}input[type=range],input[type=checkbox]{accent-color:#A0BDDB}
+*{scrollbar-width:thin;scrollbar-color:rgba(160,189,219,.35) transparent}
+::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-thumb{background:rgba(160,189,219,.28);border-radius:10px;border:2px solid transparent;background-clip:padding-box}::-webkit-scrollbar-thumb:hover{background:rgba(160,189,219,.5);background-clip:padding-box;border:2px solid transparent}::-webkit-scrollbar-track{background:transparent}
+:focus-visible{outline:2px solid #A0BDDB;outline-offset:3px;box-shadow:0 0 0 7px rgba(160,189,219,.16)}
+.shell{font-variant-numeric:tabular-nums}p,.lede{text-wrap:pretty}h1,h2{text-wrap:balance}a{text-underline-offset:.2em}
+/* stronger icon motion */
+@keyframes ic-spin{to{transform:rotate(360deg)}}
+@keyframes ic-quarter{to{transform:rotate(180deg)}}
+@keyframes ic-jolt{0%{transform:none}20%{transform:translate(-2px,2px) rotate(-14deg) scale(1.1)}45%{transform:translate(2px,-2px) rotate(12deg) scale(1.15)}70%{transform:translate(-1px,1px) rotate(-6deg)}100%{transform:none}}
+@keyframes ic-flap{0%{transform:none}35%{transform:translateY(-4px) rotate(-14deg) scale(1.1)}70%{transform:translateY(1px) rotate(4deg)}100%{transform:none}}
+@keyframes ic-pop{0%{transform:scale(1)}40%{transform:scale(1.4)}70%{transform:scale(.94)}100%{transform:scale(1)}}
+@keyframes ic-sway{0%,100%{transform:rotate(0)}20%{transform:rotate(-18deg)}50%{transform:rotate(14deg)}75%{transform:rotate(-7deg)}}
+@keyframes ic-rise{0%{transform:translateY(0)}30%{transform:translateY(-6px)}55%{transform:translateY(1px)}100%{transform:translateY(0)}}
+@keyframes ic-swing{0%,100%{transform:rotate(0)}25%{transform:rotate(28deg)}55%{transform:rotate(-16deg)}80%{transform:rotate(7deg)}}
+@keyframes ic-bob{0%,100%{transform:translateY(0) scale(1)}35%{transform:translateY(-4px) scale(1.14)}65%{transform:translateY(0) scale(.97)}}
+@keyframes ic-nudge{0%,100%{transform:translateX(0)}40%{transform:translateX(-5px)}}
+@keyframes ic-flick{0%,100%{transform:scale(1,1) skewX(0)}30%{transform:scale(1.08,1.16) skewX(4deg)}60%{transform:scale(.96,1.05) skewX(-4deg)}}
+@keyframes ic-ping{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.22);opacity:.5}}
+/* phones: the bar fits, hero text stays readable */
+@media (max-width:560px){.hud{gap:4px;padding:6px 8px;width:calc(100% - 16px)}.brand{display:none}.tabs{margin-right:auto}.tabs button{padding:9px 10px}.mseg.role button{padding:6px 8px;font-size:12px}.iconb{width:34px;height:34px;border-radius:12px}}
+@media (max-width:760px){.herotxt::before{background:radial-gradient(90% 80% at 40% 55%,rgba(4,6,20,.86),rgba(4,6,20,.55) 60%,transparent 90%)!important}.herotxt p{color:#F0F4FB}}
+@media (max-width:760px){.skyline{position:relative}.skyline::after{content:"";position:absolute;inset:0;z-index:0;pointer-events:none;background:linear-gradient(180deg,rgba(4,6,20,.1),rgba(4,6,20,.72) 42%,rgba(4,6,20,.92))}.herotxt{z-index:1}}

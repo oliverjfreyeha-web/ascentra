@@ -1,0 +1,59 @@
+/* ===== prototype 12: Mono theme. Black and gray with one very bright white light aimed at the camera. ===== */
+.lightsrc{display:none}
+.app[data-theme="mono"] .lightsrc{display:block;position:absolute;left:50%;top:13vh;width:0;height:0;transform:translateX(calc(var(--sx,0)*5vw));transition:transform .6s var(--ease)}
+.lightsrc i{position:absolute;display:block;pointer-events:none}
+.fl-core{left:-48px;top:-48px;width:96px;height:96px;border-radius:50%;background:#fff;filter:blur(7px);box-shadow:0 0 50px 26px #fff,0 0 150px 80px rgba(255,255,255,.7),0 0 380px 200px rgba(255,255,255,.32);animation:flbreathe 7s ease-in-out infinite;mix-blend-mode:screen}
+.fl-bloom{left:-70vmax;top:-70vmax;width:140vmax;height:140vmax;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.5) 0,rgba(235,238,245,.22) 14%,rgba(160,165,175,.10) 30%,transparent 52%);mix-blend-mode:screen}
+.fl-streak{left:-48vw;top:-5px;width:96vw;height:10px;border-radius:50%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.5) 30%,#fff 50%,rgba(255,255,255,.5) 70%,transparent);filter:blur(1.5px);box-shadow:0 0 24px 4px rgba(255,255,255,.7);mix-blend-mode:screen;animation:flbreathe 7s ease-in-out infinite}
+.fl-cone{left:-46vw;top:0;width:92vw;height:112vh;clip-path:polygon(47% 0,53% 0,100% 100%,0 100%);background:linear-gradient(180deg,rgba(255,255,255,.62),rgba(255,255,255,.14) 38%,transparent 78%)}
+.fl-rays{left:-60vw;top:0;width:120vw;height:105vh;background:repeating-conic-gradient(from 180deg at 50% 0,transparent 0 3.2deg,rgba(255,255,255,.20) 3.7deg,transparent 4.6deg 7.6deg);-webkit-mask:radial-gradient(70% 90% at 50% 0,#000,transparent 75%);mask:radial-gradient(70% 90% at 50% 0,#000,transparent 75%);mix-blend-mode:screen;opacity:.8;animation:flsway 18s ease-in-out infinite alternate;transform-origin:50% 0}
+.fl-ghost{border-radius:50%;border:1px solid rgba(255,255,255,.35);background:radial-gradient(circle,rgba(255,255,255,.16),transparent 70%);mix-blend-mode:screen}
+.fl-ghost.g1{left:calc(var(--sx,0)*-14vw - 34px);top:30vh;width:68px;height:68px}.fl-ghost.g2{left:calc(var(--sx,0)*-26vw + 7vw);top:48vh;width:150px;height:150px;border-color:rgba(255,255,255,.18)}.fl-ghost.g3{left:calc(var(--sx,0)*-40vw - 12vw);top:20vh;width:34px;height:34px;background:rgba(255,255,255,.4)}
+@keyframes flbreathe{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.86;transform:scale(1.05)}}
+@keyframes flsway{from{transform:rotate(-2.2deg)}to{transform:rotate(2.2deg)}}
+.app[data-reduced="1"] .lightsrc *{animation:none!important}
+/* neutral tokens */
+.app[data-theme="mono"]{--fro:#D9DCE3;--mut:#B3B7C0;--ink:#F6F7F9;--bg:#050506}
+.app[data-theme="mono"] *{--acc:#E4E6EB!important}
+body:has(.app[data-theme="mono"]){background:#050506}
+.app[data-theme="mono"] .bgfade{background:radial-gradient(90vw 75vh at 50% -14%,rgba(255,255,255,.42),rgba(200,204,212,.14) 38%,transparent 72%),linear-gradient(180deg,#0d0d0f 0%,#060607 55%,#030304 100%)}
+.app[data-theme="mono"] .aur{filter:grayscale(1) brightness(.8);opacity:.5}
+.app[data-theme="mono"] .scn{--h1:#9A9CA3;--h2:#ffffff;--h3:#5E6068}
+.app[data-theme="mono"] .scn .orb{opacity:.28}
+.app[data-theme="mono"] .scn .horizon{background:linear-gradient(90deg,transparent,rgba(255,255,255,.4) 50%,transparent);box-shadow:0 0 50px 10px rgba(255,255,255,.14)}
+.app[data-theme="mono"] .scn .floor i{background:repeating-linear-gradient(90deg,rgba(255,255,255,.16) 0 1.5px,transparent 1.5px 90px),repeating-linear-gradient(0deg,rgba(255,255,255,.16) 0 1.5px,transparent 1.5px 90px)}
+.app[data-theme="mono"] .scn .sh{background:linear-gradient(140deg,rgba(255,255,255,.3),rgba(255,255,255,.03) 48%,rgba(150,150,160,.14));box-shadow:inset 1px 1px 0 rgba(255,255,255,.6),inset -1px -1px 0 rgba(255,255,255,.1),0 30px 60px -20px rgba(0,0,0,.8)}
+.app[data-theme="mono"] .scn .vig{background:radial-gradient(120% 90% at 50% 30%,transparent 40%,rgba(0,0,0,.78))}
+.app[data-theme="mono"] .dust{background:rgba(255,255,255,.9);box-shadow:0 0 8px 1px rgba(255,255,255,.7)}
+.app[data-theme="mono"] .cglow{background:radial-gradient(circle,rgba(255,255,255,.22),rgba(255,255,255,.06) 40%,transparent 68%)}
+/* panels: graphite glass lit from above */
+.app[data-theme="mono"] .shell .g:not([data-lens]):not(.pop),.app[data-theme="mono"] .stat,.app[data-theme="mono"] .seccard.g{background:radial-gradient(120% 70% at 50% -10%,rgba(255,255,255,.13),transparent 62%),linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,0) 24%),linear-gradient(160deg,rgba(40,41,45,.84),rgba(12,12,14,.93))!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.34),inset 0 0 0 1px rgba(255,255,255,.06),inset 0 -30px 50px -36px rgba(255,255,255,.12),0 1px 2px rgba(0,0,0,.6),0 16px 30px -10px rgba(0,0,0,.75),0 46px 76px -34px rgba(0,0,0,.95)!important}
+.app[data-theme="mono"] .stats{background:linear-gradient(160deg,rgba(40,41,45,.84),rgba(12,12,14,.93))}
+.app[data-theme="mono"] .dk{background:linear-gradient(160deg,rgba(40,41,45,.8),rgba(12,12,14,.9))}
+.app[data-theme="mono"] .hud.g{background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.02)),rgba(18,18,20,.55)}
+.app[data-theme="mono"] .app .g::before{opacity:.5}
+.app[data-theme="mono"] .mseg{background:rgba(0,0,0,.5)}
+.app[data-theme="mono"] .search,.app[data-theme="mono"] .pop{background:rgba(14,14,16,.9)}
+.app[data-theme="mono"] .tile .ico,.app[data-theme="mono"] .ico3{background:linear-gradient(160deg,#3a3b40,#0d0d0f)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.4),inset 0 0 0 1px rgba(255,255,255,.08),0 12px 22px -10px rgba(255,255,255,.25)!important}
+.app[data-theme="mono"] .cover{background:radial-gradient(85% 120% at 24% 0,rgba(255,255,255,.34),rgba(80,82,90,.5) 48%,#08080a)!important}
+.app[data-theme="mono"] .seccard .n{background:linear-gradient(150deg,#fff,#b9bcc4)}
+.app[data-theme="mono"] .wk i,.app[data-theme="mono"] .bar i{background:linear-gradient(90deg,#8d9098,#fff)}
+.app[data-theme="mono"] .weak .bar i{background:linear-gradient(90deg,#8d9098,#fff)}
+.app[data-theme="mono"] .r.again{background:linear-gradient(160deg,#6b6d74,#2b2c30)}.app[data-theme="mono"] .r.good{background:linear-gradient(160deg,#f4f5f7,#9c9fa8);color:#0a0a0c}.app[data-theme="mono"] .r.easy{background:linear-gradient(160deg,#c9ccd3,#5b5d64)}
+.app[data-theme="mono"] ::selection{background:rgba(255,255,255,.3)}
+.app[data-theme="mono"] :focus-visible{outline-color:#fff;box-shadow:0 0 0 7px rgba(255,255,255,.14)}
+.app[data-theme="mono"] #icg stop:nth-child(2){stop-color:#E3E5EA}.app[data-theme="mono"] #icg stop:nth-child(3){stop-color:#9A9EA8}
+.app[data-theme="mono"] #ica stop:nth-child(1){stop-color:#fff}.app[data-theme="mono"] #ica stop:nth-child(2){stop-color:#C4C7CE}.app[data-theme="mono"] #ica stop:nth-child(3){stop-color:#8E919A}
+.app[data-theme="mono"] #icf stop:nth-child(1){stop-color:#fff}.app[data-theme="mono"] #icf stop:nth-child(2){stop-color:#888}
+.app[data-theme="mono"] .chip.open::before{background:#fff;animation:none}.app[data-theme="mono"] .chip.done::before{background:#d9dce2}.app[data-theme="mono"] .node.done i,.app[data-theme="mono"] .node.now i{background:#fff;color:#0a0a0c}
+
+/* v12b: Mono should read as a real lit room, not a stage set */
+.app[data-theme="mono"] .scn .floor,.app[data-theme="mono"] .scn .shards,.app[data-theme="mono"] .scn .horizon,.app[data-theme="mono"] .fl-ghost,.app[data-theme="mono"] .fl-cone{display:none}
+.app[data-theme="mono"] .fl-rays{opacity:.32;background:repeating-conic-gradient(from 180deg at 50% 0,transparent 0 2.4deg,rgba(255,255,255,.16) 3.4deg,transparent 5deg 9deg)}
+.app[data-theme="mono"] .fl-streak{opacity:.55}
+.app[data-theme="mono"] .fl-bloom{background:radial-gradient(ellipse 60% 52% at 50% 50%,rgba(255,255,255,.62) 0,rgba(236,238,243,.30) 12%,rgba(168,172,182,.14) 30%,rgba(110,113,122,.06) 48%,transparent 66%)}
+.app[data-theme="mono"] .bgfade{background:radial-gradient(120vw 90vh at 50% 6%,rgba(255,255,255,.20),rgba(190,194,204,.10) 40%,transparent 75%),linear-gradient(180deg,#2a2b30 0%,#17181b 38%,#0b0b0d 72%,#050506 100%)}
+.app[data-theme="mono"] .scn .vig{background:radial-gradient(130% 100% at 50% 14%,transparent 38%,rgba(0,0,0,.6))}
+.app[data-theme="mono"] .shell .g:not([data-lens]):not(.pop),.app[data-theme="mono"] .stat,.app[data-theme="mono"] .seccard.g{background:radial-gradient(120% 60% at 50% -12%,rgba(255,255,255,.10),transparent 60%),linear-gradient(160deg,rgba(38,39,43,.86),rgba(15,15,17,.94))!important}
+.app[data-theme="mono"] .stats,.app[data-theme="mono"] .dk{background:linear-gradient(160deg,rgba(38,39,43,.86),rgba(15,15,17,.94))}
+.app[data-theme="mono"] .nextrow.g,.app[data-theme="mono"] .democtl.g{background:linear-gradient(160deg,rgba(44,45,49,.8),rgba(16,16,18,.9))!important}.app[data-theme="mono"] .nextrow.g *,.app[data-theme="mono"] .democtl.g *{--acc:#fff}

@@ -1,0 +1,47 @@
+/* ===== v16: clearly stronger glass + motion (v15 was too subtle) ===== */
+/* real blur back on every panel, tuned cheaper than the HUD */
+.app .shell .g:not([data-lens]):not(.pop){-webkit-backdrop-filter:blur(22px) saturate(160%)!important;backdrop-filter:blur(22px) saturate(160%)!important}
+/* frosted: more see-through so the blur reads, brighter glossy edge */
+.app[data-glass="frosted"] .g{background:linear-gradient(150deg,rgba(96,104,190,.46),rgba(30,32,78,.52))}
+.app[data-glass="frosted"][data-theme="mono"] .g{background:linear-gradient(150deg,rgba(90,92,100,.46),rgba(18,18,21,.62))}
+.app[data-glass="frosted"] .g{box-shadow:inset 0 1.5px 0 rgba(255,255,255,.65),inset 1.5px 0 0 rgba(255,255,255,.2),inset 0 0 0 1px rgba(255,255,255,.09),inset 0 30px 50px -28px rgba(255,255,255,.26),inset 0 -40px 60px -32px rgba(140,130,255,.34),0 34px 60px -26px rgba(4,4,36,.8)}
+.app[data-glass="frosted"][data-theme="mono"] .g{box-shadow:inset 0 1.5px 0 rgba(255,255,255,.55),inset 1.5px 0 0 rgba(255,255,255,.16),inset 0 0 0 1px rgba(255,255,255,.08),inset 0 30px 50px -28px rgba(255,255,255,.2),inset 0 -40px 60px -32px rgba(255,255,255,.1),0 32px 56px -26px rgba(0,0,0,.85)}
+/* gloss stronger (pseudo is the reflection layer) */
+.app .g::after{background:
+  linear-gradient(104deg,transparent calc(var(--gl) - 18%),rgba(255,255,255,.34) var(--gl),transparent calc(var(--gl) + 18%)),
+  linear-gradient(122deg,rgba(255,255,255,.30) 0,rgba(255,255,255,.08) 22%,transparent 46%),
+  linear-gradient(180deg,rgba(255,255,255,.14) 0,transparent 20%),
+  radial-gradient(140% 72% at 50% -12%,rgba(210,220,255,.28),transparent 62%),
+  radial-gradient(260px 200px at var(--mx,50%) var(--my,0),rgba(255,255,255,.2),transparent 70%),
+  linear-gradient(0deg,rgba(150,160,255,.16),transparent 36%)}
+.app[data-theme="mono"] .g::after{background:
+  linear-gradient(104deg,transparent calc(var(--gl) - 18%),rgba(255,255,255,.3) var(--gl),transparent calc(var(--gl) + 18%)),
+  linear-gradient(122deg,rgba(255,255,255,.24) 0,rgba(255,255,255,.06) 22%,transparent 46%),
+  linear-gradient(180deg,rgba(255,255,255,.12) 0,transparent 20%),
+  radial-gradient(140% 72% at 50% -12%,rgba(255,244,230,.22),transparent 62%),
+  radial-gradient(260px 200px at var(--mx,50%) var(--my,0),rgba(255,255,255,.17),transparent 70%),
+  linear-gradient(0deg,rgba(255,255,255,.07),transparent 36%)}
+.app[data-glass="liquid"] .g::after{background:
+  linear-gradient(104deg,transparent calc(var(--gl) - 16%),rgba(255,255,255,.5) var(--gl),transparent calc(var(--gl) + 16%)),
+  linear-gradient(180deg,rgba(255,255,255,.5) 0,rgba(255,255,255,.1) 14%,transparent 32%),
+  linear-gradient(125deg,rgba(255,255,255,.28) 0,transparent 36%),
+  radial-gradient(260px 200px at var(--mx,50%) var(--my,0),rgba(255,255,255,.26),transparent 70%)}
+.app[data-glass="liquid"] .g{background:linear-gradient(145deg,rgba(255,255,255,.28),rgba(255,255,255,.05) 40%,rgba(150,180,255,.2));box-shadow:inset 0 2px 0 rgba(255,255,255,.95),inset 0 -2px 0 rgba(255,255,255,.22),inset 0 0 44px rgba(255,255,255,.12),inset 0 -30px 50px -26px rgba(150,180,255,.4),0 34px 60px -24px rgba(0,0,0,.7)}
+/* ambient gloss that drifts across the HUD glass all the time */
+.app [data-lens]::after{animation:glidle 7s ease-in-out infinite}
+.app .hud::after{animation-delay:0s}.app .nextrow::after{animation-delay:1.4s}.app .democtl::after{animation-delay:2.8s}.app .minihud::after{animation-delay:4.2s}
+@keyframes glidle{0%,55%{--gl:-30%}100%{--gl:130%}}
+.app .g:hover::after,.app .g:focus-within::after{animation:glsweep 1.2s cubic-bezier(.16,1,.3,1) both}
+/* extra life */
+.ico3,.tile .ico{animation:bob 5s ease-in-out infinite}
+.course .ico3{animation-delay:calc(var(--i,0)*.3s)}
+@keyframes bob{50%{transform:translateY(-5px)}}
+.stat b,.big{animation:glow 4s ease-in-out infinite}
+@keyframes glow{50%{text-shadow:0 0 22px rgba(190,200,255,.55)}}
+.app[data-theme="mono"] .stat b,.app[data-theme="mono"] .big{animation-name:glowm}
+@keyframes glowm{50%{text-shadow:0 0 22px rgba(255,236,210,.5)}}
+.tabs button[aria-current="true"]{animation:tabpulse 3.2s ease-in-out infinite}
+@keyframes tabpulse{50%{box-shadow:0 0 0 1px rgba(255,255,255,.18),0 10px 30px -8px rgba(190,200,255,.55)}}
+/* iridescence faster and bolder */
+.app .mseg button[aria-pressed="true"]{animation-duration:4s}
+.app .gbtn,.app .rate .r,.app .iconb{animation-duration:5s;background-image:linear-gradient(115deg,rgba(130,185,255,.55) 0,rgba(190,130,255,.5) 25%,rgba(110,240,245,.42) 50%,rgba(255,140,225,.46) 75%,rgba(130,185,255,.55) 100%)}

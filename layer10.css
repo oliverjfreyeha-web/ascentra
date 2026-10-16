@@ -1,0 +1,73 @@
+/* ===== prototype 10: icon motion + small delights. Panels never move; only icons, light and tiny sparks do. ===== */
+.ic{transform-box:fill-box;transform-origin:center}.ic path{transform-box:fill-box;transform-origin:center}
+/* draw-in when an icon appears */
+.ic path.l:not(.dot):not(.hi),.ic path.a{stroke-dasharray:1;stroke-dashoffset:0;animation:icdraw .9s var(--ease) both}
+.ic path.a{animation-delay:.12s}
+@keyframes icdraw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+/* hover / focus triggers (the icon moves, the panel stays still) */
+:is(button,a,.g,.stat,.tile,.seccard,.course):is(:hover,:focus-visible) .ic-gear{animation:ic-spin .9s var(--ease)}
+:is(button,a,.g,.stat,.tile,.seccard,.course):is(:hover,:focus-visible) .ic-repeat{animation:ic-spin .8s var(--ease)}
+:is(button,a,.g,.stat,.tile,.seccard,.course):is(:hover,:focus-visible) .ic-refresh{animation:ic-spin .8s var(--ease)}
+:is(button,a,.g,.stat,.tile,.seccard,.course):is(:hover,:focus-visible) .ic-plus,:is(button,a,.g):is(:hover,:focus-visible) .ic-x{animation:ic-quarter .5s var(--ease)}
+:is(button,a,.g,.stat,.tile,.seccard,.course):is(:hover,:focus-visible) .ic-bolt{animation:ic-jolt .5s steps(2,end) 1}
+:is(button,a,.g,.stat,.tile,.seccard,.course):is(:hover,:focus-visible) .ic-mail{animation:ic-flap .6s var(--ease)}
+:is(button,a,.g,.stat,.tile,.seccard,.course):is(:hover,:focus-visible) .ic-check,:is(button,a,.g,.stat,.tile,.seccard,.course):is(:hover,:focus-visible) .ic-shield{animation:ic-pop .5s var(--ease)}
+:is(button,a,.g,.stat,.tile,.seccard,.course):is(:hover,:focus-visible) .ic-trophy{animation:ic-sway .7s var(--ease)}
+:is(button,a,.g,.stat,.tile,.seccard,.course):is(:hover,:focus-visible) .ic-upload{animation:ic-rise .7s var(--ease)}
+:is(button,a,.g,.stat,.tile,.seccard,.course):is(:hover,:focus-visible) .ic-search{animation:ic-sway .8s var(--ease)}
+:is(button,a,.g,.stat,.tile,.seccard,.course):is(:hover,:focus-visible) .ic-tag{animation:ic-swing .8s var(--ease);transform-origin:20% 20%}
+:is(button,a,.g,.stat,.tile,.seccard,.course):is(:hover,:focus-visible) .ic-user,:is(button,a,.g,.stat,.tile,.seccard,.course):is(:hover,:focus-visible) .ic-users,:is(button,a,.g,.stat,.tile,.seccard,.course):is(:hover,:focus-visible) .ic-chat,:is(button,a,.g,.stat,.tile,.seccard,.course):is(:hover,:focus-visible) .ic-home{animation:ic-bob .6s var(--ease)}
+:is(button,a,.g,.stat,.tile,.seccard,.course):is(:hover,:focus-visible) .ic-note path.a,:is(button,a,.g,.stat,.tile,.seccard,.course):is(:hover,:focus-visible) .ic-film path.a,:is(button,a,.g,.stat,.tile,.seccard,.course):is(:hover,:focus-visible) .ic-book path.a,:is(button,a,.g,.stat,.tile,.seccard,.course):is(:hover,:focus-visible) .ic-card path.a{animation:icdraw .7s var(--ease) both}
+:is(button,a,.g,.stat,.tile,.seccard,.course):is(:hover,:focus-visible) .ic-grid path.a{animation:ic-pop .6s var(--ease)}
+:is(button,a,.g,.stat,.tile,.seccard,.course):is(:hover,:focus-visible) .ic-chart{animation:ic-rise .7s var(--ease)}
+:is(button,a,.g,.stat,.tile,.seccard,.course):is(:hover,:focus-visible) .ic-map,:is(button,a,.g,.stat,.tile,.seccard,.course):is(:hover,:focus-visible) .ic-back{animation:ic-nudge .6s var(--ease)}
+/* gentle idle life on a few icons */
+.ic-flame{animation:ic-flick 2.6s ease-in-out infinite;transform-origin:50% 90%}
+.ic-star path.a{animation:ic-twinkle 2.8s ease-in-out infinite}
+.ic-bolt path.a{animation:ic-twinkle 3.4s ease-in-out infinite}
+.ic-target path.a{animation:ic-ping 3.2s ease-in-out infinite}
+.ic-clock path.a{animation:ic-tick 12s linear infinite;transform-origin:12px 12px;transform-box:view-box}
+.ic-trophy path.a{animation:ic-twinkle 3.6s ease-in-out infinite}
+.ic-user path.a{animation:none}
+@keyframes ic-spin{to{transform:rotate(180deg)}}
+@keyframes ic-quarter{to{transform:rotate(90deg)}}
+@keyframes ic-jolt{0%{transform:translate(0,0)}25%{transform:translate(-1px,1px) rotate(-6deg)}50%{transform:translate(1px,-1px) rotate(5deg)}100%{transform:none}}
+@keyframes ic-flap{0%{transform:none}40%{transform:translateY(-2px) rotate(-8deg)}100%{transform:none}}
+@keyframes ic-pop{0%{transform:scale(1)}45%{transform:scale(1.22)}100%{transform:scale(1)}}
+@keyframes ic-sway{0%,100%{transform:rotate(0)}25%{transform:rotate(-10deg)}60%{transform:rotate(8deg)}}
+@keyframes ic-rise{0%{transform:translateY(0)}35%{transform:translateY(-3px)}100%{transform:translateY(0)}}
+@keyframes ic-swing{0%,100%{transform:rotate(0)}30%{transform:rotate(16deg)}65%{transform:rotate(-8deg)}}
+@keyframes ic-bob{0%,100%{transform:translateY(0)}40%{transform:translateY(-2px) scale(1.06)}}
+@keyframes ic-nudge{0%,100%{transform:translateX(0)}40%{transform:translateX(-2px)}}
+@keyframes ic-flick{0%,100%{transform:scale(1,1) skewX(0)}30%{transform:scale(1.04,1.08) skewX(2deg)}60%{transform:scale(.98,1.03) skewX(-2deg)}}
+@keyframes ic-twinkle{0%,100%{opacity:1}50%{opacity:.25}}
+@keyframes ic-ping{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.12);opacity:.6}}
+@keyframes ic-tick{to{transform:rotate(360deg)}}
+/* pages arrive in a soft stagger */
+.shell>.stack>*{animation:arrive .7s var(--ease) both}.shell>.stack>*:nth-child(2){animation-delay:.07s}.shell>.stack>*:nth-child(3){animation-delay:.14s}.shell>.stack>*:nth-child(4){animation-delay:.21s}.shell>.stack>*:nth-child(5){animation-delay:.28s}.shell>.stack>*:nth-child(n+6){animation-delay:.34s}
+.wgrid>*,.courses>*,.tiles>*,.secgrid>*,.stats>*{animation:arrive .7s var(--ease) both}
+.wgrid>*:nth-child(2),.courses>*:nth-child(2),.tiles>*:nth-child(2),.secgrid>*:nth-child(2),.stats>*:nth-child(2){animation-delay:.08s}.wgrid>*:nth-child(3),.courses>*:nth-child(3),.tiles>*:nth-child(3),.secgrid>*:nth-child(3),.stats>*:nth-child(3){animation-delay:.16s}
+.wgrid>*:nth-child(4),.courses>*:nth-child(4),.tiles>*:nth-child(4),.secgrid>*:nth-child(4),.stats>*:nth-child(4){animation-delay:.24s}.wgrid>*:nth-child(n+5),.courses>*:nth-child(n+5),.tiles>*:nth-child(n+5),.secgrid>*:nth-child(n+5){animation-delay:.32s}
+@keyframes arrive{from{opacity:0;transform:translateY(16px);filter:blur(6px)}to{opacity:1;transform:none;filter:none}}
+/* headline shimmer once, bars fill, status dots breathe */
+.shell h1{background-size:220% 100%;background-image:linear-gradient(100deg,#fff 20%,#9DB5DE 40%,#fff 50%,#9DB5DE 60%,#9DB5DE 100%);animation:sweep 2.6s var(--ease) .2s 1 both}
+@keyframes sweep{from{background-position:100% 0}to{background-position:0 0}}
+.bar i,.weak .bar i{transform-origin:left;animation:fillbar 1.2s var(--ease) .3s both}
+@keyframes fillbar{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.chip.open::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:#8FB4E8;margin-right:6px;animation:breathe 2.2s ease-in-out infinite}
+@keyframes breathe{0%,100%{box-shadow:0 0 0 0 rgba(143,180,232,.6)}50%{box-shadow:0 0 0 6px rgba(143,180,232,0)}}
+.node.now i{animation:nowring 2.4s ease-in-out infinite}
+@keyframes nowring{0%,100%{box-shadow:0 0 0 0 rgba(160,189,219,.5)}50%{box-shadow:0 0 0 9px rgba(160,189,219,0)}}
+/* light that trails the pointer */
+.cglow{position:fixed;left:0;top:0;width:520px;height:520px;z-index:-1;pointer-events:none;border-radius:50%;background:radial-gradient(circle,rgba(150,170,255,.20),rgba(120,140,255,.07) 40%,transparent 68%);mix-blend-mode:screen;will-change:transform}
+/* drifting dust in the scene */
+.dusts{position:absolute;inset:0;overflow:hidden}
+.dust{position:absolute;bottom:-10px;width:var(--s);height:var(--s);border-radius:50%;background:rgba(200,215,255,.8);box-shadow:0 0 8px 1px rgba(160,180,255,.7);opacity:0;animation:dustup var(--d) linear var(--w) infinite}
+@keyframes dustup{0%{opacity:0;transform:translate(0,0)}10%{opacity:.9}85%{opacity:.7}100%{opacity:0;transform:translate(var(--x),-105vh)}}
+/* click sparks */
+.burst{position:fixed;z-index:200;pointer-events:none;width:0;height:0}
+.burst i{position:absolute;left:-2px;top:-2px;width:4px;height:4px;border-radius:50%;background:#CFE0FF;box-shadow:0 0 8px 2px rgba(150,170,255,.8);animation:spark .6s cubic-bezier(.2,.8,.2,1) both}
+@keyframes spark{from{transform:translate(0,0) scale(1);opacity:1}to{transform:translate(var(--dx),var(--dy)) scale(.2);opacity:0}}
+/* calm mode switches all of it off */
+.app[data-reduced="1"] .ic,.app[data-reduced="1"] .ic *,.app[data-reduced="1"] .shell *,.app[data-reduced="1"] .chip::before,.app[data-reduced="1"] .node i{animation:none!important}
+@media (prefers-reduced-motion:reduce){.ic,.ic *,.shell *{animation:none!important}}
