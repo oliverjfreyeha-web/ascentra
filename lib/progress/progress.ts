@@ -59,7 +59,7 @@ const vidKey = (modulePos: number, slotPos: number) => `v:${modulePos}:${slotPos
 /** A module's items for this learner, in order: the module's general videos first, then each lesson's videos and practice. */
 async function moduleItems(actor: Account, m: ModuleRow, lessons: LessonRow[], slots: SlotRow[]): Promise<ItemRef[]> {
   const out: ItemRef[] = [];
-  // S1: in a track, an item's points are its importance points times its Round's multiplier.
+  // S1: in a track, an item's points are its importance points times its Round's multiplier, as a whole number.
   const pts = (importance: Importance | null) => (m.round ? trackPoints(importance, m.round) : pointsFor(importance));
   const video = (s: SlotRow): ItemRef => {
     const importance = isImportance(s.importance) ? s.importance : null;

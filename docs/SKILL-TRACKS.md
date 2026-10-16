@@ -38,7 +38,7 @@ This is the smallest change that keeps everything else working:
 |---|---|
 | `TRACK_ROUNDS` | 3 |
 | `SECTIONS_PER_ROUND` | 5 (the importer refuses any other count) |
-| `ROUND_MULTIPLIER` | Round 1 ×1, Round 2 ×2, Round 3 ×3 |
+| `ROUND_MULTIPLIER` | Round 1 ×1, Round 2 ×1.5, Round 3 ×2 |
 | `ROUNDS_BY_PLAN` | no plan 0, trial 1 (half of it, below), Basic 2, Pro 3 |
 | `ROUND_PLANS` (for the locked labels) | Round 1: every plan and the free trial; Round 2: Basic and Pro; Round 3: Pro |
 | Item points (unchanged, from C2) | Should know 1, Important 2, Very important 3 |
@@ -52,6 +52,15 @@ This is the smallest change that keeps everything else working:
 
 **Points:** each item earns its points once per Round: item points × the Round's multiplier. Each Round has its own items
 (their own rows), so an item can't earn twice.
+
+Points are stored as whole numbers. Each item's points are rounded to the nearest whole number, with halves rounding up,
+and are never below the item's base points (`trackPoints` in `lib/progress/tracks.ts`):
+
+| Item | Round 1 (×1) | Round 2 (×1.5) | Round 3 (×2) |
+|---|---|---|---|
+| Should know (1) | 1 | 2 (1.5 rounds up) | 2 |
+| Important (2) | 2 | 3 | 4 |
+| Very important (3) | 3 | 5 (4.5 rounds up) | 6 |
 
 **Plan access:**
 
@@ -69,17 +78,18 @@ This is the smallest change that keeps everything else working:
 The rank thresholds are the C2 STARTER values: for example Operator 45, Architect 135 and Ascendant 260.
 
 Take a typical section: 5 items averaging about 2 points, so about 10 points. A Round of 5 sections is then about 50
-points before the multiplier.
+points before the multiplier. Rounding halves up adds a little in Round 2 (Should know and Very important items gain
+half a point each), so Round 2 is about 75 to 85 points.
 
 | Done | Points (about) | Rank reached |
 |---|---|---|
-| Round 1 (×1) | 50 | Operator |
-| Rounds 1 and 2 (×2) | 50 + 100 = 150 | Architect |
-| All 3 Rounds (×3) | 50 + 100 + 150 = 300 | past Ascendant (the top rank) |
+| Round 1 (×1) | 50 | Operator (45) |
+| Rounds 1 and 2 (×1.5) | 50 + about 80 = about 130 | Closer (100), just short of Architect (135) |
+| All 3 Rounds (×2) | 130 + 100 = about 230 | FINAL FOUNDER (220), short of Ascendant (260) |
 
-So a learner who finishes one whole skill track reaches the top rank. A Standard business course gives about 160 points,
-plus 40 for the capstone. A full track is therefore worth a little more than one business course, and most of its points
-come from the paid Rounds. If that is too fast, lower `ROUND_MULTIPLIER` in the config. No other change is needed.
+So one whole skill track reaches rank 9 of 10, about the same as one Standard business course (about 160 points plus 40
+for the capstone, about 200). The top rank needs more than one track or course. To change the pace, edit
+`ROUND_MULTIPLIER` in the config. No other change is needed.
 
 ## Learner views
 

@@ -27,14 +27,16 @@ test.beforeAll(async () => {
 });
 
 const ID = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
+// Whole points per Round (lib/progress/tracks.ts trackPoints): Should know 1/2/2, Important 2/3/4, Very important 3/5/6.
+const PTS: Record<string, number[]> = { "Should know": [1, 2, 2], Important: [2, 3, 4], "Very important": [3, 5, 6] };
 const item = (n: number, part: string, label: string, points: number, done: boolean, open: boolean) =>
   ({ kind: "activity", id: ID(n), title: `Test task ${n}: rewrite a made-up product note.`, part, importanceLabel: label, points, done, open });
 const section = (round: number, k: number, state: string, reason: string | null, done = 0) => ({
   id: ID(round * 100 + k), number: k, title: `Test section ${k}: plain words`, state, reason, doneCount: done, itemCount: 4, done: done === 4,
   steps: [{
     lessonId: ID(round * 1000 + k), title: `Test lesson ${round}.${k}`, summary: state === "locked" ? null : `Test summary ${round}.${k}: one idea per sentence.`,
-    items: [item(round * 10000 + k * 10 + 1, "quiz", "Very important", 3 * round, done > 0, state !== "locked"), item(round * 10000 + k * 10 + 2, "sandbox", "Important", 2 * round, done > 1, state !== "locked"),
-      item(round * 10000 + k * 10 + 3, "sequence", "Should know", round, done > 2, state === "open"), item(round * 10000 + k * 10 + 4, "assignment", "Important", 2 * round, done > 3, state === "open")],
+    items: [item(round * 10000 + k * 10 + 1, "quiz", "Very important", PTS["Very important"][round - 1], done > 0, state !== "locked"), item(round * 10000 + k * 10 + 2, "sandbox", "Important", PTS.Important[round - 1], done > 1, state !== "locked"),
+      item(round * 10000 + k * 10 + 3, "sequence", "Should know", PTS["Should know"][round - 1], done > 2, state === "open"), item(round * 10000 + k * 10 + 4, "assignment", "Important", PTS.Important[round - 1], done > 3, state === "open")],
   }],
 });
 const TRACK = {

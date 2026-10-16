@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useAuth } from "@clerk/nextjs";
+import { useMe } from "../../use-me";
 import { applyPrefs, GLASSES, readPrefs, SCENE_INFO, SCENES, writePref, type Glass, type Prefs, type Scene } from "../../env/prefs";
 
 /** Keeps a component in step with the saved preferences (this browser only). */
@@ -62,14 +63,20 @@ export function WorldDock({ hideable = true }: { hideable?: boolean }) {
   );
 }
 
-/** Signed-in visitors see Home instead of the landing hero. Clerk decides; the boot script only guessed from a cookie. */
+/**
+ * Signed-in visitors see Home instead of the landing hero. Clerk decides; the boot script only guessed from a cookie.
+ * Bug fix: the server's answer (app/use-me.ts) also counts, so a signed-in person isn't shown "Sign in" and "Start trial"
+ * when Clerk's browser state lags; the landing returns only once both say signed out.
+ */
 export function AuthSwitch() {
   const { isLoaded, isSignedIn } = useAuth();
+  const me = useMe();
   useEffect(() => {
     if (!isLoaded) return;
     const landing = document.querySelector<HTMLElement>("[data-landing]");
-    if (isSignedIn) landing?.setAttribute("data-auth", "in"); else landing?.removeAttribute("data-auth");
-  }, [isLoaded, isSignedIn]);
+    if (isSignedIn || me.status === "ready") landing?.setAttribute("data-auth", "in");
+    else if (me.status === "signedOut") landing?.removeAttribute("data-auth");
+  }, [isLoaded, isSignedIn, me.status]);
   return null;
 }
 

@@ -187,12 +187,12 @@ describe("S1 learner access, unlock and points", () => {
     expect(c.track!.rounds.map((r) => r.complete)).toEqual([true, false, false]);
   });
 
-  it("a Round 2 item earns its points × 2, once", async () => {
+  it("a Round 2 item earns its points × 1.5 (rounded, halves up), once", async () => {
     const before = await points();
     const quiz = (await ordered(2))[0];
     await doItem(quiz);
     await doItem(quiz);
-    expect(await points()).toEqual({ p: before.p + 3 * 2, n: before.n + 1 });
+    expect(await points()).toEqual({ p: before.p + 5, n: before.n + 1 });
   });
 
   it("Pro opens Round 3 once Round 2 is done; progress is kept", async () => {

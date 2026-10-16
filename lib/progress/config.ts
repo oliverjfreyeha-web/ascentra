@@ -103,8 +103,11 @@ export const isStateCode = (v: unknown): v is string => typeof v === "string" &&
 /** A skill is one track: this many Rounds, each with this many sections (the importer refuses any other count). */
 export const TRACK_ROUNDS = 3;
 export const SECTIONS_PER_ROUND = 5;
-/** Points for an item in a Round: its importance points times this. Each item earns its points once per Round. */
-export const ROUND_MULTIPLIER: Record<number, number> = { 1: 1, 2: 2, 3: 3 };
+/**
+ * Points for an item in a Round: its importance points times this, rounded to a whole number (halves round up), never
+ * below the item's base points (lib/progress/tracks.ts trackPoints). Each item earns its points once per Round.
+ */
+export const ROUND_MULTIPLIER: Record<number, number> = { 1: 1, 2: 1.5, 3: 2 };
 /**
  * The Rounds each plan includes. The trial includes the first half of Round 1's items (in order, rounded up); Basic
  * Rounds 1 and 2; Pro (and the Owner's full access) all 3. Nothing is lost when a plan changes.
