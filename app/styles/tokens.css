@@ -197,6 +197,176 @@
   --z-toast: 500;
 }
 
+/*
+ * ── Design rebuild D1 · Iris (the default theme) ───────────────────
+ * New tokens from design-reference/DESIGN.md, added beside the D1–D5 ones (which keep their values, so existing
+ * screens look the same). html[data-theme="mono"] overrides them below. Later stages build on these names.
+ * Also written for [data-theme="iris"] so an Iris region inside a Mono page resets fully; for that, the D1 colors
+ * Mono overrides are restated here with the same values as above.
+ */
+:root,
+[data-theme="iris"] {
+  --color-base: #080813;
+  --color-surface: #0e0f1f;
+  --color-raised: #161830;
+  --color-line: #2a2d4a;
+  --color-line-strong: #646c90;
+  --color-text: #e8edf5;
+  --color-text-muted: #9aa6ba;
+  --color-accent: #a0bddb;
+  --color-accent-strong: #bdd2e8;
+  --color-on-accent: #080813;
+
+  --font-ascentra: "Ascentra Display", var(--font-sans); /* headings, big numbers, small-caps labels only */
+  --tracking-caps: 0.07em;
+
+  --color-ink: #f4f7fc;
+  --color-ink-muted: #b7c1d4;
+  --color-frost: #a0bddb;
+  --color-ok: #7fd1a6;
+  --color-gold: #f7c948;
+  --color-gold-soft: #ffe08a;
+  --accent-violet: #7b7fff;
+  --accent-cyan: #59c5e8;
+  --accent-purple: #b07cff;
+  --accent-mint: #34d399;
+  --accent-pink: #f472b6;
+  /* Section cards cycle these five (nth-child). */
+  --accent-1: var(--accent-violet);
+  --accent-2: var(--accent-mint);
+  --accent-3: var(--accent-pink);
+  --accent-4: var(--accent-cyan);
+  --accent-5: var(--accent-purple);
+  /* Widget accents: cool in Iris, warm in Mono. */
+  --widget-streak: #9db4ff;
+  --widget-points: #bba2ff;
+  --widget-rank: #a6dcff;
+  --widget-next: #9fb0ff;
+  /* Activity grid levels (points per day). Color is never the only signal: cells also carry labels. */
+  --activity-rest: rgb(255 255 255 / 0.2);
+  --activity-miss: #ff5a62;
+  --activity-short: #ff9f43;
+  --activity-steady: #9be8ae;
+  --activity-focus: #3dbe63;
+  --activity-grind: #17803a;
+  --activity-today: #ffffff;
+
+  /* The page behind everything. */
+  --theme-wall: linear-gradient(180deg, #0a0b18 0%, #080813 32%, #080813 100%);
+  --theme-light: radial-gradient(70vw 50vw at 50% -10%, rgb(255 255 255 / 0.1), transparent 60%);
+  /* Mono's one light source (unused in Iris). */
+  --light-x: 68%;
+  --light-y: 13vh;
+  --light-core: transparent;
+  --light-falloff: transparent;
+
+  /* Buttons that are not glass, and the selected segment. */
+  --button-fill: linear-gradient(115deg, rgb(130 185 255 / 0.55) 0%, rgb(190 130 255 / 0.5) 25%, rgb(110 240 245 / 0.42) 50%, rgb(255 140 225 / 0.46) 75%, rgb(130 185 255 / 0.55) 100%);
+  --button-fill-size: 300% 100%;
+  --button-ink: #ffffff;
+  --seg-selected: linear-gradient(180deg, #ffffff, #c9daee);
+  --seg-selected-ink: #080813;
+
+  /* Glass panels (class .g in the prototype): Frosted recipe; Liquid is set by glass.css. */
+  --radius-glass-sm: 20px;
+  --radius-glass: 24px;
+  --radius-glass-lg: 30px;
+  --glass-fill: linear-gradient(150deg, rgb(96 104 190 / 0.46), rgb(30 32 78 / 0.52));
+  --glass-rim-a: rgb(255 255 255 / 0.85);
+  --glass-rim-b: rgb(160 189 219 / 0.12);
+  --blur-hud: 40px;     /* nav and popovers */
+  --blur-panel: 22px;   /* other panels */
+  --blur-liquid: 5px;   /* Liquid: before the lens */
+  --blur-fallback: 9px; /* Liquid without the lens */
+  --glass-saturate: 160%;
+  --shadow-glass: inset 0 1.5px 0 rgb(255 255 255 / 0.65), inset 1.5px 0 0 rgb(255 255 255 / 0.2), inset 0 30px 50px -28px rgb(255 255 255 / 0.26), inset 0 -40px 60px -32px rgb(140 130 255 / 0.34), 0 34px 60px -26px rgb(4 4 36 / 0.8);
+  --shadow-press: 0 6px 16px -6px rgb(255 255 255 / 0.5);
+  --focus-color: var(--color-accent);
+  --selection-bg: var(--color-accent);
+  --selection-ink: var(--color-on-accent);
+  --scrollbar-thumb: rgb(160 189 219 / 0.35);
+
+  /* Icons (app/ui/design/ds-icon.tsx): the three shared gradients, and the soft glow around them. */
+  --icon-line-1: #ffffff;
+  --icon-line-2: #bfd3ee;
+  --icon-line-3: #8c90ff;
+  --icon-accent-1: #7fd1e8;
+  --icon-accent-2: #8c90ff;
+  --icon-accent-3: #c78bff;
+  --icon-fill-1: rgb(160 189 219 / 0.42);
+  --icon-fill-2: rgb(94 92 230 / 0.18);
+  --icon-glow: rgb(150 170 255 / 0.45);
+
+  /* Motion: one easing, no bounce. Durations zero under reduced motion (below). */
+  --ease-glide: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-press: 120ms;
+  --duration-hover: 200ms;
+  --duration-enter: 800ms;
+  --duration-icon: 700ms;
+  --scale-press: 0.965;
+  --tilt-max: 8deg; /* clickable tiles and section cards only; never the HUD or widgets */
+
+  /* More layers, between the existing ones. */
+  --z-scene: -1;
+  --z-hud: 150;
+  --z-popover: 250;
+  --z-reward: 600;
+}
+
+/*
+ * ── Design rebuild D1 · Mono ─────────────────────────────────────────
+ * Black to graphite, one warm-white light, warm widget accents. Also overrides the D1 palette so existing screens
+ * follow when the theme is chosen. Every text color still reaches 4.5:1 and control borders 3:1
+ * (tests/unit/design-themes.test.ts). Written for html[data-theme], and for any element, so the preview can show both.
+ */
+[data-theme="mono"] {
+  --color-base: #050506;
+  --color-surface: #121317;
+  --color-raised: #1c1d22;
+  --color-line: #2b2c33;
+  --color-line-strong: #6e717c;
+  --color-text: #f6f7f9;
+  --color-text-muted: #b3b7c0;
+  --color-accent: #d9dce3;
+  --color-accent-strong: #eceef2;
+  --color-on-accent: #050506;
+
+  --color-ink: #f6f7f9;
+  --color-ink-muted: #b3b7c0;
+  --color-frost: #d9dce3;
+  --widget-streak: #ff9a4d;
+  --widget-points: #f3c76b;
+  --widget-rank: #dde2ea;
+  --widget-next: #ffc28a;
+
+  --theme-wall: linear-gradient(180deg, #2a2b30 0%, #17181b 38%, #0b0b0d 72%, #050506 100%);
+  --theme-light: radial-gradient(120vw 90vh at 50% 6%, rgb(255 255 255 / 0.2), rgb(190 194 204 / 0.1) 40%, transparent 75%);
+  --light-core: radial-gradient(circle at var(--light-x) var(--light-y), rgb(255 255 255 / 0.95), rgb(255 248 236 / 0.6) 1.2%, transparent 4%);
+  --light-falloff: radial-gradient(60vw 50vh at var(--light-x) var(--light-y), rgb(255 226 186 / 0.22), rgb(232 196 150 / 0.08) 40%, transparent 72%);
+
+  --button-fill: linear-gradient(135deg, #f6e7c8 0%, #e2c48f 55%, #c99b5c 100%);
+  --button-fill-size: 100% 100%;
+  --button-ink: #1a1408;
+  --seg-selected: linear-gradient(180deg, #fbf3e3, #e3cfa8);
+  --seg-selected-ink: #14110a;
+
+  --glass-fill: linear-gradient(150deg, rgb(90 92 100 / 0.46), rgb(18 18 21 / 0.62));
+  --glass-rim-a: rgb(255 244 226 / 0.85);
+  --glass-rim-b: rgb(255 244 226 / 0.1);
+  --shadow-glass: inset 0 1.5px 0 rgb(255 250 240 / 0.6), inset 1.5px 0 0 rgb(255 250 240 / 0.16), inset 0 30px 50px -28px rgb(255 250 240 / 0.2), inset 0 -40px 60px -32px rgb(0 0 0 / 0.3), 0 34px 60px -26px rgb(0 0 0 / 0.8);
+  --scrollbar-thumb: rgb(217 220 227 / 0.35);
+
+  --icon-line-1: #ffffff;
+  --icon-line-2: #ece7dd;
+  --icon-line-3: #bdb6aa;
+  --icon-accent-1: #ffd9a8;
+  --icon-accent-2: #f3c76b;
+  --icon-accent-3: #e8a96a;
+  --icon-fill-1: rgb(255 244 226 / 0.32);
+  --icon-fill-2: rgb(120 116 108 / 0.14);
+  --icon-glow: rgb(255 200 140 / 0.45);
+}
+
 /* Reduced motion: every duration drops to zero, so components built on the tokens stop moving. */
 @media (prefers-reduced-motion: reduce) {
   :root {
@@ -210,9 +380,26 @@
     --duration-ambient: 0ms;
     --duration-drift: 0ms;
     --duration-breathe: 0ms;
+    --duration-press: 0ms;
+    --duration-hover: 0ms;
+    --duration-enter: 0ms;
+    --duration-icon: 0ms;
+    --scale-press: 1;
+    --tilt-max: 0deg;
     --distance-micro: 0px;
     --distance-base: 0px;
     --scale-modal: 1;
     --scale-menu: 1;
   }
+}
+
+/* Design rebuild D1: the learner's Motion setting. Reduced or Off (or a slow device) stops the new motion tokens too;
+   the D1–D5 tokens above keep their own rules, so existing screens behave as before. */
+:root[data-reduced="1"] {
+  --duration-press: 0ms;
+  --duration-hover: 0ms;
+  --duration-enter: 0ms;
+  --duration-icon: 0ms;
+  --scale-press: 1;
+  --tilt-max: 0deg;
 }
