@@ -5,6 +5,8 @@
  * Design rebuild D1: adds the theme (Iris or Mono, html[data-theme]) and html[data-reduced] ("1" when motion is not
  * Full, the device asks for reduced motion, or a slow device turned motion down). Frosted is the default glass. The
  * stored values are unchanged ("simple" is shown to people as "Reduced"), so saved choices keep working.
+ * Design rebuild D2: Lite mode. With effects "auto" (the default), phones, devices with few cores and Save-Data drop
+ * Liquid, heavy blur and 3D (html[data-lite="1"]); "full" lets a person force the full effects anyway.
  */
 export const SCENES = ["reef", "lake", "mist", "sun", "hall"] as const;
 export type Scene = (typeof SCENES)[number];
@@ -14,15 +16,28 @@ export const MOTIONS = ["full", "simple", "off"] as const;
 export type Motion = (typeof MOTIONS)[number];
 export const THEMES = ["iris", "mono"] as const;
 export type Theme = (typeof THEMES)[number];
+export const EFFECTS = ["auto", "full"] as const;
+export type Effects = (typeof EFFECTS)[number];
 
-export type Prefs = { scene: Scene; glass: Glass; motion: Motion; theme: Theme };
-export const DEFAULTS: Prefs = { scene: "lake", glass: "frost", motion: "full", theme: "iris" };
-export const KEYS = { scene: "ascentra.scene", glass: "ascentra.glass", motion: "ascentra.motion", theme: "ascentra.theme" } as const;
-const LISTS = { scene: SCENES, glass: GLASSES, motion: MOTIONS, theme: THEMES } as const;
+export type Prefs = { scene: Scene; glass: Glass; motion: Motion; theme: Theme; effects: Effects };
+export const DEFAULTS: Prefs = { scene: "lake", glass: "frost", motion: "full", theme: "iris", effects: "auto" };
+export const KEYS = { scene: "ascentra.scene", glass: "ascentra.glass", motion: "ascentra.motion", theme: "ascentra.theme", effects: "ascentra.effects" } as const;
+const LISTS = { scene: SCENES, glass: GLASSES, motion: MOTIONS, theme: THEMES, effects: EFFECTS } as const;
 
 /** What people see for each motion level (the stored value "simple" reads "Reduced"). */
 export const MOTION_LABEL: Record<Motion, string> = { full: "Full", simple: "Reduced", off: "Off" };
 export const THEME_LABEL: Record<Theme, string> = { iris: "Iris", mono: "Mono" };
+export const EFFECTS_LABEL: Record<Effects, string> = { auto: "Automatic", full: "Always full" };
+
+/** Lite devices: phone-width screens, 4 or fewer cores, or Save-Data. Same numbers in the boot script below. */
+export const LITE_MAX_WIDTH = 760;
+export const LITE_MAX_CORES = 4;
+export function isLiteDevice(d: { width: number; cores?: number; saveData?: boolean }): boolean {
+  return d.width <= LITE_MAX_WIDTH || (d.cores ?? 8) <= LITE_MAX_CORES || !!d.saveData;
+}
+export function isLite(effects: Effects, device: { width: number; cores?: number; saveData?: boolean }): boolean {
+  return effects === "auto" && isLiteDevice(device);
+}
 
 const REDUCE_QUERY = "(prefers-reduced-motion: reduce)";
 
@@ -53,6 +68,7 @@ export function readPrefs(store?: StorageLike | null): Prefs {
     glass: pick(get(KEYS.glass), GLASSES, DEFAULTS.glass),
     motion: pick(get(KEYS.motion), MOTIONS, DEFAULTS.motion),
     theme: pick(get(KEYS.theme), THEMES, DEFAULTS.theme),
+    effects: pick(get(KEYS.effects), EFFECTS, DEFAULTS.effects),
   };
 }
 
@@ -81,7 +97,9 @@ export function isReduced(motion: Motion, osReduce: boolean, auto = false): bool
 export function prefsBootScript(): string {
   return `(function(){var d=document.documentElement,L=${JSON.stringify(LISTS)},D=${JSON.stringify(DEFAULTS)},K=${JSON.stringify(KEYS)},o={};` +
     `for(var k in K){var v=null;try{v=localStorage.getItem(K[k])}catch(e){}o[k]=L[k].indexOf(v)>=0?v:D[k];d.setAttribute("data-"+k,o[k])}` +
-    `var r=o.motion!=="full";try{r=r||matchMedia(${JSON.stringify(REDUCE_QUERY)}).matches}catch(e){}d.setAttribute("data-reduced",r?"1":"0")})()`;
+    `var r=o.motion!=="full";try{r=r||matchMedia(${JSON.stringify(REDUCE_QUERY)}).matches}catch(e){}d.setAttribute("data-reduced",r?"1":"0");` +
+    `var l=false;if(o.effects==="auto"){try{var n=navigator,c=n.connection;l=innerWidth<=${LITE_MAX_WIDTH}||(n.hardwareConcurrency||8)<=${LITE_MAX_CORES}||!!(c&&c.saveData)}catch(e){}}` +
+    `d.setAttribute("data-lite",l?"1":"0")})()`;
 }
 
 /** Re-computes html[data-reduced] from html[data-motion], html[data-motion-auto] and the device setting. */
@@ -93,7 +111,14 @@ export function syncReduced() {
   d.setAttribute("data-reduced", isReduced(motion, os, d.hasAttribute("data-motion-auto")) ? "1" : "0");
 }
 
-/** Applies preferences to <html> (the CSS reads data-scene, data-glass, data-motion, data-theme, data-reduced) and tells listeners. */
+/** Re-computes html[data-lite] for this device and the effects preference. */
+export function syncLite(effects: Effects) {
+  const nav = navigator as Navigator & { connection?: { saveData?: boolean } };
+  const lite = isLite(effects, { width: window.innerWidth, cores: nav.hardwareConcurrency, saveData: nav.connection?.saveData });
+  document.documentElement.setAttribute("data-lite", lite ? "1" : "0");
+}
+
+/** Applies preferences to <html> (the CSS reads data-scene, data-glass, data-motion, data-theme, data-reduced, data-lite) and tells listeners. */
 export function applyPrefs(p: Prefs) {
   const d = document.documentElement;
   d.setAttribute("data-scene", p.scene);
@@ -101,5 +126,6 @@ export function applyPrefs(p: Prefs) {
   d.setAttribute("data-motion", p.motion);
   d.setAttribute("data-theme", p.theme);
   syncReduced();
+  syncLite(p.effects);
   window.dispatchEvent(new CustomEvent("ascentra:prefs", { detail: p }));
 }

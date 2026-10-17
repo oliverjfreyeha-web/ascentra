@@ -3,9 +3,10 @@
  * or throws never crashes the page. The boot script follows the same rules.
  * Design rebuild D1: the theme (Iris default, Mono), Frosted as the default glass (Owner decision 3), and
  * html[data-reduced] set before first paint. Saved D5 values keep working unchanged.
+ * Design rebuild D2: the effects preference ("auto" default, or "full") and html[data-lite] set before first paint.
  */
 import { describe, expect, it, vi, afterEach } from "vitest";
-import { DEFAULTS, isReduced, KEYS, MOTION_LABEL, prefsBootScript, readPrefs, writePref } from "@/app/env/prefs";
+import { DEFAULTS, isLite, isLiteDevice, isReduced, KEYS, MOTION_LABEL, prefsBootScript, readPrefs, writePref } from "@/app/env/prefs";
 
 const mem = (init: Record<string, string> = {}) => {
   const m = new Map(Object.entries(init));
@@ -15,21 +16,21 @@ const mem = (init: Record<string, string> = {}) => {
 describe("D5 · appearance preferences", () => {
   afterEach(() => vi.unstubAllGlobals());
 
-  it("defaults to Alpine lake, Frosted glass, full motion and the Iris theme", () => {
-    expect(DEFAULTS).toEqual({ scene: "lake", glass: "frost", motion: "full", theme: "iris" });
+  it("defaults to Alpine lake, Frosted glass, full motion, the Iris theme and automatic effects", () => {
+    expect(DEFAULTS).toEqual({ scene: "lake", glass: "frost", motion: "full", theme: "iris", effects: "auto" });
     expect(readPrefs(mem())).toEqual(DEFAULTS);
     expect(readPrefs(null)).toEqual(DEFAULTS);
   });
 
   it("reads valid saved values", () => {
-    expect(readPrefs(mem({ [KEYS.scene]: "reef", [KEYS.glass]: "frost", [KEYS.motion]: "off" }))).toEqual({ scene: "reef", glass: "frost", motion: "off", theme: "iris" });
+    expect(readPrefs(mem({ [KEYS.scene]: "reef", [KEYS.glass]: "frost", [KEYS.motion]: "off" }))).toEqual({ scene: "reef", glass: "frost", motion: "off", theme: "iris", effects: "auto" });
     expect(readPrefs(mem({ [KEYS.scene]: "hall" })).scene).toBe("hall");
     // A D5 visitor who chose Liquid keeps it; the new theme key reads too.
-    expect(readPrefs(mem({ [KEYS.glass]: "liquid", [KEYS.motion]: "simple", [KEYS.theme]: "mono" }))).toEqual({ scene: "lake", glass: "liquid", motion: "simple", theme: "mono" });
+    expect(readPrefs(mem({ [KEYS.glass]: "liquid", [KEYS.motion]: "simple", [KEYS.theme]: "mono", [KEYS.effects]: "full" }))).toEqual({ scene: "lake", glass: "liquid", motion: "simple", theme: "mono", effects: "full" });
   });
 
   it("falls back to the defaults for invalid stored values", () => {
-    expect(readPrefs(mem({ [KEYS.scene]: "ocean", [KEYS.glass]: "<script>", [KEYS.motion]: "FULL", [KEYS.theme]: "dark" }))).toEqual(DEFAULTS);
+    expect(readPrefs(mem({ [KEYS.scene]: "ocean", [KEYS.glass]: "<script>", [KEYS.motion]: "FULL", [KEYS.theme]: "dark", [KEYS.effects]: "max" }))).toEqual(DEFAULTS);
   });
 
   it("never crashes when storage throws or is missing", () => {
@@ -63,20 +64,38 @@ describe("D5 · appearance preferences", () => {
     expect(MOTION_LABEL.simple).toBe("Reduced");
   });
 
+  it("Lite: phone-width screens, 4 or fewer cores or Save-Data, unless the person chose full effects", () => {
+    expect(isLiteDevice({ width: 1440, cores: 8 })).toBe(false);
+    expect(isLiteDevice({ width: 390, cores: 8 })).toBe(true);
+    expect(isLiteDevice({ width: 1440, cores: 4 })).toBe(true);
+    expect(isLiteDevice({ width: 1440, cores: 8, saveData: true })).toBe(true);
+    expect(isLite("auto", { width: 390 })).toBe(true);
+    expect(isLite("full", { width: 390, cores: 2, saveData: true })).toBe(false);
+  });
+
   it("the boot script applies the same rules before first paint", () => {
     const attrs: Record<string, string> = {};
-    const run = (store: Record<string, string> | "throw", osReduce?: boolean) => {
+    const run = (store: Record<string, string> | "throw", osReduce?: boolean, device = { width: 1440, cores: 8 }) => {
       vi.stubGlobal("document", { documentElement: { setAttribute: (k: string, v: string) => { attrs[k] = v; } } });
+      vi.stubGlobal("innerWidth", device.width);
+      vi.stubGlobal("navigator", { hardwareConcurrency: device.cores });
       vi.stubGlobal("localStorage", store === "throw" ? { getItem: () => { throw new Error("x"); } } : { getItem: (k: string) => store[k] ?? null });
       vi.stubGlobal("matchMedia", osReduce === undefined ? undefined : () => ({ matches: osReduce }));
       new Function(prefsBootScript())();
     };
     run({ [KEYS.scene]: "sun", [KEYS.glass]: "nope" });
-    expect(attrs).toEqual({ "data-scene": "sun", "data-glass": "frost", "data-motion": "full", "data-theme": "iris", "data-reduced": "0" });
+    expect(attrs).toEqual({ "data-scene": "sun", "data-glass": "frost", "data-motion": "full", "data-theme": "iris", "data-effects": "auto", "data-reduced": "0", "data-lite": "0" });
     run("throw");
-    expect(attrs).toEqual({ "data-scene": "lake", "data-glass": "frost", "data-motion": "full", "data-theme": "iris", "data-reduced": "0" });
+    expect(attrs).toEqual({ "data-scene": "lake", "data-glass": "frost", "data-motion": "full", "data-theme": "iris", "data-effects": "auto", "data-reduced": "0", "data-lite": "0" });
     run({ [KEYS.motion]: "simple", [KEYS.theme]: "mono", [KEYS.glass]: "liquid" });
-    expect(attrs).toEqual({ "data-scene": "lake", "data-glass": "liquid", "data-motion": "simple", "data-theme": "mono", "data-reduced": "1" });
+    expect(attrs).toEqual({ "data-scene": "lake", "data-glass": "liquid", "data-motion": "simple", "data-theme": "mono", "data-effects": "auto", "data-reduced": "1", "data-lite": "0" });
+    // Lite, before first paint: a phone, or few cores; "full" effects override it.
+    run({}, undefined, { width: 390, cores: 8 });
+    expect(attrs["data-lite"]).toBe("1");
+    run({}, undefined, { width: 1440, cores: 2 });
+    expect(attrs["data-lite"]).toBe("1");
+    run({ [KEYS.effects]: "full" }, undefined, { width: 390, cores: 2 });
+    expect(attrs["data-lite"]).toBe("0");
     run({}, true); // the device asks for reduced motion: always respected
     expect(attrs["data-reduced"]).toBe("1");
     run({}, false);

@@ -12,12 +12,14 @@ import { prefsBootScript } from "./env/prefs";
 import { GlassLens } from "./ui/glass-lens";
 import { SoundProvider } from "./ui/sound/sound-provider";
 import { IconDefs } from "./ui/design/ds-icon";
+import { UiSoundClicks } from "./ui/sound/ui-sound-clicks";
 import "./styles/tokens.css";
 import "./styles/components.css";
 import "./globals.css";
 import "./styles/polish.css";
 import "./styles/glass.css";
 import "./styles/design.css";
+import "./styles/primitives.css";
 
 export const metadata: Metadata = {
   title: "ASCENTRA",
@@ -37,6 +39,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <EnvRoot />
           <GlassLens />
           <Spotlight />
+          <UiSoundClicks />
           {/* D2e: the ambient player lives here, outside every page and route segment, so navigation never stops it. */}
           <SoundProvider>
             <BillingBanner />

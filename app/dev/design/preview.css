@@ -79,3 +79,34 @@ main.ui-main-wide.dp { max-width: 90rem; }
 .dp-scale div { display: flex; justify-content: space-between; gap: var(--space-2); }
 .dp-scale dt { color: var(--color-ink); font-family: var(--font-mono); }
 .dp-scale dd { margin: 0; }
+
+/* D2 · primitives */
+.dp-prims { display: grid; gap: var(--space-3); }
+.dp-prims__pair { display: grid; gap: var(--space-3); grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr)); }
+.dp-stage { position: relative; isolation: isolate; overflow: hidden; display: grid; gap: var(--space-3); align-content: start; padding: var(--space-4); border-radius: var(--radius-glass); }
+/* A busy backdrop (soft colour bars) so the blur and the lens's bent edges are visible. */
+.dp-stage__backdrop { position: absolute; inset: 0; z-index: -1; background: var(--theme-wall); }
+.dp-stage__backdrop i { position: absolute; width: 38%; height: 120%; top: -10%; border-radius: 40%; filter: blur(2px); opacity: 0.85; }
+.dp-stage__backdrop i:nth-child(1) { left: -8%; background: linear-gradient(var(--accent-1), transparent 70%); transform: rotate(18deg); }
+.dp-stage__backdrop i:nth-child(2) { left: 26%; background: linear-gradient(transparent 10%, var(--accent-2), transparent 90%); transform: rotate(-12deg); }
+.dp-stage__backdrop i:nth-child(3) { left: 58%; background: linear-gradient(var(--accent-3), transparent 75%); transform: rotate(22deg); }
+.dp-stage__backdrop i:nth-child(4) { left: 82%; background: linear-gradient(transparent, var(--accent-4)); transform: rotate(-8deg); }
+.dp-stage__label { margin: 0; color: var(--color-ink); }
+.dp-hud { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-radius: 22px; }
+.dp-hud__brand { margin-right: auto; font-size: var(--text-md); }
+.dp-panel { display: grid; gap: var(--space-3); padding: var(--space-4); }
+.dp-panel p { margin: 0; }
+.dp-panel__title { font-weight: var(--weight-semibold); }
+.dp-tilecard { display: grid; justify-items: start; gap: var(--space-1); min-width: 9rem; flex: 1; padding: var(--space-3) var(--space-4); border: 0; border-radius: var(--radius-glass-sm); font: inherit; text-align: left; color: var(--color-ink); cursor: pointer; }
+.dp-tilecard small { color: var(--color-ink-muted); font-size: var(--text-xs); }
+div.dp-tilecard { cursor: default; }
+.dp-motion { display: grid; gap: var(--space-3); }
+.dp-note { color: var(--color-ink-muted); font-size: var(--text-xs); }
+.dp-stagger { display: grid; gap: var(--space-2); grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr)); }
+.dp-mini { display: grid; gap: var(--space-1); padding: var(--space-3); border-radius: var(--radius-glass-sm); font-size: var(--text-sm); }
+.dp-mini .ds-num { font-size: var(--text-lg); }
+.dp-spark { width: 10rem; height: 3rem; overflow: visible; }
+.dp-spark path { fill: none; stroke: var(--widget-points); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.dp-count { display: grid; margin: 0; }
+.dp-count .ds-num { font-size: var(--text-2xl); }
+.dp-count small { color: var(--color-ink-muted); font-size: var(--text-xs); }

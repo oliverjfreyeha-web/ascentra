@@ -1,8 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { applyPrefs, GLASSES, MOTION_LABEL, MOTIONS, readPrefs, THEME_LABEL, THEMES, writePref, type Prefs } from "../../env/prefs";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { applyPrefs, EFFECTS, EFFECTS_LABEL, GLASSES, MOTION_LABEL, MOTIONS, readPrefs, THEME_LABEL, THEMES, writePref, type Prefs } from "../../env/prefs";
 import { Icon, ICON_NAMES } from "../../ui/design/ds-icon";
+import { Button } from "../../ui/design/button";
+import { uiSounds } from "../../ui/sound/ui-sounds";
+import { PrimitivesSection } from "./primitives";
 
 const COLORS = ["--color-base", "--color-surface", "--color-raised", "--color-ink", "--color-ink-muted", "--color-frost", "--color-accent", "--color-text", "--color-text-muted", "--color-ok", "--color-gold", "--color-gold-soft"];
 const ACCENTS = ["--accent-1", "--accent-2", "--accent-3", "--accent-4", "--accent-5", "--widget-streak", "--widget-points", "--widget-rank", "--widget-next"];
@@ -97,6 +100,8 @@ function Board({ theme }: { theme: (typeof THEMES)[number] }) {
         </ul>
       </section>
 
+      <PrimitivesSection theme={THEME_LABEL[theme]} />
+
       <section aria-label={`${THEME_LABEL[theme]} scale`}>
         <h3 className="ds-caps">Radii, blur, motion, layers</h3>
         <dl className="dp-scale">{SCALE.map((t) => <div key={t}><dt>{t}</dt><dd><code data-token={t} /></dd></div>)}</dl>
@@ -108,13 +113,19 @@ function Board({ theme }: { theme: (typeof THEMES)[number] }) {
 export function DesignPreview() {
   const [prefs, setPrefs] = useState<Prefs | null>(null);
   const [reduced, setReduced] = useState("");
+  const [lite, setLite] = useState("");
+  const sounds = uiSounds();
+  const soundOn = useSyncExternalStore(sounds?.subscribe ?? (() => () => {}), () => sounds?.enabled ?? false, () => false);
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- read this browser's saved choice after hydration
     setPrefs(readPrefs());
-    const sync = () => setReduced(document.documentElement.getAttribute("data-reduced") ?? "");
+    const sync = () => {
+      setReduced(document.documentElement.getAttribute("data-reduced") ?? "");
+      setLite(document.documentElement.getAttribute("data-lite") ?? "");
+    };
     sync();
     const mo = new MutationObserver(sync);
-    mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-reduced"] });
+    mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-reduced", "data-lite"] });
     return () => mo.disconnect();
   }, []);
   const set = <K extends keyof Prefs>(k: K, v: Prefs[K]) => {
@@ -123,7 +134,7 @@ export function DesignPreview() {
     applyPrefs(next);
     setPrefs(next);
   };
-  const seg = <K extends "theme" | "glass" | "motion">(k: K, list: readonly Prefs[K][], label: (v: Prefs[K]) => string) => (
+  const seg = <K extends "theme" | "glass" | "motion" | "effects">(k: K, list: readonly Prefs[K][], label: (v: Prefs[K]) => string) => (
     <div className="dp-seg" role="group" aria-label={k[0].toUpperCase() + k.slice(1)}>
       {list.map((v) => <button key={v} type="button" aria-pressed={prefs?.[k] === v} onClick={() => set(k, v)}>{label(v)}</button>)}
     </div>
@@ -138,7 +149,15 @@ export function DesignPreview() {
           <div className="dp-control"><span className="ds-caps">Theme</span>{seg("theme", THEMES, (v) => THEME_LABEL[v])}</div>
           <div className="dp-control"><span className="ds-caps">Glass</span>{seg("glass", GLASSES, (v) => (v === "frost" ? "Frosted" : "Liquid"))}</div>
           <div className="dp-control"><span className="ds-caps">Motion</span>{seg("motion", MOTIONS, (v) => MOTION_LABEL[v])}</div>
-          <p className="dp-body dp-body--muted">html[data-reduced] = <code>{reduced || "…"}</code> (also &quot;1&quot; when the device asks for reduced motion).</p>
+          <div className="dp-control"><span className="ds-caps">Effects</span>{seg("effects", EFFECTS, (v) => EFFECTS_LABEL[v])}</div>
+          <div className="dp-control"><span className="ds-caps">UI sounds</span>
+            <div className="ds-seg" role="group" aria-label="UI sounds">
+              <button type="button" className="ds-seg__opt" aria-pressed={soundOn} onClick={() => sounds?.setEnabled(true)}>On</button>
+              <button type="button" className="ds-seg__opt" aria-pressed={!soundOn} onClick={() => sounds?.setEnabled(false)}>Off</button>
+            </div>
+          </div>
+          <Button size="sm" icon="star" sfx="none" onClick={() => sounds?.reward()}>Play reward sound</Button>
+          <p className="dp-body dp-body--muted">html[data-reduced] = <code>{reduced || "…"}</code> (also &quot;1&quot; when the device asks for reduced motion) · html[data-lite] = <code>{lite || "…"}</code> (phones, 4 or fewer cores, Save-Data; &quot;Always full&quot; overrides).</p>
         </div>
       </header>
       <div className="dp-boards">

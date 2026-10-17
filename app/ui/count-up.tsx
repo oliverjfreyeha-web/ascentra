@@ -5,13 +5,14 @@ import { useEffect, useRef, useState } from "react";
 /**
  * D3 · A number that counts up once when it scrolls into view (about 0.6 s, easing out). Assistive technology reads the
  * real value at once; the counting copy is hidden from it. With reduced motion, the number simply shows.
+ * Design rebuild D2: also when the learner's Motion is Reduced or Off (html[data-reduced="1"]).
  */
 export function CountUp({ value }: { value: number }) {
   const ref = useRef<HTMLSpanElement>(null);
   const [shown, setShown] = useState(value);
   useEffect(() => {
     const el = ref.current;
-    if (!el || value <= 0 || window.matchMedia("(prefers-reduced-motion: reduce)").matches || !("IntersectionObserver" in window)) return;
+    if (!el || value <= 0 || window.matchMedia("(prefers-reduced-motion: reduce)").matches || document.documentElement.getAttribute("data-reduced") === "1" || !("IntersectionObserver" in window)) return;
     let frame = 0;
     const io = new IntersectionObserver(([e]) => {
       if (!e.isIntersecting) return;
