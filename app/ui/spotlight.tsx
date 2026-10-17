@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { pointerVars } from "./glass/pointer";
+import { FX_TARGETS } from "./shell/cursor-fx";
 
 const SURFACES = ".ui-card, .ui-panel, .ui-block, .ui-choice, .ui-rows, .ui-path > li, .ui-tile, .ui-auth__card, .ui-hero";
 /** Design rebuild D2: the rebuild's surfaces that read the pointer (glass rim and gloss, button highlight, tilt). */
@@ -13,6 +14,8 @@ const DS_SURFACES = [".ds-glass", ".ds-btn--primary", ".ds-tilt"] as const;
  * Design rebuild D2: the same single listener (one for the whole page, never one per panel) also feeds the rebuild's
  * glass (--mx, --my, and the rim angle --ds-ang), the primary button's highlight, and the tilt of clickable tiles and
  * section cards (--tx, --ty, -1..1). Nothing is set while html[data-reduced] is "1".
+ * Design rebuild D3: and the backdrop's small parallax (--px, --py on .bd) and the cursor glow (.fx-glow, shown only
+ * over cards and buttons). Still one listener.
  */
 export function Spotlight() {
   useEffect(() => {
@@ -43,6 +46,18 @@ export function Spotlight() {
           if (hit) next.add(hit);
         }
       }
+      // D3: the backdrop leans toward the pointer; the glow follows it over cards and buttons only.
+      const bd = document.querySelector<HTMLElement>(".bd"), glow = document.querySelector<HTMLElement>(".fx-glow");
+      const moving = root.getAttribute("data-reduced") !== "1";
+      if (bd) {
+        bd.style.setProperty("--px", moving ? ((last.clientX / window.innerWidth) * 2 - 1).toFixed(3) : "0");
+        bd.style.setProperty("--py", moving ? ((last.clientY / window.innerHeight) * 2 - 1).toFixed(3) : "0");
+      }
+      if (glow) {
+        const over = moving && !!target?.closest?.(FX_TARGETS);
+        glow.toggleAttribute("data-on", over);
+        if (over) glow.style.transform = `translate3d(${last.clientX}px, ${last.clientY}px, 0)`;
+      }
       for (const old of dsCurrent) if (!next.has(old)) clearDs(old);
       dsCurrent = next;
       for (const hit of next) {
@@ -58,7 +73,11 @@ export function Spotlight() {
     };
     const onMove = (e: PointerEvent) => { last = e; if (!frame) frame = requestAnimationFrame(paint); };
     // Leaving the window: every tilt settles back and the lights return to rest.
-    const onLeave = () => { for (const el of dsCurrent) clearDs(el); dsCurrent = new Set(); };
+    const onLeave = () => {
+      for (const el of dsCurrent) clearDs(el);
+      dsCurrent = new Set();
+      document.querySelector(".fx-glow")?.removeAttribute("data-on");
+    };
     document.addEventListener("pointermove", onMove, { passive: true });
     document.documentElement.addEventListener("pointerleave", onLeave);
     return () => {

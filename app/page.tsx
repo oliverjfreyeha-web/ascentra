@@ -2,8 +2,7 @@ import Link from "next/link";
 import { AccountPanel } from "./account-panel";
 import { ServiceStatus } from "./service-status";
 import { Hall } from "./landing/hall/hall";
-import { WorldHero } from "./landing/world/world-hero";
-import { HallSlot } from "./landing/world/world-controls";
+import { AuthSwitch } from "./landing/world/world-controls";
 import { Icon, type IconName } from "./ui/icons";
 import { ART, Picture } from "./ui/picture";
 import { SiteFooter } from "./ui/site-footer";
@@ -35,14 +34,16 @@ const STEPS = [
 ];
 
 export default function Home() {
-  // D5: visitors who are not signed in see the living-world hero (or the Hall, if they chose it as their scene);
-  // signed-in visitors see Home (the account line and its links). Chosen before first paint, then confirmed by Clerk.
+  // D3 rebuild: visitors who are not signed in see the Hall (the only home hero now; Iris and Mono replace the five
+  // scenes, and the D5 world hero is no longer loaded); signed-in visitors see Home (the account line and its links).
+  // Chosen before first paint by the Hall's boot script, then confirmed by Clerk (app/landing/hall/hall-life.tsx).
   return (
     <main className="landing" data-landing suppressHydrationWarning>
       <Reveal />
       <AmbientPause />
-      <WorldHero />
-      <HallSlot><Hall preloadImage={false} /></HallSlot>
+      {/* Bug fix kept: the server's answer also counts, so a signed-in person sees Home even when Clerk's browser state lags. */}
+      <AuthSwitch />
+      <Hall />
       <div className="landing__rest">
       <header className="home-head">
         <div className="home-head__inner">

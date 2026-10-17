@@ -20,7 +20,7 @@ test.beforeAll(async () => {
   const stubs = resolve("e2e/components/fixtures/c2-stubs.tsx");
   const out = await build({
     entryPoints: ["e2e/components/fixtures/nav-entry.tsx"], bundle: true, write: false, format: "iife", jsx: "automatic", platform: "browser",
-    tsconfig: "tsconfig.json", define: { "process.env.NODE_ENV": '"production"' }, logLevel: "silent", loader: { ".css": "empty", ".webp": "empty", ".avif": "empty", ".png": "empty", ".jpg": "empty" },
+    tsconfig: "tsconfig.json", define: { "process.env.NODE_ENV": '"production"', "process.env.VERCEL_ENV": "undefined" }, logLevel: "silent", loader: { ".css": "empty", ".webp": "empty", ".avif": "empty", ".png": "empty", ".jpg": "empty" },
     alias: { "@clerk/nextjs": stubs, "next/link": stubs, "next/navigation": stubs },
   });
   bundle = out.outputFiles[0].text;

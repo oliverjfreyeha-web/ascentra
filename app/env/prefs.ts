@@ -7,6 +7,9 @@
  * stored values are unchanged ("simple" is shown to people as "Reduced"), so saved choices keep working.
  * Design rebuild D2: Lite mode. With effects "auto" (the default), phones, devices with few cores and Save-Data drop
  * Liquid, heavy blur and 3D (html[data-lite="1"]); "full" lets a person force the full effects anyway.
+ * Design rebuild D3: Iris and Mono replace the five scenes (Owner decision 1). The saved scene is still read (so old
+ * values never break anything) but no longer applied: html[data-scene] is not set, and every page gets the new
+ * backdrop (app/ui/backdrop). The Hall stays only as the home hero.
  */
 export const SCENES = ["reef", "lake", "mist", "sun", "hall"] as const;
 export type Scene = (typeof SCENES)[number];
@@ -96,7 +99,7 @@ export function isReduced(motion: Motion, osReduce: boolean, auto = false): bool
  */
 export function prefsBootScript(): string {
   return `(function(){var d=document.documentElement,L=${JSON.stringify(LISTS)},D=${JSON.stringify(DEFAULTS)},K=${JSON.stringify(KEYS)},o={};` +
-    `for(var k in K){var v=null;try{v=localStorage.getItem(K[k])}catch(e){}o[k]=L[k].indexOf(v)>=0?v:D[k];d.setAttribute("data-"+k,o[k])}` +
+    `for(var k in K){var v=null;try{v=localStorage.getItem(K[k])}catch(e){}o[k]=L[k].indexOf(v)>=0?v:D[k];if(k!=="scene")d.setAttribute("data-"+k,o[k])}` +
     `var r=o.motion!=="full";try{r=r||matchMedia(${JSON.stringify(REDUCE_QUERY)}).matches}catch(e){}d.setAttribute("data-reduced",r?"1":"0");` +
     `var l=false;if(o.effects==="auto"){try{var n=navigator,c=n.connection;l=innerWidth<=${LITE_MAX_WIDTH}||(n.hardwareConcurrency||8)<=${LITE_MAX_CORES}||!!(c&&c.saveData)}catch(e){}}` +
     `d.setAttribute("data-lite",l?"1":"0")})()`;
@@ -118,10 +121,9 @@ export function syncLite(effects: Effects) {
   document.documentElement.setAttribute("data-lite", lite ? "1" : "0");
 }
 
-/** Applies preferences to <html> (the CSS reads data-scene, data-glass, data-motion, data-theme, data-reduced, data-lite) and tells listeners. */
+/** Applies preferences to <html> (the CSS reads data-glass, data-motion, data-theme, data-reduced, data-lite) and tells listeners. */
 export function applyPrefs(p: Prefs) {
   const d = document.documentElement;
-  d.setAttribute("data-scene", p.scene);
   d.setAttribute("data-glass", p.glass);
   d.setAttribute("data-motion", p.motion);
   d.setAttribute("data-theme", p.theme);

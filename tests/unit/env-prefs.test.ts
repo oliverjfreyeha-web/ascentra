@@ -3,6 +3,7 @@
  * or throws never crashes the page. The boot script follows the same rules.
  * Design rebuild D1: the theme (Iris default, Mono), Frosted as the default glass (Owner decision 3), and
  * html[data-reduced] set before first paint. Saved D5 values keep working unchanged.
+ * Design rebuild D3: Iris and Mono replace the scenes; a saved scene still reads but html[data-scene] is no longer set.
  * Design rebuild D2: the effects preference ("auto" default, or "full") and html[data-lite] set before first paint.
  */
 import { describe, expect, it, vi, afterEach } from "vitest";
@@ -84,11 +85,11 @@ describe("D5 · appearance preferences", () => {
       new Function(prefsBootScript())();
     };
     run({ [KEYS.scene]: "sun", [KEYS.glass]: "nope" });
-    expect(attrs).toEqual({ "data-scene": "sun", "data-glass": "frost", "data-motion": "full", "data-theme": "iris", "data-effects": "auto", "data-reduced": "0", "data-lite": "0" });
+    expect(attrs).toEqual({ "data-glass": "frost", "data-motion": "full", "data-theme": "iris", "data-effects": "auto", "data-reduced": "0", "data-lite": "0" });
     run("throw");
-    expect(attrs).toEqual({ "data-scene": "lake", "data-glass": "frost", "data-motion": "full", "data-theme": "iris", "data-effects": "auto", "data-reduced": "0", "data-lite": "0" });
+    expect(attrs).toEqual({ "data-glass": "frost", "data-motion": "full", "data-theme": "iris", "data-effects": "auto", "data-reduced": "0", "data-lite": "0" });
     run({ [KEYS.motion]: "simple", [KEYS.theme]: "mono", [KEYS.glass]: "liquid" });
-    expect(attrs).toEqual({ "data-scene": "lake", "data-glass": "liquid", "data-motion": "simple", "data-theme": "mono", "data-effects": "auto", "data-reduced": "1", "data-lite": "0" });
+    expect(attrs).toEqual({ "data-glass": "liquid", "data-motion": "simple", "data-theme": "mono", "data-effects": "auto", "data-reduced": "1", "data-lite": "0" });
     // Lite, before first paint: a phone, or few cores; "full" effects override it.
     run({}, undefined, { width: 390, cores: 8 });
     expect(attrs["data-lite"]).toBe("1");
@@ -100,5 +101,19 @@ describe("D5 · appearance preferences", () => {
     expect(attrs["data-reduced"]).toBe("1");
     run({}, false);
     expect(attrs["data-reduced"]).toBe("0");
+  });
+
+  it("D3: a browser saved before D1 (scene, glass, motion only; any scene, even the Hall) loads cleanly", () => {
+    for (const scene of ["reef", "lake", "mist", "sun", "hall", "ocean"]) {
+      const saved: Record<string, string> = { [KEYS.scene]: scene, [KEYS.glass]: "liquid", [KEYS.motion]: "simple" };
+      expect(readPrefs(mem(saved))).toMatchObject({ glass: "liquid", motion: "simple", theme: "iris", effects: "auto" });
+      const attrs: Record<string, string> = {};
+      vi.stubGlobal("document", { documentElement: { setAttribute: (k: string, v: string) => { attrs[k] = v; } } });
+      vi.stubGlobal("localStorage", { getItem: (k: string) => saved[k] ?? null });
+      vi.stubGlobal("innerWidth", 1440);
+      vi.stubGlobal("navigator", { hardwareConcurrency: 8 });
+      new Function(prefsBootScript())();
+      expect(attrs, scene).toEqual({ "data-glass": "liquid", "data-motion": "simple", "data-theme": "iris", "data-effects": "auto", "data-reduced": "1", "data-lite": "0" });
+    }
   });
 });

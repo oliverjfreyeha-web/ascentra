@@ -1,0 +1,71 @@
+/*
+ * Design rebuild D3 · The backdrop (app/ui/backdrop/backdrop.tsx). Built on the theme tokens; only transform and
+ * opacity animate. Iris: orbs, dust, vignette, faint floor lines. Mono: no floor; the one warm-white light.
+ */
+.bd {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-scene);
+  overflow: hidden;
+  pointer-events: none;
+  contain: strict;
+  --px: 0;
+  --py: 0;
+}
+.bd > * { position: absolute; inset: 0; }
+.bd i { position: absolute; display: block; }
+
+.bd__wall { background: var(--theme-light), var(--theme-wall); }
+
+/* Orbs: three soft colour fields. The group leans toward the pointer (--px, --py from -1 to 1); each orb drifts. */
+.bd__orbs { transform: translate3d(calc(var(--px) * -24px), calc(var(--py) * -16px), 0); transition: transform 900ms var(--ease-glide); }
+.bd__orb { border-radius: 50%; filter: blur(70px); opacity: 0.5; }
+.bd__orb--1 { width: 62vmax; height: 62vmax; left: -18vmax; top: -22vmax; background: radial-gradient(circle, var(--accent-violet), transparent 68%); }
+.bd__orb--2 { width: 50vmax; height: 50vmax; right: -16vmax; top: 12vh; background: radial-gradient(circle, var(--accent-purple), transparent 68%); opacity: 0.38; }
+.bd__orb--3 { width: 44vmax; height: 44vmax; left: 18vw; bottom: -26vmax; background: radial-gradient(circle, var(--color-frost), transparent 66%); opacity: 0.3; }
+
+/* Faint floor lines (Iris only): a grid laid back in perspective, fading out toward the viewer. */
+.bd__floor { top: 58%; left: -30%; right: -30%; bottom: auto; height: 90vh; transform-origin: 50% 0; transform: perspective(1100px) rotateX(74deg); -webkit-mask: linear-gradient(#000, rgb(0 0 0 / 0.5) 38%, transparent 82%); mask: linear-gradient(#000, rgb(0 0 0 / 0.5) 38%, transparent 82%); opacity: 0.55; }
+.bd__floor i { inset: 0; background: linear-gradient(90deg, rgb(170 195 240 / 0.22) 1.5px, transparent 1.5px) 0 0 / 90px 90px, linear-gradient(rgb(170 195 240 / 0.22) 1.5px, transparent 1.5px) 0 0 / 90px 90px; }
+
+/* Dust: tiny lights rising slowly. */
+.bd__dust i { bottom: -10px; width: var(--s); height: var(--s); border-radius: 50%; background: rgb(200 215 255 / 0.8); box-shadow: 0 0 8px 1px rgb(160 180 255 / 0.6); opacity: 0; }
+
+.bd__vignette { background: radial-gradient(120% 90% at 50% 40%, transparent 45%, rgb(4 5 18 / 0.7)); }
+
+/* Mono's one light (hidden in Iris). */
+.bd__light { display: none; }
+[data-theme="mono"] .bd__light { display: block; }
+[data-theme="mono"] .bd__floor { display: none; }
+[data-theme="mono"] .bd__orb { opacity: 0.16; filter: blur(80px) grayscale(1); }
+[data-theme="mono"] .bd__dust i { background: rgb(255 250 240 / 0.85); box-shadow: 0 0 8px 1px rgb(255 240 220 / 0.6); }
+[data-theme="mono"] .bd__vignette { background: radial-gradient(120% 90% at 50% 30%, transparent 40%, rgb(0 0 0 / 0.78)); }
+.bd__core, .bd__falloff, .bd__bloom, .bd__rays { left: var(--light-x); top: var(--light-y); width: 0; height: 0; }
+.bd__core { margin: -44px 0 0 -44px; width: 88px; height: 88px; border-radius: 50%; background: #fff; filter: blur(7px); box-shadow: 0 0 46px 24px #fff, 0 0 140px 70px rgb(255 248 236 / 0.6), 0 0 340px 180px rgb(255 236 210 / 0.22); }
+.bd__falloff { margin: -45vmax 0 0 -45vmax; width: 90vmax; height: 90vmax; border-radius: 50%; background: radial-gradient(circle, rgb(255 236 206 / 0.32), rgb(236 200 150 / 0.14) 26%, rgb(200 150 90 / 0.06) 44%, transparent 62%); }
+.bd__bloom { margin: -70vmax 0 0 -70vmax; width: 140vmax; height: 140vmax; border-radius: 50%; background: radial-gradient(circle, rgb(255 255 255 / 0.22), rgb(235 230 220 / 0.08) 22%, transparent 50%); mix-blend-mode: screen; }
+.bd__rays { margin-left: -60vw; width: 120vw; height: 100vh; transform-origin: 50% 0; background: repeating-conic-gradient(from 180deg at 50% 0, transparent 0 3.2deg, rgb(255 246 230 / 0.12) 3.7deg, transparent 4.6deg 7.6deg); -webkit-mask: radial-gradient(70% 90% at 50% 0, #000, transparent 75%); mask: radial-gradient(70% 90% at 50% 0, #000, transparent 75%); mix-blend-mode: screen; }
+
+/* Lite: no dust, no rays, lighter orbs (no blur filter work on phones and slow devices). */
+:root[data-lite="1"] .bd__dust, :root[data-lite="1"] .bd__rays { display: none; }
+:root[data-lite="1"] .bd__orb { filter: none; opacity: 0.22; }
+
+/* Motion, only while motion is on. */
+:root:not([data-reduced="1"]) .bd__orb { animation: bd-drift 26s ease-in-out infinite alternate; }
+:root:not([data-reduced="1"]) .bd__orb--2 { animation-duration: 34s; animation-delay: -9s; }
+:root:not([data-reduced="1"]) .bd__orb--3 { animation-duration: 30s; animation-delay: -16s; }
+:root:not([data-reduced="1"]) .bd__dust i { animation: bd-dust var(--d) linear var(--w) infinite; }
+:root:not([data-reduced="1"]) .bd__rays { animation: bd-rays 18s ease-in-out infinite alternate; }
+:root:not([data-reduced="1"]) .bd__core { animation: bd-breathe 7s ease-in-out infinite; }
+:root[data-reduced="1"] .bd__orbs { transform: none; transition: none; }
+:root[data-reduced="1"] .bd__dust { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .bd *, .bd__orbs { animation: none !important; transform: none; transition: none; }
+  .bd__floor { transform: perspective(1100px) rotateX(74deg); }
+  .bd__dust { display: none; }
+}
+@keyframes bd-drift { to { transform: translate3d(5vw, -4vh, 0) scale(1.12); } }
+@keyframes bd-dust { 0% { opacity: 0; transform: translate(0, 0); } 10% { opacity: 0.9; } 85% { opacity: 0.7; } 100% { opacity: 0; transform: translate(var(--x), -105vh); } }
+@keyframes bd-rays { from { transform: rotate(-3deg); } to { transform: rotate(4deg); } }
+@keyframes bd-breathe { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.86; transform: scale(1.05); } }
+@media print { .bd { display: none; } }

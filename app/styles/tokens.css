@@ -261,7 +261,10 @@
   --light-falloff: transparent;
 
   /* Buttons that are not glass, and the selected segment. */
-  --button-fill: linear-gradient(115deg, rgb(130 185 255 / 0.55) 0%, rgb(190 130 255 / 0.5) 25%, rgb(110 240 245 / 0.42) 50%, rgb(255 140 225 / 0.46) 75%, rgb(130 185 255 / 0.55) 100%);
+  /* D3: the iridescent layer sits on a solid dark base, so white text keeps at least 4.5:1 whatever is behind the button
+     (measured in the D3 report). */
+  --button-fill: linear-gradient(115deg, rgb(130 185 255 / 0.44) 0%, rgb(190 130 255 / 0.4) 25%, rgb(110 240 245 / 0.34) 50%, rgb(255 140 225 / 0.37) 75%, rgb(130 185 255 / 0.44) 100%);
+  --button-base: #10122e;
   --button-fill-size: 300% 100%;
   --button-ink: #ffffff;
   --seg-selected: linear-gradient(180deg, #ffffff, #c9daee);
@@ -359,6 +362,7 @@
   --light-falloff: radial-gradient(60vw 50vh at var(--light-x) var(--light-y), rgb(255 226 186 / 0.22), rgb(232 196 150 / 0.08) 40%, transparent 72%);
 
   --button-fill: linear-gradient(135deg, #f6e7c8 0%, #e2c48f 55%, #c99b5c 100%);
+  --button-base: #c99b5c;
   --button-fill-size: 100% 100%;
   --button-ink: #1a1408;
   --seg-selected: linear-gradient(180deg, #fbf3e3, #e3cfa8);
