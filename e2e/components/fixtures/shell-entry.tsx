@@ -7,6 +7,7 @@ import { createRoot } from "react-dom/client";
 import Home from "../../../app/page";
 import AccountPage from "../../../app/account/page";
 import LearnPage from "../../../app/learn/page";
+import MyProgressPage from "../../../app/learn/progress/page";
 import { IconDefs } from "../../../app/ui/design/ds-icon";
 import { Backdrop } from "../../../app/ui/backdrop/backdrop";
 import { CursorFx } from "../../../app/ui/shell/cursor-fx";
@@ -19,6 +20,7 @@ const path = window.location.pathname;
 const page = path === "/" ? <Home />
   : path === "/account" ? <AccountPage />
   : path === "/learn" ? <LearnPage />
+  : path === "/learn/progress" ? <MyProgressPage />
   : <main className="ui-main-wide"><header className="ui-page-head"><h1>{path === "/guardian" ? "Guardian Center" : "Sign in"}</h1></header><p className="muted">Stand-in page for the shell test.</p></main>;
 
 createRoot(document.getElementById("root")!).render(

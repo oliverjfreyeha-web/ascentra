@@ -11,7 +11,7 @@ import { prefsBootScript } from "../../../app/env/prefs";
 
 const CSS_FILES = ["app/styles/tokens.css", "app/styles/components.css", "app/globals.css", "app/styles/polish.css", "app/styles/glass.css",
   "app/styles/design.css", "app/styles/primitives.css", "app/ui/shell/shell.css", "app/ui/backdrop/backdrop.css", "app/landing/hall/hall.css",
-  "app/account/appearance.css", "app/learn/c2.css", "app/styles/pages.css", "app/home.css", "app/learn/library.css"];
+  "app/account/appearance.css", "app/learn/c2.css", "app/styles/pages.css", "app/home.css", "app/learn/library.css", "app/learn/progress/profile/profile.css"];
 
 export async function buildShell(): Promise<string> {
   const stubs = resolve("e2e/components/fixtures/c2-stubs.tsx");

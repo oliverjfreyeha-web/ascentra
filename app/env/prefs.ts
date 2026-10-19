@@ -131,3 +131,29 @@ export function applyPrefs(p: Prefs) {
   syncLite(p.effects);
   window.dispatchEvent(new CustomEvent("ascentra:prefs", { detail: p }));
 }
+
+/*
+ * Design rebuild D5 · The Profile's widget choice: which widgets a person hid. Same rules as the preferences above
+ * (this browser only, never throws, unknown values ignored).
+ */
+export const PROFILE_WIDGETS = ["globe", "streak", "points", "rank", "activity", "map"] as const;
+export type ProfileWidget = (typeof PROFILE_WIDGETS)[number];
+export const WIDGETS_KEY = "ascentra.profileWidgets";
+
+/** The widgets this person hid (an empty list when nothing is saved or storage is unavailable). */
+export function readHiddenWidgets(store?: StorageLike | null): ProfileWidget[] {
+  try {
+    const s = store === undefined ? (typeof window === "undefined" ? null : window.localStorage) : store;
+    const raw = JSON.parse(s?.getItem(WIDGETS_KEY) ?? "[]") as unknown;
+    return Array.isArray(raw) ? PROFILE_WIDGETS.filter((w) => raw.includes(w)) : [];
+  } catch { return []; }
+}
+/** Saves the hidden widgets; returns false when storage is unavailable. */
+export function writeHiddenWidgets(hidden: readonly ProfileWidget[], store?: StorageLike | null): boolean {
+  try {
+    const s = store === undefined ? window.localStorage : store;
+    if (!s) return false;
+    s.setItem(WIDGETS_KEY, JSON.stringify(PROFILE_WIDGETS.filter((w) => hidden.includes(w))));
+    return true;
+  } catch { return false; }
+}

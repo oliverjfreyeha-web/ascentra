@@ -6,7 +6,7 @@ import { learnerSlot } from "@/lib/courses/videos";
 import { missionGate, spendContactApproval } from "@/lib/missions";
 import { DEFAULT_TIME_ZONE, IMPORTANCE, MISSION_TYPES, TEEN_MISSION_LIMITS, isMissionType } from "./config";
 import { courseState, itemGate, lessonGate, planOf, recordCompletion, totalsOf, type ItemRef } from "./progress";
-import { localDay, pointsFor, rankOf, streaks } from "./rules";
+import { localDay, pointsFor, pointsWindow, rankOf, streaks } from "./rules";
 
 /**
  * C2: the learner's side of progress. Finishing items (a video watched to the end, a practice task marked done after
@@ -165,7 +165,8 @@ export async function myProgress(actor: Account, now = new Date()) {
     pastCourses: plan === "pro" || plan === "full" ? courses.filter((c) => c.pickStatus === "paused").map((c) => c.slug) : [],
     skills: courses.filter((c) => c.kind === "skill").map((c) => ({ slug: c.slug, name: c.name, percent: c.percent, rank: c.skillRank })),
     scores: [...scoreDays.entries()].sort().slice(-30).map(([day, s]) => ({ day, average: Math.round((s.reduce((x, y) => x + y, 0) / s.length) * 100), attempts: s.length })),
-    pointsByDay: [...pointsByDay.entries()].sort().slice(-30).map(([day, points]) => ({ day, points })),
+    // Design rebuild D5: the last 365 calendar days (was the last 30 days with points), for the activity grid's Year view.
+    pointsByDay: pointsWindow(pointsByDay, today),
     timeZone: tz,
     note: "Ranks and streaks come from items you finish. Results vary. Nothing here promises income.",
     weights: Object.fromEntries(Object.entries(IMPORTANCE).map(([k, v]) => [k, v.points])),
