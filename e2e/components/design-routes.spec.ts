@@ -264,3 +264,23 @@ test("design detector catches each pattern when it is there (positive control)",
   const found = (await page.evaluate(detect)).join("\n");
   for (const k of ["gradient text: p.", "side stripe (border-left 3px): div.", "side stripe (inset shadow): div.", "bounce easing: div.", "purple on white: span."]) expect(found).toContain(k);
 });
+
+// D8 · axe smoke at phone width on the routes with visual baselines (Home, Library, Profile, Account, Admin), in the
+// three looks the baselines use. The 1280px runs above already cover these routes in every look.
+test("axe at 390px: no serious or critical issue on the baseline routes", async ({ page }) => {
+  test.setTimeout(240000);
+  const base = [ROUTES.find((r) => r.path === "/" && r.role === "learner")!, ...ROUTES.filter((r) => ["/learn", "/learn/progress", "/account", "/admin"].includes(r.path))];
+  const serious: string[] = [];
+  for (const r of base) for (const [theme, glass] of [["iris", "frost"], ["mono", "frost"], ["iris", "liquid"]]) {
+    await open(page, r, { width: 390, saved: { "ascentra.theme": theme, "ascentra.glass": glass } });
+    await page.waitForTimeout(500);
+    await settle(page);
+    await page.addScriptTag({ content: AXE });
+    serious.push(...await page.evaluate(async (where) => {
+      type V = { id: string; impact: string; nodes: { target: unknown }[] };
+      const res = await (window as unknown as { axe: { run: (d: Document, o: unknown) => Promise<{ violations: V[] }> } }).axe.run(document, { runOnly: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa", "best-practice"] });
+      return res.violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => `${where}: ${v.impact} ${v.id} ${JSON.stringify(v.nodes[0]?.target)}`);
+    }, `${r.path} ${theme}/${glass}`));
+  }
+  expect(serious).toEqual([]);
+});

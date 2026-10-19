@@ -15,7 +15,9 @@
     "db:bundle": "node scripts/bundle-migrations.mjs",
     "db:seed": "node scripts/seed-dev.mjs",
     "test:integration": "vitest run --config vitest.integration.config.mts",
-    "stripe:setup": "tsx scripts/stripe-setup.ts"
+    "stripe:setup": "tsx scripts/stripe-setup.ts",
+    "test:visual": "playwright test -c playwright.visual.config.ts",
+    "test:visual:update": "playwright test -c playwright.visual.config.ts --update-snapshots"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",
