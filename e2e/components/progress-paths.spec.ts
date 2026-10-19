@@ -383,7 +383,11 @@ test("Lesson: labels, done, a notice shown once, Mark as done, a teen asks their
   await expect(page.getByText("No messaging private individuals.")).toBeVisible();
   await page.getByRole("button", { name: "Ask my Guardian to approve missions in this course" }).click();
   await expect.poll(() => sent.find((s) => s.path === "/api/v1/learn/missions/request")?.body).toEqual({ itemId: ID(63), scope: "course" });
-  await page.locator("fieldset").filter({ hasText: "Test assignment 1?" }).getByRole("button", { name: "Mark as done" }).focus();
+  // The mission request keeps the activity's buttons disabled until its answer arrives; wait for that before using the keyboard.
+  const markDone = page.locator("fieldset").filter({ hasText: "Test assignment 1?" }).getByRole("button", { name: "Mark as done" });
+  await expect(markDone).toBeEnabled();
+  await markDone.focus();
+  await expect(markDone).toBeFocused();
   await page.keyboard.press("Enter");
   await expect.poll(() => sent.some((s) => s.path === `/api/v1/learn/activities/${ID(63)}/complete`)).toBe(true);
   // The notice stays on this page (it was shown once) even after the lesson reloads.
