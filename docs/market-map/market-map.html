@@ -348,6 +348,11 @@ input[type=text]{width:100%}
       <div class="seg" role="group" aria-label="Rank by metric" id="invMetric"></div>
     </div>
     <p class="small" id="invNote" style="margin-bottom:12px"></p>
+    <div class="sub" id="howInvest" style="margin-bottom:14px;display:flex;flex-direction:column;gap:6px">
+      <h3>How you can actually invest</h3>
+      <p class="small"><b style="color:var(--ink)">Open to anyone:</b> equity crowdfunding (Reg CF) on Wefunder, StartEngine, Republic or DealMaker. Anyone 18+ can invest, often from $100. If you are not accredited, yearly limits apply based on your income and net worth, and the platform checks them for you. Shares are hard to sell for years.</p>
+      <p class="small"><b style="color:var(--ink)">Private rounds:</b> most startups here raised from venture funds. Getting in usually means being an accredited investor (about $200k income, $300k with a spouse, or $1M net worth not counting your home) and knowing the founders or joining an angel syndicate.</p>
+    </div>
     <div class="filters" id="invFilters">
       <input type="text" id="invQ" placeholder="Search names, cities, investors" autocomplete="off" aria-label="Search startups">
       <select id="invNiche" aria-label="Filter by niche"></select>
@@ -358,6 +363,7 @@ input[type=text]{width:100%}
         <option value="large">Large rounds ($20M+)</option>
       </select>
       <label class="chk"><input type="checkbox" id="invSmall"> Small rounds only (under $10M)</label>
+      <label class="chk"><input type="checkbox" id="invOpen"> Open to anyone only</label>
       <span class="small num" id="invCount"></span>
     </div>
     <div class="inv" id="invList"></div>
@@ -561,7 +567,7 @@ function renderDetail(){
     </div>
     <div class="chips">${zoneChip(n)}<span class="chip num">~${fmt(n.rcount)} competitors</span></div>
     <p class="small">${esc(n.ex)}.</p>
-    <p class="small"><b style="color:var(--ink)">Who you'd face:</b> ${esc(n.giants)}.</p>
+    <p class="small"><b style="color:var(--ink)">Who you'd face:</b> ${esc(n.giants)}.</p>${hireLine(n)}
     <div class="factors tight">${F.map(f=>factor(n,f,mode.map)).join("")}</div>`;
 }
 
@@ -595,6 +601,39 @@ function whyLine(n){
   if(n.crowd>=8)parts.push("but crowded");
   return parts.slice(0,4).join(", ").replace(/^but /,"").replace(/^./,c=>c.toUpperCase())+".";
 }
+// ---------- Hiring reality ----------
+// First 3-5 hires, their yearly cost in $k at US pay (salary plus taxes and benefits), and team size at about $1M revenue
+const HIRE={
+ vai:["AI engineer, full-stack engineer, industry expert, salesperson",600,900,"6–10"],
+ vsaas:["2 engineers, customer success lead, salesperson from the industry",500,750,"7–12"],
+ saas:["2–3 engineers, designer, marketer",550,850,"6–10"],
+ aiapp:["2 engineers, growth marketer",350,550,"3–8"],
+ dev:["3–4 senior engineers, developer advocate",700,1000,"6–10"],
+ sec:["3 security engineers, sales engineer",750,1100,"8–12"],
+ data:["3 data or backend engineers, solutions engineer",650,950,"7–10"],
+ fin:["2 engineers, compliance lead, operations",600,900,"8–15"],
+ health:["2 engineers, clinical advisor, implementation lead",600,900,"8–14"],
+ edu:["2 engineers, curriculum lead, school sales",450,650,"8–14"],
+ climate:["2 engineers, energy expert, salesperson",550,850,"8–12"],
+ creator:["2 engineers, community and growth lead",350,550,"5–9"],
+ cons:["2–3 consultants, partner who sells",350,600,"5–7"],
+ webag:["2–3 developers, designer, project manager",300,500,"8–12"],
+ mktag:["2 marketers or media buyers, account manager, content creator",250,450,"8–12"],
+ mobile:["2 mobile engineers, designer, growth marketer",450,700,"5–10"],
+ game:["2–3 developers, artist, game designer",350,600,"10–20"],
+ dtc:["Operations and supply chain, performance marketer, customer service",200,350,"3–6"],
+ gadget:["Hardware engineer, industrial designer, supply chain manager",400,650,"6–10"],
+ robot:["Mechanical, electrical and robotics software engineers, field technician",700,1100,"15–30, often before $1M"]
+};
+// Rough pay level versus the US
+const PAY={global:1,us:1,ca:.8,uk:.8,eu:.75,in:.25,cn:.45,jp:.7,br:.35,sea:.35,au:.85};
+function hireCost(id){const h=HIRE[id],f=PAY[region];const r=v=>v*f>=1000?"$"+(v*f/1000).toFixed(1).replace(/\.0$/,"")+"M":"$"+Math.round(v*f/10)*10+"k";return r(h[1])+"–"+r(h[2])}
+function hireLine(n){
+  if(n.cat==="giant")return `<p class="small"><b style="color:var(--ink)">Hiring:</b> not realistic for a new company. Players here employ thousands before they make money.</p>`;
+  const h=HIRE[n.id];
+  return `<p class="small"><b style="color:var(--ink)">First hires:</b> ${esc(h[0])}. About ${hireCost(n.id)} a year${region==="global"||region==="us"?" at US pay":" at "+R[region].name+" pay"}. Typical team at $1M revenue: ${h[3]} people.</p>`;
+}
+
 // ---------- What fits me ----------
 // How much technical skill each niche needs to get started (1-10)
 const TECH={vai:7,vsaas:6,saas:7,aiapp:5,dev:9,sec:9,data:8,fin:7,health:6,edu:5,climate:7,creator:5,cons:4,webag:6,mktag:2,mobile:6,game:7,dtc:2,gadget:6,robot:10};
@@ -634,7 +673,7 @@ function renderOpenings(){
   const lbl=on?"Fit for you":"Opportunity";
   document.getElementById("rank").innerHTML=D.map(({n,f},i)=>{
     const extra=(f.good.length?` ${f.good.join(", ").replace(/^./,c=>c.toUpperCase())}.`:"")+(f.notes.length?` <span class="warn">Watch out: ${f.notes.join(", ")}.</span>`:"");
-    return `<div class="rk sub"><span class="pos num">${i+1}</span><div style="min-width:0;display:flex;flex-direction:column;gap:3px"><h3 style="font-size:14px">${esc(n.name)}</h3><span class="why">${whyLine(n)} ~${fmt(n.rcount)} competitors.${extra}</span></div><div class="w" role="img" aria-label="${lbl} ${Math.round(f.score)} out of 10"><span class="label">${lbl}</span>${widget(f.score,0,mode.openings)}</div></div>`;
+    return `<div class="rk sub"><span class="pos num">${i+1}</span><div style="min-width:0;display:flex;flex-direction:column;gap:3px"><h3 style="font-size:14px">${esc(n.name)}</h3><span class="why">${whyLine(n)} ~${fmt(n.rcount)} competitors. Team at $1M revenue: ${HIRE[n.id][3]} people.${extra}</span></div><div class="w" role="img" aria-label="${lbl} ${Math.round(f.score)} out of 10"><span class="label">${lbl}</span>${widget(f.score,0,mode.openings)}</div></div>`;
   }).join("");
   renderFitNote();
   renderIdea();
@@ -680,7 +719,7 @@ function renderIdea(){
 }
 
 function card(n,m){
-  return `<article class="sub card"><div class="top"><div style="display:flex;flex-direction:column;gap:6px;min-width:0"><span class="cat"><i style="background:${CATS[n.cat].c}"></i>${CATS[n.cat].name}</span><h3>${esc(n.name)}</h3><div class="chips">${zoneChip(n)}<span class="chip num">~${fmt(n.rcount)} competitors</span></div></div><div class="opp"><span class="label">Opportunity</span>${widget(n.opp,0,"num")}</div></div><p class="small"><b style="color:var(--ink)">Who you'd face:</b> ${esc(n.giants)}.</p><div class="factors tight">${F.map(f=>factor(n,f,m)).join("")}</div></article>`;
+  return `<article class="sub card"><div class="top"><div style="display:flex;flex-direction:column;gap:6px;min-width:0"><span class="cat"><i style="background:${CATS[n.cat].c}"></i>${CATS[n.cat].name}</span><h3>${esc(n.name)}</h3><div class="chips">${zoneChip(n)}<span class="chip num">~${fmt(n.rcount)} competitors</span></div></div><div class="opp"><span class="label">Opportunity</span>${widget(n.opp,0,"num")}</div></div><p class="small"><b style="color:var(--ink)">Who you'd face:</b> ${esc(n.giants)}.</p>${hireLine(n)}<div class="factors tight">${F.map(f=>factor(n,f,m)).join("")}</div></article>`;
 }
 function renderGiants(){
   const D=data().filter(n=>n.cat==="giant").sort((a,b)=>b.giant-a.giant);
@@ -716,6 +755,14 @@ const TYPES=[
 ];
 // Named seed startups reported in 2026 funding news. Team and valuation aren't public, so they're not scored.
 const REAL=[
+ // Open to anyone through equity crowdfunding (Reg CF). Check the platform page: rounds close and terms change.
+ {name:"Bito",niche:"dev",stage:"Reg CF crowdfunding",round:1.24,cf:"Wefunder",meta:"AI that maps how a company's software works · $90M valuation · $443k raised by Aug 2026",src:"https://kingscrowd.com/bito-on-wefunder-2026/"},
+ {name:"Kingscrowd",niche:"data",stage:"Reg CF crowdfunding",round:null,cf:"StartEngine",meta:"Ratings and data for private-market investing · listed to end Oct 28, 2026",src:"https://www.crowdfundinsider.com/2026/07/294001-kingscrowd-extends-reg-cf-offering-on-startengine/"},
+ {name:"Cognivix",niche:"robot",stage:"Reg CF crowdfunding",round:null,cf:"Republic",meta:"AI that teaches factory robots a task from one human demonstration",src:"https://mugglehead.com/four-tech-startups-turning-to-regulation-crowdfunding-a-mugglehead-roundup/"},
+ {name:"Yummy Future",niche:"robot",stage:"Testing the waters",round:null,cf:"Wefunder",meta:"AI robots for food industry work · $73M valuation · reservations only, not yet investable",src:"https://kingscrowd.com/yummy-future-on-wefunder-2026/"},
+ {name:"Stratton & Ivy",niche:"dtc",stage:"Reg CF crowdfunding",round:null,cf:"Wefunder",meta:"AI-powered luxury apparel and retail tech",src:"https://kingscrowd.com/funding-report-for-august-2026/"},
+ {name:"IOTTY",niche:"gadget",stage:"Reg CF crowdfunding",round:null,cf:"DealMaker",meta:"AI for the smart home",src:"https://kingscrowd.com/funding-report-for-week-ending-10-17-2026/"},
+ {name:"BackerKit",niche:"creator",stage:"Reg CF crowdfunding",round:1,cf:"Wefunder",meta:"Crowdfunding tools for creators and product makers · $1M target · only one source, verify first",src:"https://angelinvestorsnetwork.com/startups/backerkit-regcf-crowdfunding-1m-goal-on-wefunder"},
  {name:"WithAI",niche:"vai",stage:"Seed",round:6,meta:"New York · AI tools for investment firms and asset managers",src:"https://www.cbinsights.com/company/withai"},
  {name:"Iridius",niche:"vai",stage:"Seed",round:8.6,meta:"AI for regulated workflows",src:"https://qubit.capital/blog/us-seed-weekly-funding-roundup-week-1-may-2026"},
  {name:"Balerion AI",niche:"fin",stage:"Seed",round:6,meta:"AI for mortgage lending",src:"https://qubit.capital/blog/us-seed-weekly-funding-roundup-week-1-may-2026"},
@@ -850,12 +897,12 @@ function renderInvest(){
   document.getElementById("invTab").innerHTML=[["types","Startup types"],["real","Named startups"]].map(([k,l])=>`<button type="button" data-t="${k}" aria-pressed="${invTab===k}">${l}</button>`).join("");
   document.getElementById("invMetric").innerHTML=IM.map(([k,l])=>`<button type="button" data-k="${k}" aria-pressed="${invMetric===k}">${l}</button>`).join("");
   const notes={overall:"Average of every metric.",growth:"How fast the company or its market can grow.",market:"How big the market it sells into is.",team:"How strong founding teams in this space tend to be.",valuation:"Higher means a fairer entry price. Hot sectors score low because you pay more for the same share.",risk:"Higher means safer. Every seed-stage company is risky, so even a high score here means high risk."};
-  document.getElementById("invNote").textContent=(invTab==="real"?"Reported 2026 seed rounds, ranked by their niche's outlook. Team and valuation aren't public, so research those yourself before investing. ":"Typical startups in each space, not specific companies. ")+notes[invMetric];
+  document.getElementById("invNote").textContent=(invTab==="real"?"Reported 2026 seed rounds plus crowdfunding rounds anyone can join, ranked by their niche's outlook. Team and valuation aren't public, so research those yourself before investing. ":"Typical startups in each space, not specific companies. ")+notes[invMetric];
   const real=invTab==="real";
-  document.getElementById("invFilters").hidden=!real;
+  document.getElementById("invFilters").hidden=!real;document.getElementById("howInvest").hidden=!real;
   let L=(real?REAL:TYPES).slice();
   if(real){
-    const q=document.getElementById("invQ").value.toLowerCase().trim(),nf=document.getElementById("invNiche").value,sf=document.getElementById("invStage").value,small=document.getElementById("invSmall").checked;
+    const open=document.getElementById("invOpen").checked,q=document.getElementById("invQ").value.toLowerCase().trim(),nf=document.getElementById("invNiche").value,sf=document.getElementById("invStage").value,small=document.getElementById("invSmall").checked;
     L=L.filter(o=>{
       if(q&&!(o.name+" "+o.meta).toLowerCase().includes(q))return false;
       if(nf!=="all"&&o.niche!==nf)return false;
@@ -864,6 +911,7 @@ function renderInvest(){
       if(sf==="seed"&&!(st.includes("seed")&&!st.startsWith("pre-seed")&&!(o.round>=20)))return false;
       if(sf==="large"&&!(o.round>=20))return false;
       if(small&&!(o.round!=null&&o.round<10))return false;
+      if(open&&!o.cf)return false;
       return true;
     });
     document.getElementById("invCount").textContent=`Showing ${L.length} of ${REAL.length}`;
@@ -873,7 +921,7 @@ function renderInvest(){
   document.getElementById("invList").innerHTML=L.map((o,i)=>{
     const v=score(o,invMetric),n=nicheOf(o.niche);
     const w=v==null?`<span class="na">Not public</span>`:`<div role="img" aria-label="${IM.find(x=>x[0]===invMetric)[1]} ${Math.round(v)} out of 10">${widget(v,0,mode.invest)}</div>`;
-    return `<div class="irow"><span class="pos num">${i+1}</span><div style="min-width:0;display:flex;flex-direction:column;gap:3px"><h3>${esc(o.name)}</h3><span class="meta">${esc(o.meta)}${o.src?` · <a href="${o.src}" target="_blank" rel="noopener">source</a>`:""}</span></div><div class="meta2" style="display:flex;flex-direction:column;gap:4px;min-width:0"><span class="chips"><span class="chip">${esc(o.stage)}</span>${o.round?`<span class="chip num">$${o.round}M round</span>`:""}</span><span class="small">Niche: ${esc(n.short)} · ${ZONES[n.zone].t}</span></div><div class="w">${w}</div></div>`;
+    return `<div class="irow"><span class="pos num">${i+1}</span><div style="min-width:0;display:flex;flex-direction:column;gap:3px"><h3>${esc(o.name)}</h3><span class="meta">${esc(o.meta)}${o.src?` · <a href="${o.src}" target="_blank" rel="noopener">source</a>`:""}</span></div><div class="meta2" style="display:flex;flex-direction:column;gap:4px;min-width:0"><span class="chips"><span class="chip">${esc(o.stage)}</span>${invTab==="real"?(o.cf?(/testing/i.test(o.stage)?`<span class="chip gold" title="Not open yet. You can reserve a spot on ${o.cf}.">Reservations only · ${o.cf}</span>`:`<span class="chip ok" title="Anyone can invest through ${o.cf}, within yearly limits">Open to anyone · ${o.cf}</span>`):`<span class="chip" title="Private round led by venture investors. Usually accredited investors only.">Private · accredited only</span>`):""}${o.round?`<span class="chip num">$${o.round}M ${o.cf?"max raise":"round"}</span>`:""}</span><span class="small">Niche: ${esc(n.short)} · ${ZONES[n.zone].t}</span></div><div class="w">${w}</div></div>`;
   }).join("");
 }
 document.getElementById("invTab").addEventListener("click",e=>{const b=e.target.closest("button");if(b){invTab=b.dataset.t;renderInvest()}});
@@ -882,7 +930,7 @@ document.getElementById("invMetric").addEventListener("click",e=>{const b=e.targ
   const used=new Set(REAL.map(r=>r.niche));
   document.getElementById("invNiche").innerHTML=`<option value="all">Every niche</option>`+N.filter(n=>used.has(n.id)).map(n=>`<option value="${n.id}">${esc(n.name)}</option>`).join("");
   document.getElementById("invQ").addEventListener("input",renderInvest);
-  ["invNiche","invStage","invSmall"].forEach(id=>document.getElementById(id).addEventListener("change",renderInvest));
+  ["invNiche","invStage","invSmall","invOpen"].forEach(id=>document.getElementById(id).addEventListener("change",renderInvest));
 }
 
 // ---------- wiring ----------
