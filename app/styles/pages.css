@@ -39,8 +39,8 @@ main.ds-page:not(.landing) {
   --ds-well: color-mix(in srgb, var(--color-base) 45%, transparent);
   --ds-well-deep: color-mix(in srgb, var(--color-base) 70%, transparent);
 }
-/* Admin has no backdrop (it stays plain and fast); its page wall follows the theme. */
-:root:has(main.ds-page.ui-admin) { background: var(--theme-light), var(--theme-wall); background-color: var(--color-base); background-attachment: fixed; }
+/* The page wall behind the backdrop follows the theme (admin has no backdrop, so there it is the background). */
+:root:has(main.ds-page:not(.landing)) { background: var(--theme-light), var(--theme-wall); background-color: var(--color-base); background-attachment: fixed; }
 
 /* Surfaces that D4 didn't cover. Legal, AI and Mentor notices keep their own meaning colours. */
 main.ds-page:not(.landing) :is(.ui-practice, .ui-lesson-end, .ui-takeaways, .ui-act[data-graded="true"]) { --surface: color-mix(in srgb, var(--color-surface) 94%, transparent); }
@@ -124,7 +124,7 @@ main.ds-page--calm :is(.ds-icon, .ds-icon *) { animation: none !important; }
 :root:has(main.ds-page--calm) .bd__dust { display: none; }
 :root:has(main.ds-page--calm) .bd__orbs { transform: none; transition: none; }
 :root:has(main.ds-page--calm) .fx-glow { display: none; }
-:root:has(main.ds-page--calm) .ds-glass--hud::after { animation: none !important; }
+:root:has(main.ds-page--calm) :is(.ds-glass--hud, .app-hud__tab)::after { animation: none !important; }
 
 /* The shared page entrance follows the Motion setting on restyled pages (it used to follow only the device setting). */
 :root[data-reduced="1"] main.ds-page:not(.landing) { animation: none; }
