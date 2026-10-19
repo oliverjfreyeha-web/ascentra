@@ -1,0 +1,19 @@
+/*
+ * Design rebuild D4 · Restyled pages (main.ds-page: Home and the Library). Their existing D2b–D5 surfaces (.ui-block,
+ * .ui-tile, .ui-rows, …) had a hard-coded dark-blue fill and frost-blue edge; here they take the theme tokens, so Mono
+ * is graphite and Iris looks as before. Other pages are untouched until they are restyled.
+ */
+main.ds-page :is(.ui-card, .ui-panel, .ui-block, .ui-choice, .ui-rows, .ui-path > li, .ui-tile, .ui-hero) {
+  --surface: color-mix(in srgb, var(--color-surface) 94%, transparent);
+  --edge: linear-gradient(155deg, color-mix(in srgb, var(--color-frost) 42%, transparent), color-mix(in srgb, var(--color-frost) 10%, transparent) 28%, color-mix(in srgb, var(--color-frost) 4%, transparent) 62%, color-mix(in srgb, var(--color-frost) 16%, transparent));
+  --spotlight: radial-gradient(22rem circle at var(--mx, 50%) var(--my, -30%), color-mix(in srgb, var(--color-frost) 9%, transparent), transparent 45%);
+}
+main.ds-page :is(.ui-card--interactive:hover, .ui-choice:hover, .ui-tile:hover) {
+  --edge: linear-gradient(155deg, color-mix(in srgb, var(--color-accent-strong) 70%, transparent), color-mix(in srgb, var(--color-frost) 16%, transparent) 30%, color-mix(in srgb, var(--color-frost) 6%, transparent) 65%, color-mix(in srgb, var(--color-frost) 24%, transparent));
+}
+/* No spotlight on touch screens or with reduced motion (as the D2b rule on :root, which this page rule would outrank). */
+@media (hover: none), (pointer: coarse), (prefers-reduced-motion: reduce) {
+  main.ds-page :is(.ui-card, .ui-panel, .ui-block, .ui-choice, .ui-rows, .ui-path > li, .ui-tile, .ui-hero) { --spotlight: linear-gradient(transparent, transparent); }
+}
+/* Lesson rows inside a glass card sit on a lighter, see-through surface so they don't read as a second panel. */
+main.ds-page .ds-glass .ui-rows { --surface: color-mix(in srgb, var(--color-base) 45%, transparent); }

@@ -11,7 +11,7 @@ import { prefsBootScript } from "../../../app/env/prefs";
 
 const CSS_FILES = ["app/styles/tokens.css", "app/styles/components.css", "app/globals.css", "app/styles/polish.css", "app/styles/glass.css",
   "app/styles/design.css", "app/styles/primitives.css", "app/ui/shell/shell.css", "app/ui/backdrop/backdrop.css", "app/landing/hall/hall.css",
-  "app/account/appearance.css", "app/learn/c2.css"];
+  "app/account/appearance.css", "app/learn/c2.css", "app/styles/pages.css", "app/home.css", "app/learn/library.css"];
 
 export async function buildShell(): Promise<string> {
   const stubs = resolve("e2e/components/fixtures/c2-stubs.tsx");
@@ -31,10 +31,12 @@ export type ShellOpts = {
   width?: number;
   reducedOs?: boolean;
   meDelayMs?: number;
+  /** Answers for other API paths (D4: courses and progress), as the routes send them. */
+  api?: Record<string, unknown>;
 };
 
 export async function openShell(page: Page, bundle: string, o: ShellOpts = {}) {
-  const { path = "/learn", role = "learner", saved = {}, width = 1280, reducedOs = false, meDelayMs = 0 } = o;
+  const { path = "/learn", role = "learner", saved = {}, width = 1280, reducedOs = false, meDelayMs = 0, api = {} } = o;
   const css = CSS_FILES.map((f) => readFileSync(f, "utf8")).join("\n");
   const font = readFileSync("public/fonts/AscentraSemi.woff2");
   await page.setViewportSize({ width, height: width < 600 ? 844 : 900 });
@@ -62,6 +64,7 @@ export async function openShell(page: Page, bundle: string, o: ShellOpts = {}) {
       return json(200, { account: { id: "00000000-0000-4000-8000-000000000009", roleKey: role, role, displayName: "Test person", email: "test@example.com", assignedCourses: [] } });
     }
     if (p === "/api/registration") return json(200, { state: role === null ? "signed_out" : "ready" });
+    if (p in api) return json(200, api[p]);
     if (p === "/api/v1/session") return json(200, { device: { trusted: true }, heartbeatSeconds: 60, deviceLimit: 3, enforcement: {}, session: null });
     return json(404, { error: "not_found", reason: "Not in this test." });
   });

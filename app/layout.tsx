@@ -22,6 +22,7 @@ import "./styles/glass.css";
 import "./styles/design.css";
 import "./styles/primitives.css";
 import "./ui/shell/shell.css";
+import "./styles/pages.css";
 
 export const metadata: Metadata = {
   title: "ASCENTRA",

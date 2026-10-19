@@ -5,7 +5,7 @@ import { Reveal } from "../ui/reveal";
 
 export default function LearnPage() {
   return (
-    <main className="ui-main-wide">
+    <main className="ui-main-wide ds-page">
       <Reveal selector=".ui-block, .ui-course, .ui-path > li" />
       <nav className="ui-crumbs" aria-label="Breadcrumb"><Link href="/">Home</Link></nav>
       <header className="ui-page-head">
