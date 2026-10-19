@@ -289,7 +289,7 @@ input[type=text]{width:100%}
       <li>Competitor counts are order-of-magnitude estimates. Sources disagree a lot: for example, worldwide SaaS company counts range from about 30,000 to 80,000 (<a href="https://ascendixtech.com/number-saas-companies-statistics/" target="_blank" rel="noopener">Ascendix</a>, <a href="https://bloggerspassion.com/saas-statistics/" target="_blank" rel="noopener">BloggersPassion</a>).</li>
       <li>Region views apply each region's share of companies and local adjustments (VC depth, local giants, cost of building) to the global estimate.</li>
       <li>Opportunity score weights giant control most, then crowding and growth, then margins, scalability, funding, failure risk, speed and startup cost.</li>
-      <li>Named startups come from 2026 funding news (<a href="https://qubit.capital/blog/us-seed-weekly-funding-roundup-week-1-may-2026" target="_blank" rel="noopener">Qubit Capital</a>, <a href="https://www.cbinsights.com/company/withai" target="_blank" rel="noopener">CB Insights</a>, <a href="https://startupfeed.in/?p=12086" target="_blank" rel="noopener">StartupFeed</a>). Round sizes were not checked against company announcements.</li>
+      <li>Named startups come from 2026 funding news and deal trackers (Qubit Capital, CB Insights, Dealroom, raising.fi, Axios Pro, PitchBook, funding.tech.eu and others). Each row links its source. Round sizes were not checked against company announcements, and euro and pound rounds are converted to dollars approximately. Rounds of $20M or more are tagged "Seed (large)" because they are no longer small.</li>
       <li>Not financial advice. Early-stage startups fail more often than not. Only invest money you can afford to lose.</li>
     </ul>
   </footer>
@@ -572,7 +572,35 @@ const REAL=[
  {name:"Balerion AI",niche:"fin",stage:"Seed",round:6,meta:"AI for mortgage lending",src:"https://qubit.capital/blog/us-seed-weekly-funding-roundup-week-1-may-2026"},
  {name:"Dextr AI",niche:"vai",stage:"Seed",round:6.7,meta:"India · vertical AI",src:"https://startupfeed.in/?p=12086"},
  {name:"Aina",niche:"vai",stage:"Seed",round:5.5,meta:"India · vertical AI",src:"https://startupfeed.in/?p=12086"},
- {name:"NeoCognition",niche:"vai",stage:"Seed (large)",round:40,meta:"Enterprise agents that learn from their own work · about 15 people",src:"https://blog.innmind.com/ai-seed-funding-2026-insights/"}
+ {name:"NeoCognition",niche:"vai",stage:"Seed (large)",round:40,meta:"Enterprise agents that learn from their own work · about 15 people",src:"https://blog.innmind.com/ai-seed-funding-2026-insights/"},
+ // AI and agent security
+ {name:"Air",niche:"sec",stage:"Seed (large)",round:50,meta:"New York · firewall for AI agents · Sequoia and Greenoaks · Sept 2026",src:"https://raising.fi/news/air-seed-september-2026"},
+ {name:"Beacon Security",niche:"sec",stage:"Seed",round:13,meta:"Agents that automate security teams' work · Notable Capital · July 2026",src:"https://dealroom.co/news/139379-beacon-security-lands-13m-seed-topping-97-of-security-rounds/"},
+ {name:"Manifold",niche:"sec",stage:"Seed",round:8,meta:"AI agent security · March 2026",src:"https://qubit.capital/blog/us-seed-weekly-funding-roundup-week-4-march-2026"},
+ {name:"Capsule Security",niche:"sec",stage:"Seed",round:7,meta:"Real-time monitoring of AI agents · Lama Partners, Forgepoint · spring 2026",src:"https://raising.fi/news/capsule-security-ltd-seed-april-2026"},
+ {name:"Tenet Security",niche:"sec",stage:"Seed",round:6,meta:"Protection for autonomous AI agents · The Westly Group · June 2026",src:"https://alpha-maven.com/story/venture-capital/tenet-security-raises-6-million-seed-funding"},
+ {name:"CodeIntegrity",niche:"sec",stage:"Seed",round:5,meta:"San Francisco · runtime controls for AI agents · May 2026",src:"https://trysignalbase.com/news/funding/codeintegrity-raises-50m-seed-round"},
+ {name:"Zaperon",niche:"sec",stage:"Seed",round:0.73,meta:"Delhi · identity security for people and AI agents",src:"https://dealroom.co/news/158213-zaperon-raises-729k-seed-to-secure-identities-in-the-agentic-ai-era/"},
+ // Developer tools
+ {name:"Entire",niche:"dev",stage:"Seed (large)",round:60,meta:"Ex-GitHub CEO Thomas Dohmke · tools for managing AI-written code · $300M valuation · Feb 2026",src:"https://ecosistemastartup.com/?p=60088"},
+ {name:"CodeFlow AI",niche:"dev",stage:"Seed",round:15,meta:"Toronto · Abstract Ventures · March 2026",src:"https://vcbeast.com/companies/codeflow-ai"},
+ {name:"Nullify",niche:"dev",stage:"Seed",round:12.5,meta:"AI product security for engineering teams · mid-2026",src:"https://www.tryfundable.ai/blog/top-early-stage-dev-tooling-deals"},
+ // Health
+ {name:"Modulus Health",niche:"health",stage:"Seed (large)",round:50,meta:"AI clinical monitoring for physicians · top Q1 2026 healthtech seed",src:"https://pitchbook.brightspotcdn.com/af/8b/50a60ac847209355e6c97fc24cbb/q1-2026-healthtech-vc-trends-preview.pdf"},
+ // Robotics
+ {name:"Exclaim Robotics",niche:"robot",stage:"Seed",round:5,meta:"Playfair Capital, Founderful · Aug 2026",src:"https://seedtable.com/companies/exclaim-robotics"},
+ {name:"Perceptual Robotics",niche:"robot",stage:"Seed",round:5,meta:"UK · £4M round · drone inspection",src:"https://nordic9.com/news/perceptual-robotics-closed-a-4-million-seed-r/"},
+ // Climate and energy software
+ {name:"Soma Energy",niche:"climate",stage:"Seed",round:7,meta:"AI that finds grid capacity for data centers · ex-AWS team · April 2026",src:"https://www.axios.com/pro/climate-deals/2026/04/02/soma-energy-grid-ai-seed"},
+ {name:"Piq Energy",niche:"climate",stage:"Seed",round:5,meta:"Grid interconnection study software · Active Impact Investments",src:"https://mercomindia.com/grid-software-solutions-provider-piq-energy-raises-5-million"},
+ // Fintech
+ {name:"Monument Technology",niche:"fin",stage:"Seed (large)",round:23,meta:"Europe · €21M round · June 2026",src:"https://funding.tech.eu/sectors/fintech/2026/06"},
+ {name:"Cortea",niche:"fin",stage:"Seed",round:13,meta:"Europe · €12M round · June 2026",src:"https://funding.tech.eu/sectors/fintech/2026/06"},
+ {name:"Swoop",niche:"fin",stage:"Seed",round:7.3,meta:"Africa · April 2026",src:"https://au-startups.com/rounds/sector/fintech/2026/africa"},
+ {name:"Agenz",niche:"fin",stage:"Seed",round:5,meta:"Africa · June 2026",src:"https://au-startups.com/rounds/sector/fintech/2026/africa"},
+ {name:"Tangible",niche:"fin",stage:"Seed",round:4.3,meta:"London · debt financing for hardware startups · Feb 2026",src:"https://qubit.capital/blog/weekly-funding-roundup-seed-uk-feb-2026-week-2"},
+ {name:"Finfinity",niche:"fin",stage:"Seed",round:2.4,meta:"Mumbai · loan comparison marketplace · March 2026",src:"https://raising.fi/news/finfinity-seed-march-2026-1"},
+ {name:"CreditChek",niche:"fin",stage:"Seed",round:0.6,meta:"Africa · credit checks · June 2026",src:"https://au-startups.com/rounds/sector/fintech/2026/africa"}
 ];
 let invTab="types",invMetric="overall";
 function nicheOf(id){return data().find(n=>n.id===id)}
