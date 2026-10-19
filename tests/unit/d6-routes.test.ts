@@ -51,7 +51,7 @@ describe("D6 · the new rules are scoped and the calm pages stay still", () => {
   it("every D6 selector targets a restyled page (main.ds-page), never the whole app", () => {
     const selectors = [...d6.matchAll(/([^{}]+)\{/g)].map((m) => m[1].trim()).filter((s) => !s.startsWith("@media"));
     expect(selectors.length).toBeGreaterThan(30);
-    for (const group of selectors) for (const s of splitList(group)) expect(s.trim(), s).toMatch(/^(main\.ds-page|:root(:not\()?(\[data-reduced="1"\]\)?)? main\.ds-page|:root:has\(main\.ds-page)/);
+    for (const group of selectors) for (const s of splitList(group)) expect(s.trim(), s).toMatch(/^(main\.ds-page|\[data-theme="mono"\] main\.ds-page|:root(:not\()?(\[data-reduced="1"\]\)?)? main\.ds-page|:root:has\(main\.ds-page)/);
   });
   it("calm pages: no tilt, no pointer light, no reveal, no gloss or drift, no backdrop motion, no glow; the primary stays still", () => {
     expect(d6).toMatch(/main\.ds-page--calm \{ --tilt-max: 0deg; --spotlight: linear-gradient\(transparent, transparent\); \}/);

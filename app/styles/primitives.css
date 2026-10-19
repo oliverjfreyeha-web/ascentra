@@ -64,6 +64,10 @@
   .ds-glass { background: var(--glass-fallback); }
 }
 
+/* D7: secondary text on glass is a little brighter than on the page, so it keeps 4.5:1 where an orb lights the glass. */
+.ds-glass { --color-ink-muted: var(--glass-ink-muted); }
+.ds-glass :is(.muted, .ui-hint) { color: var(--glass-ink-muted); }
+
 /* The rim: a 1.25px ring whose brightest point turns toward the pointer (--ds-ang). */
 .ds-glass::before {
   content: "";
@@ -89,7 +93,7 @@
   pointer-events: none;
   background:
     linear-gradient(104deg, transparent calc(var(--ds-gl) - 16%), rgb(255 255 255 / 0.3) var(--ds-gl), transparent calc(var(--ds-gl) + 16%)),
-    linear-gradient(122deg, rgb(255 255 255 / 0.22) 0, rgb(255 255 255 / 0.06) 22%, transparent 46%),
+    linear-gradient(122deg, rgb(255 255 255 / 0.12) 0, rgb(255 255 255 / 0.04) 22%, transparent 46%), /* D7: softer (was 0.22), it sat behind labels */
     radial-gradient(140% 72% at 50% -12%, var(--gloss-tint), transparent 62%),
     radial-gradient(260px 200px at var(--mx, 50%) var(--my, 0%), rgb(255 255 255 / 0.16), transparent 70%),
     linear-gradient(0deg, var(--gloss-floor), transparent 36%);
@@ -215,10 +219,7 @@
 :root:not([data-reduced="1"]) .ds-stagger > :nth-child(10) { animation-delay: calc(var(--stagger-step) * 9); }
 :root:not([data-reduced="1"]) .ds-stagger > :nth-child(11) { animation-delay: calc(var(--stagger-step) * 10); }
 :root:not([data-reduced="1"]) .ds-stagger > :nth-child(n + 12) { animation-delay: calc(var(--stagger-step) * 11); }
-:root:not([data-reduced="1"]) .ds-rise { animation: ds-rise var(--duration-enter) var(--ease-glide) both; }
-:root:not([data-reduced="1"]) .ds-drop { animation: ds-drop var(--duration-enter) var(--ease-glide) both; }
 @keyframes ds-rise { from { opacity: 0; transform: translateY(26px) scale(0.965); } to { opacity: 1; transform: none; } }
-@keyframes ds-drop { from { opacity: 0; transform: translateY(-14px); } to { opacity: 1; transform: none; } }
 /* Draw-in path: give the <path> pathLength="1". Paint only (no layout): the stroke's dash offset. */
 :root:not([data-reduced="1"]) .ds-draw { stroke-dasharray: 1; animation: ds-draw 1.4s var(--ease-glide) both; }
 @keyframes ds-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
@@ -232,6 +233,6 @@
 .ds-glass--hud.ds-tilt, .ds-widget.ds-tilt { transform: none; }
 
 @media (prefers-reduced-motion: reduce) {
-  .ds-glass::after, .ds-btn--primary, .ds-stagger > *, .ds-rise, .ds-drop, .ds-draw { animation: none !important; }
+  .ds-glass::after, .ds-btn--primary, .ds-stagger > *, .ds-draw { animation: none !important; }
   .ds-tilt { transform: none; }
 }

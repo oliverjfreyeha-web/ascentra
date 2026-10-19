@@ -46,7 +46,7 @@ test("Liquid: each glass panel gets a lens with the blur first; buttons and a Fr
   expect(await filters(page)).toBe(5);
   await expect(page.locator(".ds-btn[data-lens]")).toHaveCount(0);
   await expect(page.getByTestId("frost-panel")).not.toHaveAttribute("data-lens", "");
-  expect(await page.getByTestId("frost-panel").evaluate((e) => getComputedStyle(e).backdropFilter)).toMatch(/^blur\(22px\)/);
+  expect(await page.getByTestId("frost-panel").evaluate((e) => getComputedStyle(e).backdropFilter)).toMatch(/^blur\(16px\)/);
 });
 
 test("Frosted removes every lens and inline value; Liquid brings them back; Lite drops them", async ({ page }) => {
@@ -58,7 +58,7 @@ test("Frosted removes every lens and inline value; Liquid brings them back; Lite
   expect(await filters(page)).toBe(0);
   await expect(page.locator("[data-lens]")).toHaveCount(0);
   expect(await page.locator(".ds-glass").evaluateAll((els) => els.filter((e) => (e as HTMLElement).style.getPropertyValue("--lg")).length)).toBe(0);
-  expect(await page.getByTestId("panel-0").evaluate((e) => getComputedStyle(e).backdropFilter)).toMatch(/^blur\(22px\) saturate\(1\.6\)/);
+  expect(await page.getByTestId("panel-0").evaluate((e) => getComputedStyle(e).backdropFilter)).toMatch(/^blur\(16px\) saturate\(1\.6\)/);
 
   await setRoot(page, "data-glass", "liquid");
   await settle(page);

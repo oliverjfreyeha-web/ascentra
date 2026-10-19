@@ -162,7 +162,7 @@
   --glow-wash: radial-gradient(60% 80% at 50% 0%, rgb(var(--glow-frozen) / 0.09), transparent 70%);
   --duration-drift: 32s;            /* ambient glow drift (landing only) */
   --duration-breathe: 5.5s;         /* the single main call-to-action */
-  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1); /* D7: no overshoot (was 0.34, 1.56, 0.64, 1, a bounce); same as --ease-glide */
 
   /* ── Type (D2b): oversized display, mono labels ── */
   --text-mega: clamp(3.25rem, 9.5vw, 8.5rem);
@@ -222,6 +222,7 @@
 
   --color-ink: #f4f7fc;
   --color-ink-muted: #b7c1d4;
+  --glass-ink-muted: #d3dae8; /* D7: muted text on glass and in the HUD (4.5:1 over the brightest glass) */
   --color-frost: #a0bddb;
   --color-ok: #7fd1a6;
   --color-gold: #f7c948;
@@ -274,15 +275,16 @@
   --radius-glass-sm: 20px;
   --radius-glass: 24px;
   --radius-glass-lg: 30px;
-  --glass-fill: linear-gradient(150deg, rgb(96 104 190 / 0.46), rgb(30 32 78 / 0.52));
+  /* D7: a little darker, with a softer top wash and reflection, so muted text on glass keeps 4.5:1 over the bright orbs. */
+  --glass-fill: linear-gradient(150deg, rgb(72 78 160 / 0.5), rgb(22 24 62 / 0.62));
   --glass-rim-a: rgb(255 255 255 / 0.85);
   --glass-rim-b: rgb(160 189 219 / 0.12);
   --blur-hud: 40px;     /* nav and popovers */
-  --blur-panel: 22px;   /* other panels */
+  --blur-panel: 16px;   /* other panels (D7: was 22px; the same look over the soft backdrop, less blur work) */
   --blur-liquid: 5px;   /* Liquid: before the lens */
   --blur-fallback: 9px; /* Liquid without the lens */
   --glass-saturate: 160%;
-  --shadow-glass: inset 0 1.5px 0 rgb(255 255 255 / 0.65), inset 1.5px 0 0 rgb(255 255 255 / 0.2), inset 0 30px 50px -28px rgb(255 255 255 / 0.26), inset 0 -40px 60px -32px rgb(140 130 255 / 0.34), 0 34px 60px -26px rgb(4 4 36 / 0.8);
+  --shadow-glass: inset 0 1.5px 0 rgb(255 255 255 / 0.65), inset 1.5px 0 0 rgb(255 255 255 / 0.2), inset 0 30px 50px -28px rgb(255 255 255 / 0.16), inset 0 -40px 60px -32px rgb(140 130 255 / 0.34), 0 34px 60px -26px rgb(4 4 36 / 0.8);
   --shadow-press: 0 6px 16px -6px rgb(255 255 255 / 0.5);
   --focus-color: var(--color-accent);
   --selection-bg: var(--color-accent);
@@ -320,7 +322,7 @@
   /* D2: Liquid glass (the lens is added by app/ui/glass-lens.tsx in Chromium; elsewhere the fallback filter). */
   --glass-fill-liquid: linear-gradient(150deg, rgb(255 255 255 / 0.1), rgb(255 255 255 / 0.015) 48%, rgb(150 180 255 / 0.06));
   --shadow-glass-liquid: inset 0 1.5px 0 rgb(255 255 255 / 0.9), inset 0 0 0 1px rgb(255 255 255 / 0.2), inset 0 -1.5px 0 rgb(255 255 255 / 0.3), inset 0 14px 22px -16px rgb(255 255 255 / 0.55), inset 0 -20px 30px -24px rgb(190 210 255 / 0.4), 0 24px 44px -22px rgb(0 0 0 / 0.6);
-  --gloss-tint: rgb(210 220 255 / 0.28);
+  --gloss-tint: rgb(210 220 255 / 0.18);
   --gloss-floor: rgb(150 160 255 / 0.16);
 
   /* More layers, between the existing ones. */
@@ -350,6 +352,7 @@
 
   --color-ink: #f6f7f9;
   --color-ink-muted: #b3b7c0;
+  --glass-ink-muted: #d0d3da;
   --color-frost: #d9dce3;
   --widget-streak: #ff9a4d;
   --widget-points: #f3c76b;
@@ -368,13 +371,13 @@
   --seg-selected: linear-gradient(180deg, #fbf3e3, #e3cfa8);
   --seg-selected-ink: #14110a;
 
-  --glass-fill: linear-gradient(150deg, rgb(90 92 100 / 0.46), rgb(18 18 21 / 0.62));
+  --glass-fill: linear-gradient(150deg, rgb(74 76 84 / 0.5), rgb(18 18 21 / 0.66)); /* D7: a little darker (muted text 4.5:1) */
   --glass-fill-liquid: linear-gradient(150deg, rgb(255 255 255 / 0.09), rgb(255 255 255 / 0.012) 48%, rgb(255 235 210 / 0.04));
-  --gloss-tint: rgb(255 244 230 / 0.22);
+  --gloss-tint: rgb(255 244 230 / 0.16);
   --gloss-floor: rgb(255 255 255 / 0.07);
   --glass-rim-a: rgb(255 244 226 / 0.85);
   --glass-rim-b: rgb(255 244 226 / 0.1);
-  --shadow-glass: inset 0 1.5px 0 rgb(255 250 240 / 0.6), inset 1.5px 0 0 rgb(255 250 240 / 0.16), inset 0 30px 50px -28px rgb(255 250 240 / 0.2), inset 0 -40px 60px -32px rgb(0 0 0 / 0.3), 0 34px 60px -26px rgb(0 0 0 / 0.8);
+  --shadow-glass: inset 0 1.5px 0 rgb(255 250 240 / 0.6), inset 1.5px 0 0 rgb(255 250 240 / 0.16), inset 0 30px 50px -28px rgb(255 250 240 / 0.12), inset 0 -40px 60px -32px rgb(0 0 0 / 0.3), 0 34px 60px -26px rgb(0 0 0 / 0.8);
   --scrollbar-thumb: rgb(217 220 227 / 0.35);
 
   --icon-line-1: #ffffff;

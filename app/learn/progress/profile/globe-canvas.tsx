@@ -14,6 +14,8 @@ const COLORS = {
  * next/dynamic with ssr: false from ./globe-widget.tsx, so it is its own chunk and never on the server. Decorative:
  * the progress it stands for is written beside it. Turns slowly while motion is on; still when Reduced or Off; paused
  * while hidden or off screen; destroyed on unmount.
+ * D7: follows a theme switch made while the page is open (cobe's update redraws with the new colours at once, also
+ * while the globe is still).
  */
 export default function GlobeCanvas({ size }: { size: number }) {
   const ref = useRef<HTMLCanvasElement>(null);
@@ -21,10 +23,10 @@ export default function GlobeCanvas({ size }: { size: number }) {
     const canvas = ref.current;
     if (!canvas) return;
     const root = document.documentElement;
-    const theme = root.getAttribute("data-theme") === "mono" ? "mono" : "iris";
+    const themeNow = () => (root.getAttribute("data-theme") === "mono" ? "mono" : "iris");
     const still = () => root.getAttribute("data-reduced") === "1";
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const c = COLORS[theme];
+    const c = COLORS[themeNow()];
     let globe: ReturnType<typeof createGlobe> | null = null;
     try {
       globe = createGlobe(canvas, {
@@ -43,7 +45,12 @@ export default function GlobeCanvas({ size }: { size: number }) {
       globe?.update({ phi });
     };
     frame = requestAnimationFrame(tick);
-    return () => { cancelAnimationFrame(frame); io.disconnect(); globe?.destroy(); };
+    const recolor = new MutationObserver(() => {
+      const n = COLORS[themeNow()];
+      globe?.update({ phi, baseColor: [...n.base], markerColor: [...n.marker], glowColor: [...n.glow] });
+    });
+    recolor.observe(root, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => { cancelAnimationFrame(frame); io.disconnect(); recolor.disconnect(); globe?.destroy(); };
   }, [size]);
   return <canvas ref={ref} className="pf-globe__canvas" width={size} height={size} style={{ width: size, height: size }} aria-hidden="true" />;
 }

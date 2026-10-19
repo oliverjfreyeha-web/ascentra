@@ -49,7 +49,7 @@ main.ds-page:not(.landing) :is(.ui-facts > div, .ui-consent, .ui-answers, .ui-st
 main.ds-page:not(.landing) :is(.ui-choice:has(input:checked), .ui-consent:has(input:checked), .ui-steps > li[data-state="now"]) { --surface: color-mix(in srgb, var(--color-raised) 92%, var(--color-accent)); --edge: var(--edge-light-strong); }
 main.ds-page:not(.landing) :is(.ui-lesson .ui-takeaways, .ui-lesson .ui-lesson-end, .ui-lesson .ui-practice) { --edge: var(--edge-quiet); }
 main.ds-page:not(.landing) .ui-ai-notice { --surface: color-mix(in srgb, var(--color-raised) 92%, var(--color-accent)); --edge: linear-gradient(155deg, color-mix(in srgb, var(--color-accent) 75%, transparent), color-mix(in srgb, var(--color-accent) 30%, transparent) 40%, color-mix(in srgb, var(--color-accent) 40%, transparent)); }
-main.ds-page:not(.landing) .ui-act[data-graded="true"] { --edge: linear-gradient(155deg, color-mix(in srgb, var(--color-accent) 70%, transparent), color-mix(in srgb, var(--color-accent) 25%, transparent) 45%, color-mix(in srgb, var(--color-accent) 40%, transparent)); box-shadow: inset 3px 0 0 color-mix(in srgb, var(--color-accent) 85%, transparent); }
+main.ds-page:not(.landing) .ui-act[data-graded="true"] { --edge: linear-gradient(155deg, color-mix(in srgb, var(--color-accent) 70%, transparent), color-mix(in srgb, var(--color-accent) 25%, transparent) 45%, color-mix(in srgb, var(--color-accent) 40%, transparent)); box-shadow: none; }
 main.ds-page:not(.landing) .ui-act[data-graded="true"] .ui-act__grade { background: color-mix(in srgb, var(--color-accent) 16%, transparent); }
 main.ds-page:not(.landing) .ui-act[data-graded="false"] { background: color-mix(in srgb, var(--color-surface) 90%, var(--color-base)); }
 main.ds-page:not(.landing) .ui-act__card { background: linear-gradient(color-mix(in srgb, var(--color-raised) 96%, transparent), color-mix(in srgb, var(--color-raised) 96%, transparent)) padding-box, var(--edge-light-strong) border-box; }
@@ -70,6 +70,8 @@ main.ds-page:not(.landing) :is(input:not([type="checkbox"]):not([type="radio"]),
 main.ds-page:not(.landing) :is(input:not([type="checkbox"]):not([type="radio"]):not([class*="ui-"]), select:not([class*="ui-"]), textarea:not([class*="ui-"])):focus-visible { box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.35), 0 0 0 3px color-mix(in srgb, var(--color-accent) 25%, transparent); }
 main.ds-page:not(.landing) :is(input[type="checkbox"], input[type="radio"]):checked { background-color: var(--color-accent); }
 main.ds-page:not(.landing) button.link { text-decoration-color: color-mix(in srgb, var(--color-accent) 40%, transparent); }
+/* D7: text-link buttons are at least 24px tall (WCAG 2.2 target size), with no change to how they read. */
+main.ds-page:not(.landing) button.link { min-height: 1.5rem; }
 
 /* Primary actions: the design system's primary (iridescent on a dark base in Iris, champagne in Mono). It drifts only on
    learner pages while motion is on; calm pages keep it still. */
@@ -92,7 +94,16 @@ main.ds-page:not(.landing) :is(h1, h2):not([class]),
 main.ds-page:not(.landing) :is(.ui-label, .ui-eyebrow), main.ds-page.ui-admin thead th { font-family: var(--font-ascentra); font-weight: var(--weight-regular); text-transform: uppercase; }
 main.ds-page:not(.landing) :is(h1, h2):not([class]) { letter-spacing: 0.03em; line-height: var(--leading-tight); color: var(--color-ink); }
 main.ds-page:not(.landing) :is(.ui-label, .ui-eyebrow), main.ds-page.ui-admin thead th { letter-spacing: var(--tracking-caps); }
+/* D7: breadcrumbs sit on the page over the backdrop; the brighter muted ink keeps them at 4.5:1. */
+main.ds-page:not(.landing) :is(.ui-crumbs, .ui-crumbs a) { color: var(--color-ink-muted); }
 main.ds-page:not(.landing) .ui-crumbs a:hover { color: var(--color-ink); }
+
+/* D7: Mono's light sits behind the page titles and the HUD (68% across, 13vh down). Text there gets a dark halo, so it
+   keeps its contrast against the light (WCAG counts a halo as the text's background); controls keep their own ink. */
+[data-theme="mono"] main.ds-page:not(.landing) { text-shadow: 0 0 2px rgb(0 0 0 / 0.9), 0 0 8px rgb(0 0 0 / 0.8), 0 0 18px rgb(0 0 0 / 0.6); }
+[data-theme="mono"] main.ds-page:not(.landing) :is(button, .ds-btn, .ui-btn, input, select, textarea, .ds-seg) { text-shadow: none; }
+/* D7: the admin header bar's links read at 4.5:1 on its glass. */
+main.ds-page:not(.landing).ui-admin > p.muted:first-child a { color: var(--color-ink-muted); }
 
 /* Admin: the D3 dense layout, now on glass panels (no blur: there is no backdrop behind admin, and it stays fast). */
 main.ds-page.ui-admin > p.muted:first-child { border-color: transparent; background: var(--glass-fill); box-shadow: var(--shadow-glass); border-radius: var(--radius-glass); }
@@ -113,6 +124,21 @@ main.ds-page:not(.landing) .admin-home__links a { display: flex; align-items: ce
   background: var(--ds-well); box-shadow: inset 0 0 0 1px var(--color-line); color: var(--color-ink); font-weight: var(--weight-medium); text-decoration: none; }
 main.ds-page:not(.landing) .admin-home__links a:hover { box-shadow: inset 0 0 0 1px var(--color-line-strong); background: color-mix(in srgb, var(--color-raised) 80%, transparent); }
 
+/* D7: no side stripes. Each one becomes a full border or a tint in the same colour, so what it marks stays visible:
+   notes and the overlap note, quotes and source documents in practice, graded activities (their solid frame and filled
+   chip already say "graded"), state messages, error rows in tables, the source a link jumped to, and toasts. */
+main.ds-page:not(.landing) :is(.c2-notice, .choose__note) { border-left: 0; border: 1px solid color-mix(in srgb, var(--color-accent) 45%, transparent); border-radius: var(--radius-md); }
+main.ds-page:not(.landing) .choose__overlap { border-left: 0; padding-left: 0; }
+main.ds-page:not(.landing) .ui-practice blockquote { border-left: 0; border: 1px solid var(--color-line-strong); border-radius: var(--radius-sm); }
+main.ds-page:not(.landing) .ui-act__doc { border-left: 1px solid var(--color-line); }
+main.ds-page:not(.landing) .ui-state { padding-left: var(--space-4); }
+main.ds-page:not(.landing) .ui-state::before { content: none; }
+main.ds-page:not(.landing) .ui-state--error { border-color: color-mix(in srgb, var(--color-danger) 75%, transparent); background-color: color-mix(in srgb, var(--color-danger) 8%, var(--ds-well)); }
+main.ds-page:not(.landing) .ui-table tbody tr.is-error td:first-child { box-shadow: none; }
+main.ds-page:not(.landing) .ui-table tbody tr.is-error { background: var(--tint-danger); }
+main.ds-page:not(.landing) .ui-sources ol > li:target { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-accent) 60%, transparent); }
+:root:has(main.ds-page:not(.landing)) .ui-toast { border-left: 1px solid color-mix(in srgb, var(--toast-hue, var(--color-accent)) 70%, transparent); border-color: color-mix(in srgb, var(--toast-hue, var(--color-accent)) 70%, transparent); }
+
 /* Calm pages: no decorative motion beyond the shared entrance. */
 main.ds-page--calm { --tilt-max: 0deg; --spotlight: linear-gradient(transparent, transparent); }
 main.ds-page--calm :is(.ui-card, .ui-panel, .ui-block, .ui-choice, .ui-rows, .ui-path > li, .ui-tile, .ui-hero) { --spotlight: linear-gradient(transparent, transparent); }
@@ -128,4 +154,7 @@ main.ds-page--calm :is(.ds-icon, .ds-icon *) { animation: none !important; }
 
 /* The shared page entrance follows the Motion setting on restyled pages (it used to follow only the device setting). */
 :root[data-reduced="1"] main.ds-page:not(.landing) { animation: none; }
-:root[data-reduced="1"] main.ds-page:not(.landing) [data-reveal] { opacity: 1 !important; transform: none !important; }
+:root[data-reduced="1"] main.ds-page [data-reveal] { opacity: 1 !important; transform: none !important; }
+/* D7: Reduced and Off stop everything that still moved on restyled pages (meter fills, loading shimmer, Home's lower
+   sections and their reveals): no animation at all, and no transition of position or fade. Colour changes on hover stay. */
+:root[data-reduced="1"] main.ds-page *, :root[data-reduced="1"] main.ds-page *::before, :root[data-reduced="1"] main.ds-page *::after { animation: none !important; transition-property: color, background-color, border-color, box-shadow, text-decoration-color !important; }

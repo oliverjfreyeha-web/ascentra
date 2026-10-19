@@ -19,7 +19,8 @@
 
 /* Orbs: three soft colour fields. The group leans toward the pointer (--px, --py from -1 to 1); each orb drifts. */
 .bd__orbs { transform: translate3d(calc(var(--px) * -24px), calc(var(--py) * -16px), 0); transition: transform 900ms var(--ease-glide); }
-.bd__orb { border-radius: 50%; filter: blur(70px); opacity: 0.5; }
+/* D7: blur 36px (was 70px): the orbs are already soft gradients, so the look is the same at about half the blur work. */
+.bd__orb { border-radius: 50%; filter: blur(36px); opacity: 0.5; }
 .bd__orb--1 { width: 62vmax; height: 62vmax; left: -18vmax; top: -22vmax; background: radial-gradient(circle, var(--accent-violet), transparent 68%); }
 .bd__orb--2 { width: 50vmax; height: 50vmax; right: -16vmax; top: 12vh; background: radial-gradient(circle, var(--accent-purple), transparent 68%); opacity: 0.38; }
 .bd__orb--3 { width: 44vmax; height: 44vmax; left: 18vw; bottom: -26vmax; background: radial-gradient(circle, var(--color-frost), transparent 66%); opacity: 0.3; }
@@ -37,7 +38,7 @@
 .bd__light { display: none; }
 [data-theme="mono"] .bd__light { display: block; }
 [data-theme="mono"] .bd__floor { display: none; }
-[data-theme="mono"] .bd__orb { opacity: 0.16; filter: blur(80px) grayscale(1); }
+[data-theme="mono"] .bd__orb { opacity: 0.16; filter: blur(36px) grayscale(1); }
 [data-theme="mono"] .bd__dust i { background: rgb(255 250 240 / 0.85); box-shadow: 0 0 8px 1px rgb(255 240 220 / 0.6); }
 [data-theme="mono"] .bd__vignette { background: radial-gradient(120% 90% at 50% 30%, transparent 40%, rgb(0 0 0 / 0.78)); }
 .bd__core, .bd__falloff, .bd__bloom, .bd__rays { left: var(--light-x); top: var(--light-y); width: 0; height: 0; }

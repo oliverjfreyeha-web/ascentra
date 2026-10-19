@@ -53,31 +53,32 @@
 }
 :root:not([data-reduced="1"]) .ds-icon__a { animation-delay: 120ms; }
 
-:root:not([data-reduced="1"]) :is(button, a, [role="button"], .ds-hover):is(:hover, :focus-visible) :is(.ds-icon--gear, .ds-icon--repeat, .ds-icon--refresh) { animation: ds-ic-spin var(--duration-icon) var(--ease-glide); }
-:root:not([data-reduced="1"]) :is(button, a, [role="button"], .ds-hover):is(:hover, :focus-visible) :is(.ds-icon--plus, .ds-icon--x) { animation: ds-ic-quarter 500ms var(--ease-glide); }
-:root:not([data-reduced="1"]) :is(button, a, [role="button"], .ds-hover):is(:hover, :focus-visible) .ds-icon--bolt { animation: ds-ic-jolt 500ms var(--ease-glide); }
-:root:not([data-reduced="1"]) :is(button, a, [role="button"], .ds-hover):is(:hover, :focus-visible) .ds-icon--mail { animation: ds-ic-flap 600ms var(--ease-glide); }
-:root:not([data-reduced="1"]) :is(button, a, [role="button"], .ds-hover):is(:hover, :focus-visible) :is(.ds-icon--check, .ds-icon--shield, .ds-icon--star, .ds-icon--target) { animation: ds-ic-pop 500ms var(--ease-glide); }
-:root:not([data-reduced="1"]) :is(button, a, [role="button"], .ds-hover):is(:hover, :focus-visible) :is(.ds-icon--trophy, .ds-icon--search, .ds-icon--flame) { animation: ds-ic-sway var(--duration-icon) var(--ease-glide); }
-:root:not([data-reduced="1"]) :is(button, a, [role="button"], .ds-hover):is(:hover, :focus-visible) :is(.ds-icon--upload, .ds-icon--chart) { animation: ds-ic-rise var(--duration-icon) var(--ease-glide); }
-:root:not([data-reduced="1"]) :is(button, a, [role="button"], .ds-hover):is(:hover, :focus-visible) .ds-icon--tag { animation: ds-ic-swing 800ms var(--ease-glide); transform-origin: 20% 20%; }
-:root:not([data-reduced="1"]) :is(button, a, [role="button"], .ds-hover):is(:hover, :focus-visible) :is(.ds-icon--user, .ds-icon--users, .ds-icon--chat, .ds-icon--home, .ds-icon--lock, .ds-icon--clock, .ds-icon--dots) { animation: ds-ic-bob 600ms var(--ease-glide); }
-:root:not([data-reduced="1"]) :is(button, a, [role="button"], .ds-hover):is(:hover, :focus-visible) :is(.ds-icon--map, .ds-icon--back) { animation: ds-ic-nudge 600ms var(--ease-glide); }
-:root:not([data-reduced="1"]) :is(button, a, [role="button"], .ds-hover):is(:hover, :focus-visible) :is(.ds-icon--note, .ds-icon--film, .ds-icon--book, .ds-icon--card) .ds-icon__a { animation: ds-ic-draw var(--duration-icon) var(--ease-glide) both; }
-:root:not([data-reduced="1"]) :is(button, a, [role="button"], .ds-hover):is(:hover, :focus-visible) .ds-icon--grid .ds-icon__a { animation: ds-ic-pop 600ms var(--ease-glide); }
+:root:not([data-reduced="1"]) :is(button, a, [role="button"]):is(:hover, :focus-visible) :is(.ds-icon--gear, .ds-icon--repeat, .ds-icon--refresh) { animation: ds-ic-spin var(--duration-icon) var(--ease-glide); }
+:root:not([data-reduced="1"]) :is(button, a, [role="button"]):is(:hover, :focus-visible) :is(.ds-icon--plus, .ds-icon--x) { animation: ds-ic-quarter 500ms var(--ease-glide); }
+:root:not([data-reduced="1"]) :is(button, a, [role="button"]):is(:hover, :focus-visible) .ds-icon--bolt { animation: ds-ic-jolt 500ms var(--ease-glide); }
+:root:not([data-reduced="1"]) :is(button, a, [role="button"]):is(:hover, :focus-visible) .ds-icon--mail { animation: ds-ic-flap 600ms var(--ease-glide); }
+:root:not([data-reduced="1"]) :is(button, a, [role="button"]):is(:hover, :focus-visible) :is(.ds-icon--check, .ds-icon--shield, .ds-icon--star, .ds-icon--target) { animation: ds-ic-pop 500ms var(--ease-glide); }
+:root:not([data-reduced="1"]) :is(button, a, [role="button"]):is(:hover, :focus-visible) :is(.ds-icon--trophy, .ds-icon--search, .ds-icon--flame) { animation: ds-ic-sway var(--duration-icon) var(--ease-glide); }
+:root:not([data-reduced="1"]) :is(button, a, [role="button"]):is(:hover, :focus-visible) :is(.ds-icon--upload, .ds-icon--chart) { animation: ds-ic-rise var(--duration-icon) var(--ease-glide); }
+:root:not([data-reduced="1"]) :is(button, a, [role="button"]):is(:hover, :focus-visible) .ds-icon--tag { animation: ds-ic-swing 800ms var(--ease-glide); transform-origin: 20% 20%; }
+:root:not([data-reduced="1"]) :is(button, a, [role="button"]):is(:hover, :focus-visible) :is(.ds-icon--user, .ds-icon--users, .ds-icon--chat, .ds-icon--home, .ds-icon--lock, .ds-icon--clock, .ds-icon--dots) { animation: ds-ic-bob 600ms var(--ease-glide); }
+:root:not([data-reduced="1"]) :is(button, a, [role="button"]):is(:hover, :focus-visible) :is(.ds-icon--map, .ds-icon--back) { animation: ds-ic-nudge 600ms var(--ease-glide); }
+:root:not([data-reduced="1"]) :is(button, a, [role="button"]):is(:hover, :focus-visible) :is(.ds-icon--note, .ds-icon--film, .ds-icon--book, .ds-icon--card) .ds-icon__a { animation: ds-ic-draw var(--duration-icon) var(--ease-glide) both; }
+:root:not([data-reduced="1"]) :is(button, a, [role="button"]):is(:hover, :focus-visible) .ds-icon--grid .ds-icon__a { animation: ds-ic-pop 600ms var(--ease-glide); }
 
 @media (prefers-reduced-motion: reduce) {
   .ds-icon, .ds-icon * { animation: none !important; }
 }
 
+/* D7: every hover move goes out and back once; none overshoots or swings past rest (no bounce). */
 @keyframes ds-ic-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
 @keyframes ds-ic-spin { to { transform: rotate(360deg); } }
 @keyframes ds-ic-quarter { to { transform: rotate(180deg); } }
-@keyframes ds-ic-jolt { 0% { transform: none; } 20% { transform: translate(-2px, 2px) rotate(-14deg) scale(1.1); } 45% { transform: translate(2px, -2px) rotate(12deg) scale(1.15); } 70% { transform: translate(-1px, 1px) rotate(-6deg); } 100% { transform: none; } }
-@keyframes ds-ic-flap { 0% { transform: none; } 35% { transform: translateY(-4px) rotate(-14deg) scale(1.1); } 70% { transform: translateY(1px) rotate(4deg); } 100% { transform: none; } }
-@keyframes ds-ic-pop { 0% { transform: scale(1); } 40% { transform: scale(1.3); } 70% { transform: scale(0.95); } 100% { transform: scale(1); } }
-@keyframes ds-ic-sway { 0%, 100% { transform: rotate(0); } 20% { transform: rotate(-16deg); } 50% { transform: rotate(12deg); } 75% { transform: rotate(-6deg); } }
+@keyframes ds-ic-jolt { 0% { transform: none; } 40% { transform: translate(1px, -1px) rotate(-12deg) scale(1.1); } 100% { transform: none; } }
+@keyframes ds-ic-flap { 0% { transform: none; } 45% { transform: translateY(-3px) rotate(-10deg) scale(1.08); } 100% { transform: none; } }
+@keyframes ds-ic-pop { 0% { transform: scale(1); } 45% { transform: scale(1.18); } 100% { transform: scale(1); } }
+@keyframes ds-ic-sway { 0%, 100% { transform: rotate(0); } 45% { transform: rotate(-12deg); } }
 @keyframes ds-ic-rise { 0% { transform: translateY(0); } 35% { transform: translateY(-3px); } 100% { transform: translateY(0); } }
-@keyframes ds-ic-swing { 0%, 100% { transform: rotate(0); } 30% { transform: rotate(16deg); } 65% { transform: rotate(-8deg); } }
+@keyframes ds-ic-swing { 0%, 100% { transform: rotate(0); } 45% { transform: rotate(14deg); } }
 @keyframes ds-ic-bob { 0%, 100% { transform: translateY(0); } 40% { transform: translateY(-2px) scale(1.06); } }
 @keyframes ds-ic-nudge { 0%, 100% { transform: translateX(0); } 40% { transform: translateX(-2px); } }

@@ -94,3 +94,8 @@
 [data-theme="mono"] .fx-burst i { background: #fff3e0; box-shadow: 0 0 8px 2px rgb(255 214 160 / 0.8); }
 @keyframes fx-spark { from { transform: translate(0, 0) scale(1); opacity: 1; } to { transform: translate(var(--dx), var(--dy)) scale(0.2); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .fx-glow, .fx-burst { display: none; } .app-hud__tab::after { animation: none !important; } }
+
+/* D7: in Mono the HUD sits in front of the light; its words get the same dark halo as the page titles (4.5:1). */
+[data-theme="mono"] .app-hud :is(.app-hud__tab:not([aria-current="page"]), .app-hud__brand, .staff-nav a) { text-shadow: 0 0 2px rgb(0 0 0 / 0.9), 0 0 8px rgb(0 0 0 / 0.8), 0 0 18px rgb(0 0 0 / 0.6); }
+/* D7: tab names in the HUD use the glass muted ink (4.5:1 on the HUD glass in both themes). */
+.app-hud__tab:not([aria-current="page"]):not(:hover), .app-hud .staff-nav a:not(:hover) { color: var(--glass-ink-muted); }

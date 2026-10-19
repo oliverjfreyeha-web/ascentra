@@ -126,3 +126,34 @@ for (const level of ["simple", "off"]) {
     expect(names).toEqual([]);
   });
 }
+
+// D7: the known D5 issue. The globe used to keep the old theme's colours until the next visit.
+test("switching the theme while on the Profile recolours the globe at once (also when motion is off)", async ({ page }) => {
+  await open(page, PROFILE_PROGRESS, { saved: { "ascentra.motion": "off" } });
+  const canvas = page.locator(".pf-globe__canvas[data-on]");
+  await canvas.waitFor();
+  // Only the canvas's own pixels: everything behind it is hidden and the page is plain black in both themes.
+  await page.addStyleTag({ content: ".bd, .pf-globe__poster { visibility: hidden !important; } html, body, main, .pf-w { background: #000 !important; box-shadow: none !important; } .pf-w::before, .pf-w::after { display: none !important; }" });
+  await page.waitForTimeout(400);
+  const mean = async () => {
+    const b64 = (await canvas.screenshot()).toString("base64");
+    return page.evaluate(async (src) => {
+      const img = new Image(); img.src = `data:image/png;base64,${src}`; await img.decode();
+      const c = document.createElement("canvas"); c.width = img.width; c.height = img.height;
+      const x = c.getContext("2d")!; x.drawImage(img, 0, 0);
+      const d = x.getImageData(0, 0, img.width, img.height).data, m = [0, 0, 0];
+      for (let k = 0; k < d.length; k += 4) { m[0] += d[k]; m[1] += d[k + 1]; m[2] += d[k + 2]; }
+      return m.map((v) => v / (d.length / 4));
+    }, b64);
+  };
+  const iris = await mean();
+  expect(iris[2]).toBeGreaterThan(iris[0]); // cool
+  await page.evaluate(() => document.documentElement.setAttribute("data-theme", "mono"));
+  await page.waitForTimeout(300);
+  const mono = await mean();
+  expect(mono[0]).toBeGreaterThan(mono[2]); // warm
+  await page.evaluate(() => document.documentElement.setAttribute("data-theme", "iris"));
+  await page.waitForTimeout(300);
+  const back = await mean();
+  for (let i = 0; i < 3; i++) expect(Math.abs(back[i] - iris[i])).toBeLessThan(4); // the same colours again (rendering noise only)
+});
