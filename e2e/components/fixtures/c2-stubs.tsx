@@ -17,3 +17,8 @@ export const usePathname = () => window.location.pathname;
 export default function Link(props: AnchorHTMLAttributes<HTMLAnchorElement>) {
   return <a {...props} />;
 }
+// Design rebuild D6: Clerk's hosted forms can't render without Clerk, so they stand in as nothing; the passkey step is
+// the app's own button around them.
+export const SignIn = () => null;
+export const SignUp = () => null;
+export const useSignIn = () => ({ signIn: { passkey: async () => ({ error: null }), status: "needs_identifier", finalize: async () => undefined }, fetchStatus: "idle" });

@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { pointerVars } from "./glass/pointer";
-import { FX_TARGETS } from "./shell/cursor-fx";
+import { FX_TARGETS, isCalmPage } from "./shell/cursor-fx";
 
 const SURFACES = ".ui-card, .ui-panel, .ui-block, .ui-choice, .ui-rows, .ui-path > li, .ui-tile, .ui-auth__card, .ui-hero";
 /** Design rebuild D2: the rebuild's surfaces that read the pointer (glass rim and gloss, button highlight, tilt). */
@@ -16,6 +16,8 @@ const DS_SURFACES = [".ds-glass", ".ds-btn--primary", ".ds-tilt"] as const;
  * section cards (--tx, --ty, -1..1). Nothing is set while html[data-reduced] is "1".
  * Design rebuild D3: and the backdrop's small parallax (--px, --py on .bd) and the cursor glow (.fx-glow, shown only
  * over cards and buttons). Still one listener.
+ * Design rebuild D6: on calm pages (main.ds-page--calm: admin, billing, safety, Guardian, sign-in) the pointer moves
+ * nothing: no rim turning, button highlight, tilt, backdrop lean or glow. The older surface spotlight is off there in CSS.
  */
 export function Spotlight() {
   useEffect(() => {
@@ -40,7 +42,8 @@ export function Spotlight() {
       }
       // The rebuild's surfaces: the nearest of each kind under the pointer (a button inside a glass panel gets both).
       const next = new Set<HTMLElement>();
-      if (root.getAttribute("data-reduced") !== "1") {
+      const calm = isCalmPage();
+      if (root.getAttribute("data-reduced") !== "1" && !calm) {
         for (const sel of DS_SURFACES) {
           const hit = target?.closest?.(sel) as HTMLElement | null;
           if (hit) next.add(hit);
@@ -48,7 +51,7 @@ export function Spotlight() {
       }
       // D3: the backdrop leans toward the pointer; the glow follows it over cards and buttons only.
       const bd = document.querySelector<HTMLElement>(".bd"), glow = document.querySelector<HTMLElement>(".fx-glow");
-      const moving = root.getAttribute("data-reduced") !== "1";
+      const moving = root.getAttribute("data-reduced") !== "1" && !calm;
       if (bd) {
         bd.style.setProperty("--px", moving ? ((last.clientX / window.innerWidth) * 2 - 1).toFixed(3) : "0");
         bd.style.setProperty("--py", moving ? ((last.clientY / window.innerHeight) * 2 - 1).toFixed(3) : "0");

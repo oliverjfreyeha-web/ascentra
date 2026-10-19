@@ -5,7 +5,7 @@ import { BoostersPanel } from "./boosters-panel";
 /** C1: the Owner's review checklist across every course built with the module recipe, and the learning boosters list. */
 export default function ReviewPage() {
   return (
-    <main className="wide ui-admin">
+    <main className="wide ui-admin ds-page ds-page--calm">
       <p className="muted"><Link href="/">Home</Link> · <Link href="/admin/courses">Course builder</Link> · <Link href="/admin/topics">Topics</Link></p>
       <h1>Owner review</h1>
       <p className="muted">

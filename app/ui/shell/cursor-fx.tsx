@@ -5,6 +5,8 @@ import { useEffect } from "react";
 /** What counts as a card or a button for the cursor glow and the click spark (and nothing else). */
 export const FX_TARGETS = "button, .ds-btn, .ds-tilt, .ds-glass:not(.ds-glass--hud), .ui-btn, .ui-card, .ui-tile, .ui-choice, [role='button']";
 const MAX_BURSTS = 4;
+/** Design rebuild D6: calm pages (admin, billing, safety, Guardian, sign-in and onboarding) get no glow and no spark. */
+export const isCalmPage = () => !!document.querySelector("main.ds-page--calm");
 
 /**
  * Design rebuild D3 · Cursor glow and click spark, on cards and buttons only; off when html[data-reduced] is "1"
@@ -18,7 +20,7 @@ export function CursorFx() {
     const os = window.matchMedia("(prefers-reduced-motion: reduce)");
     let live = 0;
     const onClick = (e: MouseEvent) => {
-      if (e.detail === 0 || os.matches || document.documentElement.getAttribute("data-reduced") === "1") return; // keyboard, or motion off
+      if (e.detail === 0 || os.matches || document.documentElement.getAttribute("data-reduced") === "1" || isCalmPage()) return; // keyboard, motion off, or a calm page
       const t = (e.target as Element | null)?.closest?.(FX_TARGETS) as HTMLElement | null;
       if (!t || (t as HTMLButtonElement).disabled || live >= MAX_BURSTS) return;
       const b = document.createElement("span");

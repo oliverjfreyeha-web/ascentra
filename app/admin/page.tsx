@@ -5,7 +5,7 @@ import { AdminLinks } from "./admin-home";
 
 export default function AdminPage() {
   return (
-    <main className="ui-admin">
+    <main className="ui-admin ds-page ds-page--calm">
       <p className="muted">
         <Link href="/">Home</Link> · <Link href="/admin/audit">Audit log</Link> · <Link href="/admin/sources">Source library</Link> · <Link href="/account">Account security</Link>
       </p>

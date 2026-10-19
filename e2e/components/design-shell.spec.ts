@@ -9,6 +9,7 @@
  */
 import { expect, test, type Page } from "@playwright/test";
 import { buildShell, openShell } from "./fixtures/shell-harness";
+import { COURSES, PROGRESS } from "./fixtures/d4-data";
 
 let bundle = "";
 test.beforeAll(async () => { bundle = await buildShell(); });
@@ -117,9 +118,12 @@ test("Account → Appearance writes through the preferences module (Reduced is s
   await expect(page.getByRole("group", { name: "Scene" })).toHaveCount(0);
 });
 
-test("cursor glow over buttons only, and a click spark; neither with Motion Reduced", async ({ page }) => {
-  await openShell(page, bundle, { path: "/account", role: "learner" });
-  const btn = page.getByRole("group", { name: "Theme", exact: true }).getByRole("button", { name: "Iris" });
+// D6: moved from Account to the Library, because Account (billing, privacy, devices) is now a calm page with no glow
+// or spark (checked at the end).
+test("cursor glow over buttons only, and a click spark; neither with Motion Reduced, nor on a calm page", async ({ page }) => {
+  const api = { "/api/v1/learn/courses": COURSES, "/api/v1/learn/progress": PROGRESS };
+  await openShell(page, bundle, { path: "/learn", role: "learner", api });
+  const btn = page.getByRole("button", { name: "Not started" });
   await btn.hover();
   await expect(page.locator(".fx-glow")).toHaveAttribute("data-on", "");
   await page.mouse.move(5, 400);
@@ -128,11 +132,17 @@ test("cursor glow over buttons only, and a click spark; neither with Motion Redu
   await expect(page.locator(".fx-burst")).toHaveCount(1);
   await page.waitForTimeout(800);
   await expect(page.locator(".fx-burst")).toHaveCount(0);
-  await page.getByRole("group", { name: "Motion", exact: true }).getByRole("button", { name: "Reduced" }).click();
-  await page.waitForTimeout(800);
-  await btn.click();
+  await openShell(page, bundle, { path: "/learn", role: "learner", api, saved: { "ascentra.motion": "simple" } });
+  await page.getByRole("button", { name: "Not started" }).click();
   await expect(page.locator(".fx-burst")).toHaveCount(0);
   await expect(page.locator(".fx-glow")).toBeHidden();
+  await openShell(page, bundle, { path: "/account", role: "learner" });
+  const iris = page.getByRole("group", { name: "Theme", exact: true }).getByRole("button", { name: "Iris" });
+  await iris.hover();
+  await page.waitForTimeout(150);
+  await expect(page.locator(".fx-glow")).not.toHaveAttribute("data-on", "");
+  await iris.click();
+  await expect(page.locator(".fx-burst")).toHaveCount(0);
 });
 
 test("no layout shift from the HUD while the account loads into it (the frame is there from the start)", async ({ page }) => {
