@@ -10,20 +10,42 @@
   --ember:#FF9A4D;--silver:#DDE2EA;--amber:#FFC28A;--steel:#8E949E;
   --line:rgba(255,244,228,.14);--track:rgba(255,255,255,.10);
   --panel:rgba(8,8,10,.42);--well:rgba(8,8,10,.55);
+  --body-bg:linear-gradient(180deg,#050506 0%,#141418 45%,#2a2b30 100%);
+  --scene:radial-gradient(3.2vmax 3.2vmax at 68% 13vh,rgba(255,255,255,.95),rgba(255,250,240,.55) 45%,transparent 100%),
+   radial-gradient(16vmax 13vmax at 68% 13vh,rgba(255,236,205,.6),transparent 70%),
+   radial-gradient(46vmax 36vmax at 68% 13vh,rgba(255,196,128,.22),transparent 72%),
+   conic-gradient(from 180deg at 68% 13vh,transparent 0deg,rgba(255,232,196,.06) 12deg,transparent 26deg,transparent 60deg,rgba(255,232,196,.05) 74deg,transparent 90deg,transparent 140deg,rgba(255,232,196,.045) 152deg,transparent 168deg,transparent 200deg,rgba(255,232,196,.05) 214deg,transparent 230deg,transparent 290deg,rgba(255,232,196,.04) 302deg,transparent 318deg),
+   radial-gradient(120vmax 80vmax at 50% 50%,transparent 55%,rgba(0,0,0,.6));
+  --glass:linear-gradient(150deg,rgba(90,92,100,.46),rgba(18,18,21,.62));
+  --glass-tint:rgba(255,214,160,.10);--drop:rgba(0,0,0,.85);
+  --rim:conic-gradient(from 210deg,rgba(255,250,240,.62),rgba(255,236,210,.12),rgba(255,214,170,.38),rgba(255,255,255,.06),rgba(255,250,240,.62));
+  --seg-on:linear-gradient(135deg,#FFF8EC,#F3DDB8 50%,#E7BF86);--seg-ink:#1A1612;
+  --grid:rgba(255,244,228,.07);--grid-strong:rgba(255,244,228,.28);--chart-text:#C9CBD1;--chart-label:#EEEAE3;
   --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,"Helvetica Neue",Arial,system-ui,sans-serif;
   --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
   --disp:"Ascentra Display",var(--font);
   --ease:cubic-bezier(.16,1,.3,1);
 }
+/* Iris: night-blue orb scene, frosted violet glass, cool accents */
+:root[data-look="iris"]{
+  --bg:#080813;--muted:#C3CCDD;--frost:#A0BDDB;--gold:#F7C948;--warn:#FF9F43;
+  --line:rgba(196,206,255,.14);
+  --panel:rgba(10,10,32,.38);--well:rgba(8,8,26,.6);
+  --body-bg:#080813;
+  --scene:radial-gradient(40vmax 30vmax at 82% 8%,rgba(123,127,255,.30),transparent 70%),
+   radial-gradient(36vmax 28vmax at 8% 40%,rgba(89,197,232,.16),transparent 70%),
+   radial-gradient(44vmax 30vmax at 60% 100%,rgba(176,124,255,.18),transparent 70%),
+   radial-gradient(120vmax 80vmax at 50% 50%,transparent 55%,rgba(0,0,0,.55));
+  --glass:linear-gradient(150deg,rgba(96,104,190,.40),rgba(30,32,78,.52));
+  --glass-tint:rgba(140,130,255,.30);--drop:rgba(4,4,36,.8);
+  --rim:conic-gradient(from 210deg,rgba(255,255,255,.55),rgba(160,189,219,.12),rgba(176,124,255,.4),rgba(255,255,255,.08),rgba(255,255,255,.55));
+  --seg-on:linear-gradient(135deg,#FFFFFF,#E9E4FF 45%,#F3E6CC);--seg-ink:#141428;
+  --grid:rgba(196,206,255,.08);--grid-strong:rgba(196,206,255,.3);--chart-text:#C3CCDD;--chart-label:#E6EBF5;
+}
 *{box-sizing:border-box}
-body{margin:0;background:linear-gradient(180deg,var(--bg) 0%,#141418 45%,var(--wall) 100%) fixed;color:var(--ink);font-family:var(--font);font-size:15px;line-height:1.55;overflow-x:hidden}
+body{margin:0;background:var(--body-bg) fixed;color:var(--ink);font-family:var(--font);font-size:15px;line-height:1.55;overflow-x:hidden}
 body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
-  background:
-   radial-gradient(3.2vmax 3.2vmax at 68% 13vh,rgba(255,255,255,.95),rgba(255,250,240,.55) 45%,transparent 100%),
-   radial-gradient(16vmax 13vmax at 68% 13vh,rgba(255,236,205,.6),transparent 70%),
-   radial-gradient(46vmax 36vmax at 68% 13vh,rgba(255,196,128,.22),transparent 72%),
-   conic-gradient(from 180deg at 68% 13vh,transparent 0deg,rgba(255,232,196,.06) 12deg,transparent 26deg,transparent 60deg,rgba(255,232,196,.05) 74deg,transparent 90deg,transparent 140deg,rgba(255,232,196,.045) 152deg,transparent 168deg,transparent 200deg,rgba(255,232,196,.05) 214deg,transparent 230deg,transparent 290deg,rgba(255,232,196,.04) 302deg,transparent 318deg),
-   radial-gradient(120vmax 80vmax at 50% 50%,transparent 55%,rgba(0,0,0,.6));}
+  background:var(--scene);}
 .wrap{position:relative;z-index:1;max-width:1180px;margin:0 auto;padding-block:40px 64px;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
   display:flex;flex-direction:column;gap:28px}
@@ -41,13 +63,13 @@ a{color:var(--frost)}
 
 /* Glass */
 .g{position:relative;border-radius:26px;padding:clamp(18px,2.6vw,30px);
-  background:linear-gradient(150deg,rgba(90,92,100,.46),rgba(18,18,21,.62));
+  background:var(--glass);
   backdrop-filter:blur(22px) saturate(160%);-webkit-backdrop-filter:blur(22px) saturate(160%);
   box-shadow:inset 0 1.5px 0 rgba(255,255,255,.55),inset 1.5px 0 0 rgba(255,255,255,.16),
-   inset 0 30px 50px -28px rgba(255,255,255,.20),inset 0 -40px 60px -32px rgba(255,214,160,.10),0 34px 60px -26px rgba(0,0,0,.85);
+   inset 0 30px 50px -28px rgba(255,255,255,.20),inset 0 -40px 60px -32px var(--glass-tint),0 34px 60px -26px var(--drop);
   animation:rise .8s var(--ease) both}
 .g::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1.25px;pointer-events:none;
-  background:conic-gradient(from 210deg,rgba(255,250,240,.62),rgba(255,236,210,.12),rgba(255,214,170,.38),rgba(255,255,255,.06),rgba(255,250,240,.62));
+  background:var(--rim);
   -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
 .g>*{position:relative}
 .wrap>.g:nth-child(2){animation-delay:.06s}.wrap>.g:nth-child(3){animation-delay:.12s}.wrap>.g:nth-child(4){animation-delay:.18s}
@@ -67,7 +89,7 @@ a{color:var(--frost)}
 .seg button{all:unset;cursor:pointer;padding:7px 13px;border-radius:999px;font-size:13px;color:var(--muted);transition:color .2s var(--ease),transform .12s var(--ease)}
 .seg button:hover{color:var(--ink)}
 .seg button:active{transform:scale(.965)}
-.seg button[aria-pressed="true"]{color:#1A1612;background:linear-gradient(135deg,#FFF8EC,#F3DDB8 50%,#E7BF86);font-weight:600}
+.seg button[aria-pressed="true"]{color:var(--seg-ink);background:var(--seg-on);font-weight:600}
 .seg button:focus-visible{outline:2px solid var(--frost)}
 select,input[type=text]{font:inherit;color:var(--ink);background:var(--well);border:1px solid var(--line);border-radius:12px;padding:9px 12px}
 select{cursor:pointer}
@@ -158,7 +180,7 @@ input[type=text]{width:100%}
 .wrow{display:flex;flex-direction:column;gap:4px;min-width:0}
 .wrow .wl{display:flex;justify-content:space-between;font-size:12.5px;color:var(--muted)}
 .wrow .wl b{color:var(--ink);font-weight:600}
-.wrow input[type=range]{width:100%;accent-color:#EADBC2}
+.wrow input[type=range]{width:100%;accent-color:var(--frost)}
 
 /* What fits me */
 .fitbox{display:flex;flex-direction:column;gap:12px;margin-bottom:16px}
@@ -185,7 +207,7 @@ input[type=text]{width:100%}
 .filters{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px}
 .filters input[type=text]{width:auto;flex:1 1 200px;min-width:0}
 .chk{display:inline-flex;gap:8px;align-items:center;font-size:13px;cursor:pointer}
-.chk input{width:16px;height:16px;accent-color:#EADBC2}
+.chk input{width:16px;height:16px;accent-color:var(--frost)}
 .empty{padding:18px;border-radius:16px;background:var(--panel);color:var(--muted);font-size:14px}
 
 @media (max-width:900px){
@@ -215,6 +237,10 @@ input[type=text]{width:100%}
       <div class="field">
         <span class="label" id="allLbl">Show every score as</span>
         <div class="seg" role="group" aria-labelledby="allLbl" data-scope="all"></div>
+      </div>
+      <div class="field">
+        <span class="label" id="lookLbl">Style</span>
+        <div class="seg" role="group" aria-labelledby="lookLbl" id="lookSeg"></div>
       </div>
       <p class="small" id="regionNote"></p>
       <p class="small">Last updated October 19, 2026. Startup list refreshed monthly.</p>
@@ -413,6 +439,10 @@ input[type=text]{width:100%}
 
 <script>
 (function(){
+const CAT_COLORS={
+  mono:{soft:"#DDE2EA",svc:"#8E949E",com:"#FF9A4D",deep:"#F3C76B",giant:"#FF5A62"},
+  iris:{soft:"#7B7FFF",svc:"#59C5E8",com:"#FF8FC7",deep:"#34D399",giant:"#FF5A62"}
+};
 const CATS={
   soft:{name:"Software & AI",c:"#DDE2EA"},
   svc:{name:"Agencies & consulting",c:"#8E949E"},
@@ -555,16 +585,16 @@ function renderScatter(){
   // quadrants
   const mx=x(5.5),my=y(5.5);
   s+=`<rect x="${ml}" y="${my}" width="${mx-ml}" height="${mt+ph-my}" fill="rgba(127,209,166,.08)"/>`;
-  s+=`<rect x="${ml}" y="${mt}" width="${pw}" height="${y(7.5)-mt}" fill="rgba(255,90,98,.08)"/><rect x="${ml}" y="${mt}" width="${pw}" height="${ph}" fill="none" stroke="rgba(255,244,228,.14)"/>`;
+  s+=`<rect x="${ml}" y="${mt}" width="${pw}" height="${y(7.5)-mt}" fill="rgba(255,90,98,.08)"/><rect x="${ml}" y="${mt}" width="${pw}" height="${ph}" fill="none" style="stroke:var(--line)"/>`;
   for(let i=1;i<=10;i++){
-    s+=`<line x1="${x(i)}" y1="${mt}" x2="${x(i)}" y2="${mt+ph}" stroke="rgba(255,244,228,.07)"/>`;
-    s+=`<line x1="${ml}" y1="${y(i)}" x2="${ml+pw}" y2="${y(i)}" stroke="rgba(255,244,228,.07)"/>`;
-    s+=`<text x="${x(i)}" y="${mt+ph+18}" fill="#C9CBD1" font-size="11" text-anchor="middle">${i}</text>`;
-    s+=`<text x="${ml-10}" y="${y(i)+4}" fill="#C9CBD1" font-size="11" text-anchor="end">${i}</text>`;
+    s+=`<line x1="${x(i)}" y1="${mt}" x2="${x(i)}" y2="${mt+ph}" style="stroke:var(--grid)"/>`;
+    s+=`<line x1="${ml}" y1="${y(i)}" x2="${ml+pw}" y2="${y(i)}" style="stroke:var(--grid)"/>`;
+    s+=`<text x="${x(i)}" y="${mt+ph+18}" style="fill:var(--chart-text)" font-size="11" text-anchor="middle">${i}</text>`;
+    s+=`<text x="${ml-10}" y="${y(i)+4}" style="fill:var(--chart-text)" font-size="11" text-anchor="end">${i}</text>`;
   }
-  s+=`<line x1="${mx}" y1="${mt}" x2="${mx}" y2="${mt+ph}" stroke="rgba(255,244,228,.28)" stroke-dasharray="4 4"/><line x1="${ml}" y1="${my}" x2="${ml+pw}" y2="${my}" stroke="rgba(255,244,228,.28)" stroke-dasharray="4 4"/>`;
-  s+=`<text x="${ml+pw/2}" y="${H-8}" fill="#C9CBD1" font-size="12" text-anchor="middle">Crowding: more competitors →</text>`;
-  s+=`<text transform="translate(14 ${mt+ph/2}) rotate(-90)" fill="#C9CBD1" font-size="12" text-anchor="middle">Giant control →</text>`;
+  s+=`<line x1="${mx}" y1="${mt}" x2="${mx}" y2="${mt+ph}" style="stroke:var(--grid-strong)" stroke-dasharray="4 4"/><line x1="${ml}" y1="${my}" x2="${ml+pw}" y2="${my}" style="stroke:var(--grid-strong)" stroke-dasharray="4 4"/>`;
+  s+=`<text x="${ml+pw/2}" y="${H-8}" style="fill:var(--chart-text)" font-size="12" text-anchor="middle">Crowding: more competitors →</text>`;
+  s+=`<text transform="translate(14 ${mt+ph/2}) rotate(-90)" style="fill:var(--chart-text)" font-size="12" text-anchor="middle">Giant control →</text>`;
   const ql=(t,xx,yy,a,c)=>`<text x="${xx}" y="${yy}" fill="${c}" font-size="11" letter-spacing="1.2" text-anchor="${a}" font-family="Ascentra Display, sans-serif">${t}</text>`;
   s+=ql("OPEN WATER",ml+8,mt+ph-8,"start","#9FE3BE")+ql("CROWDED",ml+pw-8,mt+ph-8,"end","#FFE08A")+ql("GIANT-OWNED",mx-8,y(7.5)-8,"end","#FF9AA0")+ql("RED ZONE",ml+pw-8,y(7.5)-8,"end","#FF9AA0");
   // jitter identical spots
@@ -582,7 +612,7 @@ function renderScatter(){
     const c=CATS[p.n.cat].c;
     s+=`<g class="dot${p.n.id===sel?" sel":""}" tabindex="0" role="button" data-id="${p.n.id}" aria-label="${esc(p.n.name)}: crowding ${Math.round(p.n.crowd)}, giant control ${Math.round(p.n.giant)}"><title>${esc(p.n.name)}</title><circle cx="${p.px.toFixed(1)}" cy="${p.py.toFixed(1)}" r="${p.r.toFixed(1)}" fill="${c}" fill-opacity=".78" stroke="${p.n.id===sel?"#FFFFFF":"rgba(255,255,255,.55)"}" stroke-width="${p.n.id===sel?2.5:1}"/></g>`;
   });
-  labels.forEach(({p,b})=>{s+=`<text x="${b.x+2}" y="${b.y+10}" fill="#EEEAE3" font-size="10.5" pointer-events="none">${esc(p.n.short)}</text>`});
+  labels.forEach(({p,b})=>{s+=`<text x="${b.x+2}" y="${b.y+10}" style="fill:var(--chart-label)" font-size="10.5" pointer-events="none">${esc(p.n.short)}</text>`});
   s+=`</svg>`;
   const el=document.getElementById("scatter");el.innerHTML=s;
   el.querySelectorAll(".dot").forEach(g=>{
@@ -1012,6 +1042,16 @@ function renderAll(){
   document.getElementById("regionNote").textContent=R[region].note;
   renderSegs();renderScatter();renderDetail();renderBars();renderOpenings();renderInds();renderGiants();renderCards();renderInvest();
 }
+// ---------- Mono / Iris style ----------
+let look="mono";try{look=localStorage.getItem("mm-look")==="iris"?"iris":"mono"}catch(e){}
+function setLook(l){
+  look=l;document.documentElement.setAttribute("data-look",l);
+  for(const k in CATS)CATS[k].c=CAT_COLORS[l][k];
+  document.getElementById("lookSeg").innerHTML=[["mono","Mono"],["iris","Iris"]].map(([k,n])=>`<button type="button" data-l="${k}" aria-pressed="${look===k}">${n}</button>`).join("");
+  try{localStorage.setItem("mm-look",l)}catch(e){}
+}
+document.getElementById("lookSeg").addEventListener("click",e=>{const b=e.target.closest("button");if(b&&b.dataset.l!==look){setLook(b.dataset.l);renderLegend();renderAll()}});
+setLook(look);
 renderLegend();renderWeights();renderAll();
 })();
 </script>
