@@ -169,6 +169,25 @@ input[type=text]{width:100%}
 .foot{display:flex;flex-direction:column;gap:10px;font-size:13px;color:var(--muted)}
 .foot ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
 
+/* Overall ranking */
+.ranks{display:flex;flex-direction:column;gap:4px}
+.tier{font-family:var(--disp);font-size:13px;letter-spacing:.08em;color:var(--muted);padding:12px 4px 4px;display:flex;align-items:baseline;gap:10px}
+.tier span{font-family:var(--font);letter-spacing:0;font-size:12.5px}
+.rrow{border-radius:12px}
+.rrow>button{all:unset;box-sizing:border-box;width:100%;cursor:pointer;display:grid;grid-template-columns:1.8em minmax(0,16em) minmax(0,1fr) 3.2em;gap:12px;align-items:center;padding:7px 8px;border-radius:12px}
+.rrow>button:hover,.rrow.open>button{background:rgba(255,255,255,.06)}
+.rrow>button:focus-visible{outline:2px solid var(--frost)}
+.rrow .rp{font-family:var(--disp);font-size:14px;color:var(--frost)}
+.rrow .rn{display:flex;flex-direction:column;min-width:0}
+.rrow .rn b{font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rrow .rn small{font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rbar{position:relative;height:14px;border-radius:7px;background:var(--track);overflow:hidden}
+.rbar i{position:absolute;inset:0 auto 0 0;border-radius:7px;transform-origin:left;animation:grow .9s var(--ease) both}
+.rrow .rv{font-family:var(--disp);font-size:18px;text-align:right}
+.rleads{padding:6px 8px 14px calc(1.8em + 20px);display:flex;flex-direction:column;gap:8px}
+.lead{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;font-size:13.5px;padding:6px 10px;border-radius:10px;background:var(--panel)}
+.lead span:last-child{color:var(--muted);font-variant-numeric:tabular-nums;text-align:right}
+
 /* Weights */
 .wbox{margin-bottom:16px}
 .wbox summary{cursor:pointer;display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;list-style:none}
@@ -212,6 +231,11 @@ input[type=text]{width:100%}
 
 @media (max-width:900px){
   .fit{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .rrow>button{grid-template-columns:1.6em minmax(0,1fr) 2.6em;gap:4px 10px}
+  .rrow .rp{grid-row:1/3}.rrow .rn{grid-column:2}.rbar{grid-column:2;grid-row:2}.rrow .rv{grid-column:3;grid-row:1/3}
+  .rleads{padding-left:8px}
+  .lead{grid-template-columns:1fr}
+  .lead span:last-child{text-align:left}
   .wgrid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .indrow{grid-template-columns:2em minmax(0,1fr)}
   .indrow .indf,.indrow .w{grid-column:2}
@@ -246,6 +270,18 @@ input[type=text]{width:100%}
       <p class="small">Last updated October 19, 2026. Startup list refreshed monthly.</p>
     </div>
   </header>
+
+  <section class="g" id="ranking">
+    <div class="sec-head">
+      <div class="t">
+        <h2>Every niche, ranked</h2>
+        <p class="small">One overall score from 1 to 10 for each niche, best at the top. It combines crowding, giant control, growth, margins, how well it scales and the rest. Click a niche to see who leads it.</p>
+      </div>
+      <div class="legend" id="rankLegend" style="margin-top:0"></div>
+    </div>
+    <p class="small" id="rankNote" style="margin-bottom:10px"></p>
+    <div class="ranks" id="ranks"></div>
+  </section>
 
   <section class="g" id="map">
     <div class="sec-head">
@@ -631,7 +667,7 @@ function renderDetail(){
     </div>
     <div class="chips">${zoneChip(n)}<span class="chip num">~${fmt(n.rcount)} competitors</span></div>
     <p class="small">${esc(n.ex)}.</p>
-    <p class="small"><b style="color:var(--ink)">Who you'd face:</b> ${esc(n.giants)}.</p>${hireLine(n)}
+    ${leadLine(n)}${hireLine(n)}
     <div class="factors tight">${F.map(f=>factor(n,f,mode.map)).join("")}</div>`;
 }
 
@@ -682,6 +718,68 @@ document.getElementById("wgrid").addEventListener("input",e=>{
   applyWeights();updateWState();renderAll();
 });
 document.getElementById("wReset").addEventListener("click",()=>{for(const k in MW)delete MW[k];try{localStorage.removeItem("mm-weights")}catch(e){}applyWeights();renderWeights();renderAll()});
+
+// ---------- Leaders ----------
+// Leading companies per niche with a rough size: latest public figures up to 2025, approximate. Revenue unless noted.
+const LEAD={
+ vai:{note:"No single leader yet. These are the biggest by valuation, each in one industry",list:[["Harvey (legal)","≈$11B valuation (2026)"],["Abridge (medical notes)","≈$5B valuation"],["EvenUp (injury law)","≈$2B valuation"]]},
+ vsaas:{note:"A different leader in each industry",list:[["Toast (restaurants)","≈$5B revenue"],["Veeva (life sciences)","≈$2.7B revenue"],["Procore (construction)","≈$1.2B revenue"],["ServiceTitan (home trades)","≈$0.8B revenue"]]},
+ saas:{list:[["Microsoft (Microsoft 365)","Part of a ≈$280B company"],["Salesforce","≈$38B revenue"],["Atlassian","≈$5B revenue"],["HubSpot","≈$2.6B revenue"]]},
+ aiapp:{list:[["OpenAI (ChatGPT)","≈$13B revenue (2025, reported)"],["Google (Gemini)","Part of Alphabet"],["Microsoft (Copilot)","Part of Microsoft"],["Perplexity","≈$20B valuation"]]},
+ dev:{list:[["Microsoft (GitHub)","≈$2B yearly revenue run rate"],["Cursor (Anysphere)","≈$1B yearly revenue run rate"],["Atlassian","≈$5B revenue"],["Vercel","≈$9B valuation"]]},
+ sec:{list:[["Microsoft Security","≈$20B+ revenue"],["Palo Alto Networks","≈$9B revenue"],["Fortinet","≈$6B revenue"],["CrowdStrike","≈$4B revenue"]]},
+ data:{list:[["Databricks","≈$4B yearly revenue run rate"],["Snowflake","≈$3.6B revenue"],["Microsoft (Fabric, Power BI)","Part of Microsoft"],["Google (BigQuery)","Part of Google Cloud"]]},
+ fin:{list:[["Visa","≈$36B revenue"],["PayPal","≈$32B revenue"],["Block (Square, Cash App)","≈$24B revenue"],["Stripe","≈$1.4T payments a year"]]},
+ health:{list:[["UnitedHealth (Optum)","≈$250B revenue (Optum)"],["Epic Systems","≈$5.7B revenue"],["Oracle Health","Part of Oracle"],["Veeva","≈$2.7B revenue"]]},
+ edu:{list:[["Google (Classroom)","Free, part of Google"],["Duolingo","≈$750M revenue"],["Coursera","≈$700M revenue"],["PowerSchool","≈$700M revenue"]]},
+ climate:{list:[["Schneider Electric","≈€38B revenue"],["Siemens (Smart Infrastructure)","Part of Siemens"],["Tesla Energy","≈$10B revenue"]]},
+ creator:{list:[["Adobe","≈$21B revenue"],["Canva","≈$3B yearly revenue run rate"],["CapCut (ByteDance)","Part of ByteDance"],["YouTube","Part of Alphabet"]]},
+ cons:{list:[["Deloitte","≈$67B revenue (all services)"],["Accenture","≈$65B revenue"],["IBM Consulting","≈$20B revenue"],["McKinsey","≈$16B revenue"]]},
+ webag:{note:"Very fragmented: millions of freelancers and small shops",list:[["EPAM Systems","≈$4.7B revenue"],["Globant","≈$2.4B revenue"],["Upwork and Fiverr (freelancers)","Marketplaces"]]},
+ mktag:{list:[["Publicis","≈€16B revenue"],["Omnicom (with IPG)","≈$15.7B revenue before merging"],["WPP","≈£14.7B revenue"],["Dentsu","Japan's largest"]]},
+ mobile:{note:"Apple and Google run the app stores everyone sells through",list:[["Apple (App Store)","≈$390B revenue (all of Apple)"],["Google (Play Store)","Part of Alphabet"],["Meta","≈$165B revenue"],["ByteDance (TikTok)","Private"]]},
+ game:{list:[["Tencent Games","≈$27B revenue"],["Sony PlayStation","≈$30B revenue"],["Microsoft Gaming","≈$23B revenue"],["Roblox","≈$3.6B revenue"]]},
+ dtc:{list:[["Amazon","≈$640B revenue"],["Walmart (online)","Part of Walmart"],["Temu (PDD)","≈$54B revenue (PDD)"],["Shein","≈$38B revenue (estimated)"]]},
+ gadget:{list:[["Apple","≈$390B revenue"],["Samsung","Largest electronics maker"],["Xiaomi","≈$50B revenue"],["Anker","≈$3B revenue"]]},
+ robot:{list:[["FANUC","≈$5B revenue"],["ABB Robotics","≈$2.3B revenue"],["Figure","≈$39B valuation"],["Boston Dynamics (Hyundai)","Private"]]},
+ space:{list:[["SpaceX","≈$15B revenue (2025, reported)"],["Blue Origin","Private"],["United Launch Alliance","Boeing and Lockheed joint venture"],["Rocket Lab","≈$0.4B revenue"]]},
+ search:{list:[["Google","≈90% of searches"],["Microsoft Bing","≈4% of searches"],["Baidu","China's leader"]]},
+ social:{list:[["Meta (Facebook, Instagram)","≈$165B revenue"],["YouTube","Part of Alphabet"],["TikTok (ByteDance)","Private"],["Snap","≈$5.4B revenue"]]},
+ cloud:{list:[["Amazon Web Services","≈$108B revenue"],["Microsoft Azure","Second largest"],["Google Cloud","≈$43B revenue"]]},
+ chips:{list:[["NVIDIA","≈$130B revenue"],["TSMC","≈$90B revenue"],["Intel","≈$53B revenue"],["AMD","≈$26B revenue"]]},
+ llm:{list:[["OpenAI","≈$500B valuation (Oct 2025)"],["Google DeepMind","Part of Alphabet"],["Anthropic","≈$183B valuation (Sept 2025)"],["Meta","Part of Meta"]]},
+ phone:{list:[["Apple","≈20% of phones sold, most of the profit"],["Samsung","≈19% of phones sold"],["Xiaomi","≈14% of phones sold"],["Google (Android)","≈70% of phones run it"]]},
+ ride:{list:[["Uber","≈$44B revenue"],["DoorDash","≈$10.7B revenue"],["Didi","China's leader"],["Grab","Southeast Asia's leader"]]}
+};
+const leadNames=id=>LEAD[id].list.map(l=>l[0].replace(/ \(.*\)$/,"")).slice(0,4).join(", ");
+function leadLine(n){return `<p class="small"><b style="color:var(--ink)">Leaders:</b> ${LEAD[n.id].list.map(l=>`${esc(l[0])} <span style="opacity:.75">(${esc(l[1])})</span>`).join(", ")}.</p>`}
+
+// ---------- Overall ranking ----------
+const ZCOL={open:"var(--ok)",contested:"var(--gold)",crowded:"var(--warn)",giant:"var(--bad)"};
+let rankOpen=null;
+function renderRanking(){
+  const on=fitOn();
+  // Giant-owned niches always sit in their own group at the bottom, whatever their score
+  const D=data().map(n=>({n,s:on&&n.cat!=="giant"?fit(n).score:n.opp,g:n.zone==="giant"})).sort((a,b)=>(a.g-b.g)||(b.s-a.s));
+  document.getElementById("rankNote").textContent=on?"Ranked for your answers in What fits me. Clear them to see the general ranking.":"";
+  document.getElementById("rankLegend").innerHTML=["open","contested","crowded","giant"].map(k=>[k,ZONES[k]]).map(([k,z])=>`<span><i style="background:${ZCOL[k]}"></i>${z.t}</span>`).join("");
+  const TIERS=[[6.5,"Best bets","worth a serious look"],[5,"Possible","doable with a sharp angle"],[0,"Tough","crowded and hard to stand out"],[-1,"Steer clear","a few giants own these markets"]];
+  let html="",ti=-1;
+  D.forEach(({n,s,g},i)=>{
+    const t=g?3:TIERS.findIndex(x=>s>=x[0]);
+    if(t!==ti){ti=t;html+=`<div class="tier">${TIERS[t][1]}<span>${TIERS[t][2]}</span></div>`}
+    const L=LEAD[n.id];
+    html+=`<div class="rrow${rankOpen===n.id?" open":""}"><button type="button" data-id="${n.id}" aria-expanded="${rankOpen===n.id}" aria-label="${esc(n.name)}: overall ${s.toFixed(1)} out of 10, ${ZONES[n.zone].t}. Show leaders"><span class="rp num">${i+1}</span><span class="rn"><b>${esc(n.name)}</b><small>${esc(leadNames(n.id))}</small></span><span class="rbar"><i style="width:${(s/10*100).toFixed(1)}%;background:${ZCOL[n.zone]}"></i></span><span class="rv num">${s.toFixed(1)}</span></button>${rankOpen===n.id?`<div class="rleads">${L.note?`<p class="small">${esc(L.note)}.</p>`:""}${L.list.map(l=>`<div class="lead"><span>${esc(l[0])}</span><span>${esc(l[1])}</span></div>`).join("")}<p class="small">${ZONES[n.zone].t} · ~${fmt(n.rcount)} competitors · team at $1M revenue: ${n.cat==="giant"?"not realistic":HIRE[n.id][3]+" people"} · <button type="button" class="btn" data-see="${n.id}" style="padding:2px 6px">See every factor</button></p></div>`:""}</div>`;
+  });
+  document.getElementById("ranks").innerHTML=html;
+}
+document.getElementById("ranks").addEventListener("click",e=>{
+  const see=e.target.closest("[data-see]");
+  if(see){sel=see.dataset.see;renderScatter();renderDetail();renderBars();document.getElementById("map").scrollIntoView({behavior:"smooth",block:"start"});return}
+  const b=e.target.closest("button[data-id]");if(!b)return;
+  rankOpen=rankOpen===b.dataset.id?null:b.dataset.id;renderRanking();
+  const again=document.querySelector(`#ranks button[data-id="${b.dataset.id}"]`);if(again)again.focus();
+});
 
 // ---------- Hiring reality ----------
 // First 3-5 hires, their yearly cost in $k at US pay (salary plus taxes and benefits), and team size at about $1M revenue
@@ -758,6 +856,7 @@ function renderOpenings(){
     return `<div class="rk sub"><span class="pos num">${i+1}</span><div style="min-width:0;display:flex;flex-direction:column;gap:3px"><h3 style="font-size:14px">${esc(n.name)}</h3><span class="why">${whyLine(n)} ~${fmt(n.rcount)} competitors. Team at $1M revenue: ${HIRE[n.id][3]} people.${extra}</span></div><div class="w" role="img" aria-label="${lbl} ${Math.round(f.score)} out of 10"><span class="label">${lbl}</span>${widget(f.score,0,mode.openings)}</div></div>`;
   }).join("");
   renderFitNote();
+  renderRanking();
   renderIdea();
 }
 
@@ -801,7 +900,7 @@ function renderIdea(){
 }
 
 function card(n,m){
-  return `<article class="sub card"><div class="top"><div style="display:flex;flex-direction:column;gap:6px;min-width:0"><span class="cat"><i style="background:${CATS[n.cat].c}"></i>${CATS[n.cat].name}</span><h3>${esc(n.name)}</h3><div class="chips">${zoneChip(n)}<span class="chip num">~${fmt(n.rcount)} competitors</span></div></div><div class="opp"><span class="label">Opportunity</span>${widget(n.opp,0,"num")}</div></div><p class="small"><b style="color:var(--ink)">Who you'd face:</b> ${esc(n.giants)}.</p>${hireLine(n)}<div class="factors tight">${F.map(f=>factor(n,f,m)).join("")}</div></article>`;
+  return `<article class="sub card"><div class="top"><div style="display:flex;flex-direction:column;gap:6px;min-width:0"><span class="cat"><i style="background:${CATS[n.cat].c}"></i>${CATS[n.cat].name}</span><h3>${esc(n.name)}</h3><div class="chips">${zoneChip(n)}<span class="chip num">~${fmt(n.rcount)} competitors</span></div></div><div class="opp"><span class="label">Opportunity</span>${widget(n.opp,0,"num")}</div></div>${leadLine(n)}${hireLine(n)}<div class="factors tight">${F.map(f=>factor(n,f,m)).join("")}</div></article>`;
 }
 function renderGiants(){
   const D=data().filter(n=>n.cat==="giant").sort((a,b)=>b.giant-a.giant);
@@ -1040,7 +1139,7 @@ document.getElementById("idea").addEventListener("input",renderIdea);
 
 function renderAll(){
   document.getElementById("regionNote").textContent=R[region].note;
-  renderSegs();renderScatter();renderDetail();renderBars();renderOpenings();renderInds();renderGiants();renderCards();renderInvest();
+  renderSegs();renderRanking();renderScatter();renderDetail();renderBars();renderOpenings();renderInds();renderGiants();renderCards();renderInvest();
 }
 // ---------- Mono / Iris style ----------
 let look="mono";try{look=localStorage.getItem("mm-look")==="iris"?"iris":"mono"}catch(e){}
