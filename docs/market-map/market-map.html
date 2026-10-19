@@ -1,0 +1,621 @@
+<title>Ascentra Market Map</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+@font-face{font-family:'Ascentra Display';src:url(data:font/woff2;base64,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) format('woff2');font-display:swap}
+/* Layout: one column of frosted Iris glass sections over an orb scene; summary (map) first, detail (every factor) after. */
+:root{
+  color-scheme:dark;
+  --bg:#080813;--s1:#0F0F24;--s2:#16162E;--ink:#F4F7FC;--muted:#C3CCDD;--frost:#A0BDDB;
+  --ok:#7FD1A6;--gold:#F7C948;--bad:#FF5A62;--warn:#FF9F43;
+  --violet:#7B7FFF;--cyan:#59C5E8;--purple:#B07CFF;--mint:#34D399;--pink:#FF8FC7;
+  --line:rgba(196,206,255,.14);--track:rgba(255,255,255,.10);
+  --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,"Helvetica Neue",Arial,system-ui,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --disp:"Ascentra Display",var(--font);
+  --ease:cubic-bezier(.16,1,.3,1);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:15px;line-height:1.55;overflow-x:hidden}
+body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+   radial-gradient(40vmax 30vmax at 82% 8%,rgba(123,127,255,.30),transparent 70%),
+   radial-gradient(36vmax 28vmax at 8% 40%,rgba(89,197,232,.16),transparent 70%),
+   radial-gradient(44vmax 30vmax at 60% 100%,rgba(176,124,255,.18),transparent 70%),
+   radial-gradient(120vmax 80vmax at 50% 50%,transparent 55%,rgba(0,0,0,.55));}
+.wrap{position:relative;z-index:1;max-width:1180px;margin:0 auto;padding-block:40px 64px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:flex;flex-direction:column;gap:28px}
+h1,h2,h3{font-family:var(--disp);font-weight:400;letter-spacing:.05em;margin:0;text-wrap:balance;color:var(--ink)}
+h1{font-size:clamp(34px,5.4vw,60px);line-height:1.05}
+h2{font-size:clamp(22px,2.6vw,30px);line-height:1.15}
+h3{font-size:17px;letter-spacing:.06em}
+p{margin:0}
+.lede{max-width:66ch;color:var(--muted);font-size:17px}
+.small{font-size:13px;color:var(--muted)}
+.label{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.num{font-variant-numeric:tabular-nums}
+a{color:var(--frost)}
+:focus-visible{outline:2px solid var(--frost);outline-offset:2px;border-radius:8px}
+
+/* Glass */
+.g{position:relative;border-radius:26px;padding:clamp(18px,2.6vw,30px);
+  background:linear-gradient(150deg,rgba(96,104,190,.40),rgba(30,32,78,.52));
+  backdrop-filter:blur(22px) saturate(160%);-webkit-backdrop-filter:blur(22px) saturate(160%);
+  box-shadow:inset 0 1.5px 0 rgba(255,255,255,.55),inset 1.5px 0 0 rgba(255,255,255,.16),
+   inset 0 30px 50px -28px rgba(255,255,255,.20),inset 0 -40px 60px -32px rgba(140,130,255,.30),0 34px 60px -26px rgba(4,4,36,.8);
+  animation:rise .8s var(--ease) both}
+.g::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1.25px;pointer-events:none;
+  background:conic-gradient(from 210deg,rgba(255,255,255,.55),rgba(160,189,219,.12),rgba(176,124,255,.4),rgba(255,255,255,.08),rgba(255,255,255,.55));
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
+.g>*{position:relative}
+.wrap>.g:nth-child(2){animation-delay:.06s}.wrap>.g:nth-child(3){animation-delay:.12s}.wrap>.g:nth-child(4){animation-delay:.18s}
+@keyframes rise{from{opacity:.001;transform:translateY(26px) scale(.965)}to{opacity:1;transform:none}}
+.sub{border-radius:18px;background:rgba(10,10,32,.38);box-shadow:inset 0 1px 0 rgba(255,255,255,.10);padding:16px}
+
+/* Header */
+.hero{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:28px;align-items:end}
+.hero .controls{display:flex;flex-direction:column;gap:14px}
+.hero .controls .seg{align-self:flex-start}
+.sec-head{display:flex;flex-wrap:wrap;gap:14px 20px;align-items:flex-end;justify-content:space-between;margin-bottom:18px}
+.sec-head .t{display:flex;flex-direction:column;gap:6px;min-width:0;max-width:70ch}
+.tools{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+
+/* Segmented control */
+.seg{display:inline-flex;flex-wrap:wrap;max-width:100%;padding:3px;border-radius:20px;background:rgba(8,8,26,.55);box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}
+.seg button{all:unset;cursor:pointer;padding:7px 13px;border-radius:999px;font-size:13px;color:var(--muted);transition:color .2s var(--ease),transform .12s var(--ease)}
+.seg button:hover{color:var(--ink)}
+.seg button:active{transform:scale(.965)}
+.seg button[aria-pressed="true"]{color:#141428;background:linear-gradient(135deg,#FFFFFF,#E9E4FF 45%,#F3E6CC);font-weight:600}
+.seg button:focus-visible{outline:2px solid var(--frost)}
+select,input[type=text]{font:inherit;color:var(--ink);background:rgba(8,8,26,.6);border:1px solid var(--line);border-radius:12px;padding:9px 12px}
+select{cursor:pointer}
+input[type=text]{width:100%}
+.field{display:flex;flex-direction:column;gap:6px}
+
+/* Scatter */
+.mapgrid{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(0,1fr);gap:18px}
+.chart{width:100%;overflow-x:auto}
+.chart svg{display:block;width:100%;min-width:560px;height:auto}
+.legend{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:10px}
+.legend span{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:var(--muted)}
+.legend i{width:10px;height:10px;border-radius:50%;display:inline-block}
+.dot{cursor:pointer;transition:opacity .2s var(--ease)}
+.dot circle{transition:transform .2s var(--ease);transform-box:fill-box;transform-origin:center}
+.dot:hover circle,.dot:focus circle,.dot.sel circle{transform:scale(1.35)}
+.dot:focus{outline:none}
+.dot.dim{opacity:.25}
+
+/* Bars */
+.bars{display:flex;flex-direction:column;gap:7px;max-height:540px;overflow:auto;padding-right:4px}
+.bar{display:grid;grid-template-columns:minmax(0,9.5em) minmax(0,1fr) 4.6em;gap:10px;align-items:center;font-size:13px;cursor:pointer;border-radius:8px;padding:2px 4px}
+.bar:hover,.bar.sel{background:rgba(255,255,255,.06)}
+.bar .n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar .tr{height:9px;border-radius:5px;background:var(--track);overflow:hidden}
+.bar .fl{height:100%;border-radius:5px;transform-origin:left;animation:grow .9s var(--ease) both}
+.bar .v{text-align:right;color:var(--muted)}
+@keyframes grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+
+/* Detail + score widgets */
+.detail{display:flex;flex-direction:column;gap:12px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:12px;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.08);color:var(--ink)}
+.chip.bad{background:rgba(255,90,98,.18);color:#FFC2C5}
+.chip.ok{background:rgba(127,209,166,.18);color:#C9F2DB}
+.chip.gold{background:rgba(247,201,72,.18);color:#FFE7A3}
+.factors{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.factors.tight{grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:8px}
+.f{display:flex;flex-direction:column;gap:6px;min-width:0}
+.f .fl1{display:flex;justify-content:space-between;gap:6px;font-size:12px;color:var(--muted)}
+.f .fl1 b{font-weight:600;color:var(--ink)}
+.meter{display:grid;grid-template-columns:repeat(10,1fr);gap:2px}
+.meter i{height:8px;border-radius:2px;background:var(--track)}
+.gauge{width:100%;max-width:120px;height:auto;display:block}
+.bignum{font-family:var(--disp);font-size:26px;line-height:1;letter-spacing:.04em}
+.bignum small{font-family:var(--font);font-size:12px;color:var(--muted);letter-spacing:0;margin-left:3px}
+.hint{font-size:10.5px;color:var(--muted)}
+
+/* Niche cards */
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
+.card{display:flex;flex-direction:column;gap:12px;min-width:0}
+.card .top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.card .top h3{font-size:15px}
+.opp{display:flex;flex-direction:column;align-items:flex-end;flex:none}
+.opp .bignum{font-size:30px}
+.cat{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.cat i{width:8px;height:8px;border-radius:50%}
+.zone{font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:999px;align-self:flex-start}
+
+/* Openings + idea */
+.split{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:18px}
+.rank{display:flex;flex-direction:column;gap:10px}
+.rk{display:grid;grid-template-columns:2.2em minmax(0,1fr) auto;gap:12px;align-items:center}
+.rk .pos{font-family:var(--disp);font-size:20px;color:var(--frost)}
+.rk .why{font-size:13px;color:var(--muted)}
+.rk .w{min-width:110px}
+
+/* Investment */
+.tabs{margin-bottom:14px}
+.inv{display:flex;flex-direction:column;gap:8px}
+.irow{display:grid;grid-template-columns:2em minmax(0,1.6fr) minmax(0,1fr) 128px;gap:14px;align-items:center;padding:12px 14px;border-radius:16px;background:rgba(10,10,32,.32)}
+.irow .pos{font-family:var(--disp);font-size:18px;color:var(--frost)}
+.irow h3{font-size:14px}
+.irow .meta{font-size:12.5px;color:var(--muted)}
+.na{font-size:12px;color:var(--muted);font-style:italic}
+
+.foot{display:flex;flex-direction:column;gap:10px;font-size:13px;color:var(--muted)}
+.foot ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
+
+@media (max-width:900px){
+  .hero,.mapgrid,.split{grid-template-columns:1fr}
+  .irow{grid-template-columns:2em minmax(0,1fr);}
+  .irow .meta2,.irow .w{grid-column:2}
+}
+@media (max-width:480px){.cards{grid-template-columns:1fr}.bar{grid-template-columns:minmax(0,7.5em) minmax(0,1fr) 4.2em}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<main class="wrap">
+  <header class="g hero">
+    <div style="display:flex;flex-direction:column;gap:14px;min-width:0">
+      <h1>Market Map</h1>
+      <p class="lede">How crowded each tech niche is, which ones giants already own, and where a new company still has room to hire and grow. Pick a region to see how the picture changes.</p>
+    </div>
+    <div class="controls">
+      <div class="field">
+        <label class="label" for="region">Region</label>
+        <select id="region"></select>
+      </div>
+      <div class="field">
+        <span class="label" id="allLbl">Show every score as</span>
+        <div class="seg" role="group" aria-labelledby="allLbl" data-scope="all"></div>
+      </div>
+      <p class="small" id="regionNote"></p>
+    </div>
+  </header>
+
+  <section class="g" id="map">
+    <div class="sec-head">
+      <div class="t">
+        <h2>How crowded is each niche?</h2>
+        <p class="small">Right means more competitors. Up means a few giants control the market. You want the bottom-left. Bigger dots are growing faster. Click a dot for details.</p>
+      </div>
+      <div class="tools">
+        <span class="label" id="mapLbl">Scores</span>
+        <div class="seg" role="group" aria-labelledby="mapLbl" data-scope="map"></div>
+      </div>
+    </div>
+    <div class="mapgrid">
+      <div style="min-width:0">
+        <div class="chart" id="scatter"></div>
+        <div class="legend" id="legend"></div>
+      </div>
+      <div class="sub detail" id="detail" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <section class="g" id="counts">
+    <div class="sec-head">
+      <div class="t">
+        <h2>Estimated competitors</h2>
+        <p class="small">Rough count of active companies in the selected region, on a log scale so a niche with 100 players and one with 5 million both fit. A low count can still be a trap if giants own it.</p>
+      </div>
+      <div class="tools">
+        <select id="countSort" aria-label="Sort competitor list">
+          <option value="count">Most competitors first</option>
+          <option value="giant">Most giant-controlled first</option>
+        </select>
+        <span class="label" id="cntLbl">Scores</span>
+        <div class="seg" role="group" aria-labelledby="cntLbl" data-scope="counts"></div>
+      </div>
+    </div>
+    <div class="bars" id="bars"></div>
+  </section>
+
+  <section class="g" id="openings">
+    <div class="sec-head">
+      <div class="t">
+        <h2>Best openings for a company that can grow</h2>
+        <p class="small">Ranked by opportunity score: fewer competitors, no giant in control, fast growth, good margins, and a business that scales by hiring rather than by you working more hours.</p>
+      </div>
+      <div class="tools">
+        <span class="label" id="opLbl">Scores</span>
+        <div class="seg" role="group" aria-labelledby="opLbl" data-scope="openings"></div>
+      </div>
+    </div>
+    <div class="split">
+      <div class="rank" id="rank"></div>
+      <div class="sub" style="display:flex;flex-direction:column;gap:12px">
+        <h3>Test an idea</h3>
+        <p class="small">No idea yet? Type anything, like "AI bookkeeping for dentists" or "smart water bottle", and see which niche it lands in.</p>
+        <input type="text" id="idea" placeholder="Describe a business idea" autocomplete="off">
+        <div id="ideaOut" aria-live="polite"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="g" id="giants">
+    <div class="sec-head">
+      <div class="t">
+        <h2>Giant-owned: steer clear</h2>
+        <p class="small">These markets can look empty because there are only a few players. That is the problem. Like starting a rocket company against SpaceX and NASA, you would need billions just to get a seat at the table.</p>
+      </div>
+      <div class="tools">
+        <span class="label" id="gLbl">Scores</span>
+        <div class="seg" role="group" aria-labelledby="gLbl" data-scope="giants"></div>
+      </div>
+    </div>
+    <div class="cards" id="giantCards"></div>
+  </section>
+
+  <section class="g" id="all">
+    <div class="sec-head">
+      <div class="t">
+        <h2>Every niche, every factor</h2>
+        <p class="small">All nine factors on a 1 to 10 scale. Green is good for a new company, gold is mixed, red is a warning. For crowding, giant control, startup cost and failure risk, lower is better.</p>
+      </div>
+      <div class="tools">
+        <select id="filter" aria-label="Filter niches"></select>
+        <select id="sort" aria-label="Sort niches"></select>
+        <span class="label" id="allcLbl">Scores</span>
+        <div class="seg" role="group" aria-labelledby="allcLbl" data-scope="cards"></div>
+      </div>
+    </div>
+    <div class="cards" id="cards"></div>
+  </section>
+
+  <section class="g" id="invest">
+    <div class="sec-head">
+      <div class="t">
+        <h2>Small-company investment scale</h2>
+        <p class="small">Pre-seed and seed startups. Switch the metric to re-rank. Most are open only to accredited investors or through crowdfunding sites like Wefunder, Republic and StartEngine.</p>
+      </div>
+      <div class="tools">
+        <span class="label" id="invLbl">Scores</span>
+        <div class="seg" role="group" aria-labelledby="invLbl" data-scope="invest"></div>
+      </div>
+    </div>
+    <div class="tools tabs">
+      <div class="seg" role="group" aria-label="Startup list" id="invTab"></div>
+      <div class="seg" role="group" aria-label="Rank by metric" id="invMetric"></div>
+    </div>
+    <p class="small" id="invNote" style="margin-bottom:12px"></p>
+    <div class="inv" id="invList"></div>
+  </section>
+
+  <footer class="g foot">
+    <h3>How these numbers were made</h3>
+    <ul>
+      <li>Scores are estimates, rounded to 1 to 10, drawn from public industry reports and market knowledge as of October 2026. They are a starting point for research, not verified data.</li>
+      <li>Competitor counts are order-of-magnitude estimates. Sources disagree a lot: for example, worldwide SaaS company counts range from about 30,000 to 80,000 (<a href="https://ascendixtech.com/number-saas-companies-statistics/" target="_blank" rel="noopener">Ascendix</a>, <a href="https://bloggerspassion.com/saas-statistics/" target="_blank" rel="noopener">BloggersPassion</a>).</li>
+      <li>Region views apply each region's share of companies and local adjustments (VC depth, local giants, cost of building) to the global estimate.</li>
+      <li>Opportunity score weights giant control most, then crowding and growth, then margins, scalability, funding, failure risk, speed and startup cost.</li>
+      <li>Named startups come from 2026 funding news (<a href="https://qubit.capital/blog/us-seed-weekly-funding-roundup-week-1-may-2026" target="_blank" rel="noopener">Qubit Capital</a>, <a href="https://www.cbinsights.com/company/withai" target="_blank" rel="noopener">CB Insights</a>, <a href="https://startupfeed.in/?p=12086" target="_blank" rel="noopener">StartupFeed</a>). Round sizes were not checked against company announcements.</li>
+      <li>Not financial advice. Early-stage startups fail more often than not. Only invest money you can afford to lose.</li>
+    </ul>
+  </footer>
+</main>
+
+<script>
+(function(){
+const CATS={
+  soft:{name:"Software & AI",c:"#7B7FFF"},
+  svc:{name:"Agencies & consulting",c:"#59C5E8"},
+  com:{name:"E-commerce & consumer",c:"#FF8FC7"},
+  deep:{name:"Hardware & deep tech",c:"#34D399"},
+  giant:{name:"Giant-owned",c:"#FF5A62"}
+};
+const F=[
+  {k:"crowd",n:"Crowding",inv:1,d:"How many competitors"},
+  {k:"giant",n:"Giant control",inv:1,d:"How much a few big companies own"},
+  {k:"cost",n:"Startup cost",inv:1,d:"Money needed before revenue"},
+  {k:"margin",n:"Margins",inv:0,d:"Profit kept per sale"},
+  {k:"scale",n:"Scalability",inv:0,d:"Grows by hiring, not by your hours"},
+  {k:"speed",n:"Speed to revenue",inv:0,d:"How fast first sales come"},
+  {k:"funding",n:"Funding available",inv:0,d:"Investor appetite"},
+  {k:"growth",n:"Market growth",inv:0,d:"How fast demand grows"},
+  {k:"fail",n:"Failure risk",inv:1,d:"Share of new companies that die"}
+];
+// count = estimated active companies worldwide
+const N=[
+ {id:"vai",name:"Vertical AI agents",short:"Vertical AI agents",cat:"soft",count:12000,crowd:5,giant:4,cost:4,margin:8,scale:9,speed:6,funding:10,growth:10,fail:6,giants:"No clear leader per industry yet",ex:"AI that does the work in one industry: insurance claims, legal intake, accounting close",k:["agent","ai for","automation","bookkeeping","accounting","legal","insurance","claims","compliance","dentist","clinic","law","workflow","back office"]},
+ {id:"vsaas",name:"Vertical SaaS",short:"Vertical SaaS",cat:"soft",count:15000,crowd:5,giant:3,cost:4,margin:8,scale:9,speed:5,funding:7,growth:7,fail:5,giants:"Fragmented; a leader per industry at most",ex:"Software for one industry: construction bids, vet clinics, logistics brokers",k:["software for","platform for","scheduling","booking","industry","clinic","construction","logistics","property","restaurant software"]},
+ {id:"saas",name:"Horizontal SaaS",short:"Horizontal SaaS",cat:"soft",count:30000,crowd:9,giant:7,cost:4,margin:8,scale:9,speed:4,funding:5,growth:5,fail:7,giants:"Salesforce, Microsoft, Google, HubSpot, Atlassian",ex:"Tools every company uses: CRM, project management, docs, HR",k:["saas","crm","project management","productivity","hr","payroll","notes","calendar","email tool","task"]},
+ {id:"aiapp",name:"AI apps and wrappers",short:"AI apps",cat:"soft",count:70000,crowd:9,giant:8,cost:3,margin:5,scale:8,speed:8,funding:6,growth:9,fail:9,giants:"OpenAI, Google, Microsoft, Apple add the same feature for free",ex:"Chat, writing, image and voice apps built on top of someone else's model",k:["chatbot","ai app","ai writing","image generator","gpt","ai assistant","ai tool","prompt","ai headshot"]},
+ {id:"dev",name:"Developer tools",short:"Dev tools",cat:"soft",count:9000,crowd:7,giant:6,cost:4,margin:8,scale:8,speed:5,funding:8,growth:8,fail:6,giants:"Microsoft/GitHub, Atlassian, Vercel, JetBrains",ex:"Coding agents, testing, deployment, observability",k:["developer","dev tool","api","coding","code","testing","deploy","devops","sdk","observability"]},
+ {id:"sec",name:"Cybersecurity",short:"Cybersecurity",cat:"soft",count:4500,crowd:7,giant:5,cost:5,margin:8,scale:8,speed:4,funding:8,growth:8,fail:5,giants:"Palo Alto Networks, CrowdStrike, Microsoft, Cisco",ex:"Security for AI agents, identity, email, cloud",k:["security","cyber","hack","password","identity","fraud","phishing","privacy","encryption"]},
+ {id:"data",name:"Data and analytics",short:"Data & analytics",cat:"soft",count:8000,crowd:7,giant:6,cost:4,margin:7,scale:8,speed:5,funding:6,growth:7,fail:6,giants:"Snowflake, Databricks, Google, Microsoft",ex:"Dashboards, data pipelines, AI evaluation and data labeling",k:["data","analytics","dashboard","bi","pipeline","warehouse","metrics","reporting","labeling"]},
+ {id:"fin",name:"Fintech",short:"Fintech",cat:"soft",count:30000,crowd:8,giant:6,cost:6,margin:6,scale:8,speed:3,funding:6,growth:6,fail:7,giants:"Stripe, PayPal, Visa, big banks, Block",ex:"Payments, lending, compliance, finance tools for small businesses",k:["fintech","payment","bank","lending","loan","invoice","crypto","finance","budget","mortgage","credit"]},
+ {id:"health",name:"Digital health",short:"Health tech",cat:"soft",count:15000,crowd:6,giant:4,cost:6,margin:7,scale:7,speed:3,funding:6,growth:7,fail:6,giants:"Epic, Oracle Health, UnitedHealth",ex:"Clinic admin automation, remote care, health records tools",k:["health","medical","doctor","patient","hospital","therapy","fitness","wellness","mental health","telehealth"]},
+ {id:"edu",name:"Edtech",short:"Edtech",cat:"soft",count:20000,crowd:7,giant:4,cost:3,margin:7,scale:7,speed:5,funding:3,growth:5,fail:7,giants:"Google, Duolingo, Coursera, PowerSchool",ex:"AI tutors, course platforms, school software",k:["edtech","education","tutor","course","learning","school","student","teacher","study","quiz"]},
+ {id:"climate",name:"Climate and energy software",short:"Climate software",cat:"deep",count:6000,crowd:5,giant:3,cost:5,margin:7,scale:8,speed:4,funding:6,growth:7,fail:6,giants:"Utilities and Schneider Electric, but software is open",ex:"Energy management, grid software, carbon accounting",k:["climate","energy","solar","carbon","grid","battery","sustainability","ev charging"]},
+ {id:"creator",name:"Creator tools",short:"Creator tools",cat:"soft",count:10000,crowd:7,giant:7,cost:3,margin:7,scale:7,speed:7,funding:4,growth:6,fail:7,giants:"Adobe, Canva, YouTube, TikTok, CapCut",ex:"Editing, scheduling, monetization tools for creators",k:["creator","youtube","tiktok","influencer","video editing","podcast","newsletter","content"]},
+ {id:"cons",name:"Tech and AI consulting",short:"AI consulting",cat:"svc",count:300000,crowd:8,giant:5,cost:2,margin:6,scale:5,speed:9,funding:2,growth:7,fail:5,giants:"Accenture, Deloitte, McKinsey, IBM",ex:"Helping companies adopt AI, cloud and automation",k:["consulting","consultant","advisory","ai implementation","strategy","transformation"]},
+ {id:"webag",name:"Web and dev agency",short:"Dev agency",cat:"svc",count:1500000,crowd:10,giant:3,cost:2,margin:4,scale:4,speed:9,funding:1,growth:4,fail:6,giants:"No giants, but millions of freelancers and offshore shops",ex:"Building websites and apps for clients",k:["agency","web design","website","app development","freelance","web dev","shopify developer","wordpress"]},
+ {id:"mktag",name:"Marketing and ad agency",short:"Marketing agency",cat:"svc",count:2000000,crowd:10,giant:4,cost:2,margin:4,scale:4,speed:9,funding:1,growth:4,fail:7,giants:"WPP, Omnicom, Publicis, plus AI tools replacing small work",ex:"Ads, SEO, social media management for clients",k:["marketing","ads","advertising","seo","social media","branding","lead gen","ppc","agency"]},
+ {id:"mobile",name:"Consumer mobile apps",short:"Mobile apps",cat:"com",count:1500000,crowd:10,giant:8,cost:3,margin:6,scale:7,speed:5,funding:4,growth:4,fail:9,giants:"Apple, Google, Meta, ByteDance",ex:"Apps for everyday people: social, lifestyle, utilities",k:["mobile app","iphone app","android","app for","dating","social app","habit"]},
+ {id:"game",name:"Indie game studio",short:"Indie games",cat:"com",count:60000,crowd:10,giant:6,cost:5,margin:6,scale:6,speed:2,funding:3,growth:4,fail:9,giants:"Tencent, Microsoft, Sony, Epic",ex:"PC, console and mobile games",k:["game","gaming","video game","steam","roblox","esports","vr game"]},
+ {id:"dtc",name:"E-commerce brand",short:"E-com brand",cat:"com",count:5000000,crowd:10,giant:8,cost:4,margin:4,scale:6,speed:7,funding:3,growth:5,fail:8,giants:"Amazon, Temu, Shein, Walmart",ex:"Selling your own products online through Shopify or Amazon",k:["ecommerce","e-commerce","shopify","amazon","store","dropship","clothing","brand","sell online","skincare"]},
+ {id:"gadget",name:"Invented gadgets sold online",short:"Invented gadgets",cat:"com",count:40000,crowd:6,giant:6,cost:6,margin:5,scale:6,speed:4,funding:5,growth:6,fail:8,giants:"Apple, Samsung, Anker, Amazon Basics copies",ex:"A product you design, manufacture and sell online, often launched on Kickstarter",k:["gadget","invent","invention","device","smart","wearable","kickstarter","product","bottle","tracker"]},
+ {id:"robot",name:"Robotics",short:"Robotics",cat:"deep",count:5000,crowd:4,giant:5,cost:9,margin:6,scale:7,speed:2,funding:8,growth:9,fail:7,giants:"Tesla, Figure, Boston Dynamics, ABB",ex:"Warehouse, farm and service robots",k:["robot","robotics","drone","automation hardware","humanoid","warehouse robot"]},
+ // giant-owned
+ {id:"space",name:"Rockets and space launch",short:"Rockets",cat:"giant",count:120,crowd:2,giant:10,cost:10,margin:5,scale:6,speed:1,funding:6,growth:7,fail:10,giants:"SpaceX, NASA, Blue Origin, ULA, Rocket Lab",ex:"Launching payloads to orbit",k:["rocket","space","satellite launch","orbit","spacecraft"]},
+ {id:"search",name:"Web search",short:"Search",cat:"giant",count:300,crowd:2,giant:10,cost:9,margin:9,scale:9,speed:2,funding:3,growth:4,fail:10,giants:"Google (about 90% of searches), Microsoft Bing",ex:"A general search engine",k:["search engine","search"]},
+ {id:"social",name:"Social networks",short:"Social networks",cat:"giant",count:2000,crowd:4,giant:10,cost:6,margin:8,scale:9,speed:3,funding:3,growth:4,fail:10,giants:"Meta, TikTok, YouTube, X, Snap",ex:"A new general social media app",k:["social network","social media app","instagram","facebook","twitter"]},
+ {id:"cloud",name:"Cloud infrastructure",short:"Cloud",cat:"giant",count:800,crowd:3,giant:10,cost:10,margin:7,scale:8,speed:2,funding:5,growth:8,fail:9,giants:"Amazon AWS, Microsoft Azure, Google Cloud",ex:"Renting servers and storage at scale",k:["cloud","hosting","server","data center"]},
+ {id:"chips",name:"Semiconductors",short:"Chips",cat:"giant",count:1500,crowd:3,giant:10,cost:10,margin:7,scale:7,speed:1,funding:7,growth:8,fail:9,giants:"NVIDIA, TSMC, Intel, AMD, Samsung",ex:"Designing or making computer chips",k:["chip","semiconductor","gpu","processor"]},
+ {id:"llm",name:"Frontier AI models",short:"AI models",cat:"giant",count:150,crowd:2,giant:9,cost:10,margin:5,scale:8,speed:2,funding:8,growth:10,fail:9,giants:"OpenAI, Google, Anthropic, Meta, xAI",ex:"Training your own large general AI model",k:["llm","foundation model","train a model","ai model","language model"]},
+ {id:"phone",name:"Smartphones and mobile OS",short:"Smartphones",cat:"giant",count:200,crowd:2,giant:10,cost:10,margin:6,scale:7,speed:1,funding:2,growth:2,fail:10,giants:"Apple, Samsung, Google, Xiaomi",ex:"A new phone or phone operating system",k:["smartphone","phone","operating system","mobile os"]},
+ {id:"ride",name:"Ride-hailing and delivery",short:"Ride & delivery",cat:"giant",count:1000,crowd:4,giant:9,cost:9,margin:2,scale:7,speed:4,funding:2,growth:4,fail:9,giants:"Uber, DoorDash, Instacart, Didi, Grab",ex:"An app for rides or food delivery",k:["ride","rideshare","delivery app","food delivery","taxi","uber"]}
+];
+const R={
+ global:{name:"Global (all regions)",share:1,crowd:{},giant:{},funding:0,cost:0,note:"All regions combined. Counts are worldwide."},
+ us:{name:"United States",share:.36,crowd:{soft:1,com:.5},giant:{},funding:1.5,cost:.5,note:"The deepest investor pool in the world, and the most crowded software market."},
+ ca:{name:"Canada",share:.04,crowd:{soft:-1,svc:-1,com:-1},giant:{},funding:-1,cost:0,note:"Smaller market with US access. Less crowded, less funding."},
+ uk:{name:"United Kingdom",share:.06,crowd:{},giant:{},funding:0,cost:0,note:"Europe's biggest startup hub, strong in fintech."},
+ eu:{name:"European Union",share:.16,crowd:{soft:-.5,svc:-.5},giant:{},funding:-1,cost:0,note:"Big market split by language and stricter rules (GDPR, AI Act)."},
+ in:{name:"India",share:.12,crowd:{svc:2,soft:0},giant:{com:1},funding:-1,cost:-2,note:"Cheap to build and hire. Services are extremely crowded."},
+ cn:{name:"China",share:.14,crowd:{com:1},giant:{soft:2,com:2},funding:0,cost:-1,note:"Local giants (Alibaba, Tencent, ByteDance) dominate consumer and software."},
+ jp:{name:"Japan",share:.04,crowd:{soft:-1.5,svc:-1,com:-.5},giant:{},funding:-1,cost:.5,note:"Large economy with few startups. Slow sales cycles."},
+ br:{name:"Brazil",share:.03,crowd:{soft:-1.5,com:-.5},giant:{com:1},funding:-2,cost:-1,note:"Latin America's biggest market, strong in fintech. Little funding."},
+ sea:{name:"Southeast Asia",share:.04,crowd:{soft:-1,svc:0},giant:{com:1.5},funding:-1,cost:-1,note:"Fast-growing and young. Shopee, Grab and Sea control consumer."},
+ au:{name:"Australia",share:.02,crowd:{soft:-2,svc:-1,com:-1},giant:{},funding:-1,cost:.5,note:"Small, wealthy market. Easy launchpad, small ceiling."}
+};
+const W={crowd:1.2,giant:1.6,cost:.6,margin:.9,scale:1.1,speed:.5,funding:.8,growth:1.2,fail:.8};
+
+const clamp=v=>Math.max(1,Math.min(10,v));
+let region="global";
+function adj(n){
+  const r=R[region],o={...n};
+  o.crowd=clamp(n.crowd+(r.crowd[n.cat]||0));
+  o.giant=clamp(n.giant+(r.giant[n.cat]||0));
+  o.funding=clamp(n.funding+(n.cat==="svc"?0:r.funding));
+  o.cost=clamp(n.cost+r.cost);
+  o.rcount=Math.max(1,Math.round(n.count*r.share));
+  let s=0,t=0;for(const f of F){const v=o[f.k];s+=(f.inv?11-v:v)*W[f.k];t+=W[f.k]}
+  o.opp=s/t;
+  o.zone=o.giant>=8?"giant":o.crowd>=8?"crowded":(o.crowd<=5.5&&o.giant<=5.5)?"open":"contested";
+  return o;
+}
+const ZONES={giant:{t:"Giant-owned",c:"bad"},crowded:{t:"Crowded",c:"gold"},open:{t:"Open water",c:"ok"},contested:{t:"Contested",c:""}};
+const data=()=>N.map(adj);
+
+// display modes per section
+const SCOPES=["map","counts","openings","giants","cards","invest"];
+const MODES=[["meter","Meters"],["gauge","Gauges"],["num","1–10"]];
+const mode={};
+let saved={};try{saved=JSON.parse(localStorage.getItem("mm-modes")||"{}")}catch(e){}
+SCOPES.forEach(s=>mode[s]=saved[s]||"meter");
+function persist(){try{localStorage.setItem("mm-modes",JSON.stringify(mode))}catch(e){}}
+
+function good(v,inv){return inv?11-v:v}
+function col(g){return g>=7?"var(--ok)":g>=4.5?"var(--gold)":"var(--bad)"}
+function word(g){return g>=7?"good":g>=4.5?"mixed":"warning"}
+function widget(v,inv,m){
+  const r=Math.round(v),g=good(v,inv),c=col(g);
+  if(m==="num")return `<div class="bignum num" style="color:${c}">${r}<small>/10</small></div>`;
+  if(m==="gauge"){
+    const L=Math.PI*40,p=(v-1)/9;
+    return `<svg class="gauge" viewBox="0 0 100 58" aria-hidden="true"><path d="M10 50 A40 40 0 0 1 90 50" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="9" stroke-linecap="round"/><path d="M10 50 A40 40 0 0 1 90 50" fill="none" stroke="${c}" stroke-width="9" stroke-linecap="round" stroke-dasharray="${(L*Math.max(p,.02)).toFixed(1)} ${L.toFixed(1)}"/><text x="50" y="50" text-anchor="middle" font-size="18" fill="#F4F7FC" font-family="Ascentra Display, sans-serif">${r}</text></svg>`;
+  }
+  let s="";for(let i=1;i<=10;i++)s+=`<i style="${i<=r?`background:${c}`:""}"></i>`;
+  return `<div class="meter" aria-hidden="true">${s}</div>`;
+}
+function factor(n,f,m){
+  const v=n[f.k],r=Math.round(v);
+  return `<div class="f" role="img" aria-label="${f.n}: ${r} out of 10, ${word(good(v,f.inv))}${f.inv?" (lower is better)":""}"><div class="fl1"><span>${f.n}</span>${m==="num"?"":`<b class="num">${r}</b>`}</div>${widget(v,f.inv,m)}${f.inv?`<span class="hint">lower is better</span>`:`<span class="hint">higher is better</span>`}</div>`;
+}
+function fmt(n){if(n>=1e6)return (n/1e6).toFixed(n>=1e7?0:1).replace(/\.0$/,"")+"M";if(n>=1e3)return (n/1e3).toFixed(n>=1e4?0:1).replace(/\.0$/,"")+"k";return String(n)}
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+let sel="vai";
+
+function renderSegs(){
+  document.querySelectorAll(".seg[data-scope]").forEach(el=>{
+    const sc=el.dataset.scope;
+    const cur=sc==="all"?(SCOPES.every(s=>mode[s]===mode.map)?mode.map:null):mode[sc];
+    el.innerHTML=MODES.map(([k,l])=>`<button type="button" data-m="${k}" aria-pressed="${cur===k}">${l}</button>`).join("");
+  });
+}
+document.addEventListener("click",e=>{
+  const b=e.target.closest(".seg[data-scope] button");if(!b)return;
+  const sc=b.parentElement.dataset.scope;
+  if(sc==="all")SCOPES.forEach(s=>mode[s]=b.dataset.m);else mode[sc]=b.dataset.m;
+  persist();renderAll();
+});
+
+function renderLegend(){
+  document.getElementById("legend").innerHTML=Object.values(CATS).map(c=>`<span><i style="background:${c.c}"></i>${c.name}</span>`).join("")+`<span>Dot size = market growth</span>`;
+}
+
+function renderScatter(){
+  const D=data(),Wd=720,H=470,ml=54,mr=18,mt=18,mb=52,pw=Wd-ml-mr,ph=H-mt-mb;
+  const x=v=>ml+(v-.4)/10.2*pw,y=v=>mt+(10.6-v)/10.2*ph;
+  let s=`<svg viewBox="0 0 ${Wd} ${H}" role="img" aria-label="Scatter chart of niches by crowding and giant control">`;
+  // quadrants
+  const mx=x(5.5),my=y(5.5);
+  s+=`<rect x="${ml}" y="${my}" width="${mx-ml}" height="${mt+ph-my}" fill="rgba(127,209,166,.08)"/>`;
+  s+=`<rect x="${ml}" y="${mt}" width="${pw}" height="${y(7.5)-mt}" fill="rgba(255,90,98,.08)"/><rect x="${ml}" y="${mt}" width="${pw}" height="${ph}" fill="none" stroke="rgba(196,206,255,.14)"/>`;
+  for(let i=1;i<=10;i++){
+    s+=`<line x1="${x(i)}" y1="${mt}" x2="${x(i)}" y2="${mt+ph}" stroke="rgba(196,206,255,.08)"/>`;
+    s+=`<line x1="${ml}" y1="${y(i)}" x2="${ml+pw}" y2="${y(i)}" stroke="rgba(196,206,255,.08)"/>`;
+    s+=`<text x="${x(i)}" y="${mt+ph+18}" fill="#C3CCDD" font-size="11" text-anchor="middle">${i}</text>`;
+    s+=`<text x="${ml-10}" y="${y(i)+4}" fill="#C3CCDD" font-size="11" text-anchor="end">${i}</text>`;
+  }
+  s+=`<line x1="${mx}" y1="${mt}" x2="${mx}" y2="${mt+ph}" stroke="rgba(196,206,255,.3)" stroke-dasharray="4 4"/><line x1="${ml}" y1="${my}" x2="${ml+pw}" y2="${my}" stroke="rgba(196,206,255,.3)" stroke-dasharray="4 4"/>`;
+  s+=`<text x="${ml+pw/2}" y="${H-8}" fill="#C3CCDD" font-size="12" text-anchor="middle">Crowding: more competitors →</text>`;
+  s+=`<text transform="translate(14 ${mt+ph/2}) rotate(-90)" fill="#C3CCDD" font-size="12" text-anchor="middle">Giant control →</text>`;
+  const ql=(t,xx,yy,a,c)=>`<text x="${xx}" y="${yy}" fill="${c}" font-size="11" letter-spacing="1.2" text-anchor="${a}" font-family="Ascentra Display, sans-serif">${t}</text>`;
+  s+=ql("OPEN WATER",ml+8,mt+ph-8,"start","#9FE3BE")+ql("CROWDED",ml+pw-8,mt+ph-8,"end","#FFE08A")+ql("GIANT-OWNED",mx-8,y(7.5)-8,"end","#FF9AA0")+ql("RED ZONE",ml+pw-8,y(7.5)-8,"end","#FF9AA0");
+  // jitter identical spots
+  const seen={};const pts=D.map(n=>{const key=n.crowd.toFixed(1)+"_"+n.giant.toFixed(1);const k=seen[key]=(seen[key]||0)+1;const a=k*2.4,rr=k>1?9*Math.sqrt(k-1):0;return{n,px:x(n.crowd)+Math.cos(a)*rr,py:y(n.giant)+Math.sin(a)*rr,r:4+n.growth*.85}});
+  // labels with greedy collision avoidance
+  const boxes=pts.map(p=>({x:p.px-p.r,y:p.py-p.r,w:p.r*2,h:p.r*2}));
+  const hit=b=>boxes.some(o=>b.x<o.x+o.w&&b.x+b.w>o.x&&b.y<o.y+o.h&&b.y+b.h>o.y);
+  const labels=[];
+  [...pts].sort((a,b)=>b.n.opp-a.n.opp).forEach(p=>{
+    const w=p.n.short.length*6.1+4,h=13;
+    const tries=[[p.px+p.r+3,p.py-h/2,"start"],[p.px-p.r-3-w,p.py-h/2,"end"],[p.px-w/2,p.py-p.r-h-1,"middle"],[p.px-w/2,p.py+p.r+1,"middle"]];
+    for(const [bx,by,a] of tries){const b={x:bx,y:by,w,h};if(bx<ml||bx+w>ml+pw||by<mt||by+h>mt+ph)continue;if(!hit(b)){boxes.push(b);labels.push({p,b,a});break}}
+  });
+  pts.forEach(p=>{
+    const c=CATS[p.n.cat].c;
+    s+=`<g class="dot${p.n.id===sel?" sel":""}" tabindex="0" role="button" data-id="${p.n.id}" aria-label="${esc(p.n.name)}: crowding ${Math.round(p.n.crowd)}, giant control ${Math.round(p.n.giant)}"><title>${esc(p.n.name)}</title><circle cx="${p.px.toFixed(1)}" cy="${p.py.toFixed(1)}" r="${p.r.toFixed(1)}" fill="${c}" fill-opacity=".78" stroke="${p.n.id===sel?"#FFFFFF":"rgba(255,255,255,.55)"}" stroke-width="${p.n.id===sel?2.5:1}"/></g>`;
+  });
+  labels.forEach(({p,b})=>{s+=`<text x="${b.x+2}" y="${b.y+10}" fill="#E6EBF5" font-size="10.5" pointer-events="none">${esc(p.n.short)}</text>`});
+  s+=`</svg>`;
+  const el=document.getElementById("scatter");el.innerHTML=s;
+  el.querySelectorAll(".dot").forEach(g=>{
+    const pick=()=>{sel=g.dataset.id;renderScatter();renderDetail();renderBars()};
+    g.addEventListener("click",pick);g.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();pick()}});
+  });
+}
+
+function zoneChip(n){const z=ZONES[n.zone];return `<span class="chip ${z.c}">${z.t}</span>`}
+function renderDetail(){
+  const n=data().find(d=>d.id===sel);
+  document.getElementById("detail").innerHTML=`
+    <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start">
+      <div style="display:flex;flex-direction:column;gap:6px;min-width:0"><span class="cat"><i style="background:${CATS[n.cat].c}"></i>${CATS[n.cat].name}</span><h3>${esc(n.name)}</h3></div>
+      <div class="opp"><span class="label">Opportunity</span>${widget(n.opp,0,"num")}</div>
+    </div>
+    <div class="chips">${zoneChip(n)}<span class="chip num">~${fmt(n.rcount)} competitors</span></div>
+    <p class="small">${esc(n.ex)}.</p>
+    <p class="small"><b style="color:var(--ink)">Who you'd face:</b> ${esc(n.giants)}.</p>
+    <div class="factors tight">${F.map(f=>factor(n,f,mode.map)).join("")}</div>`;
+}
+
+function renderBars(){
+  const D=data(),by=document.getElementById("countSort").value;
+  D.sort((a,b)=>by==="giant"?b.giant-a.giant||b.rcount-a.rcount:b.rcount-a.rcount);
+  const mx=Math.log10(Math.max(...D.map(d=>d.rcount)))+.2;
+  document.getElementById("bars").innerHTML=`<div class="bar" style="cursor:default;background:none"><span class="label">Niche</span><span class="label">Competitors (log scale) · crowding · giant control</span><span class="label" style="text-align:right">Count</span></div>`+D.map(n=>{
+    const w=Math.max(2,Math.log10(n.rcount)/mx*100);
+    return `<div class="bar${n.id===sel?" sel":""}" data-id="${n.id}" tabindex="0" role="button" aria-label="${esc(n.name)}: about ${fmt(n.rcount)} competitors"><span class="n">${esc(n.short)}</span><span style="display:grid;grid-template-columns:minmax(0,1fr) ${mode.counts==="gauge"?"118px":mode.counts==="num"?"92px":"148px"};gap:10px;align-items:center"><span class="tr"><span class="fl" style="display:block;width:${w.toFixed(1)}%;background:${CATS[n.cat].c}"></span></span><span style="display:grid;grid-template-columns:1fr 1fr;gap:6px">${mini(n,"crowd")}${mini(n,"giant")}</span></span><span class="v num">${fmt(n.rcount)}</span></div>`;
+  }).join("");
+  document.querySelectorAll("#bars .bar[data-id]").forEach(b=>{
+    const pick=()=>{sel=b.dataset.id;renderScatter();renderDetail();renderBars();document.getElementById("map").scrollIntoView({behavior:"smooth",block:"start"})};
+    b.addEventListener("click",pick);b.addEventListener("keydown",e=>{if(e.key==="Enter"){pick()}});
+  });
+}
+function mini(n,k){const f=F.find(x=>x.k===k);const v=n[k];const m=mode.counts;
+  if(m==="num")return `<span class="num" title="${f.n}" style="color:${col(good(v,1))};font-size:13px">${Math.round(v)}<span class="hint"> ${k==="crowd"?"crowd":"giant"}</span></span>`;
+  if(m==="gauge")return `<span title="${f.n} ${Math.round(v)}/10" style="display:block">${widget(v,1,"gauge")}</span>`;
+  return `<span title="${f.n} ${Math.round(v)}/10">${widget(v,1,"meter")}</span>`}
+
+function whyLine(n){
+  const parts=[];
+  if(n.giant<=4)parts.push("no giant in control");
+  if(n.crowd<=5)parts.push("room for newcomers");
+  if(n.growth>=8)parts.push("fast-growing demand");
+  if(n.funding>=8)parts.push("investors are actively funding it");
+  if(n.margin>=8)parts.push("high margins");
+  if(n.scale>=8)parts.push("scales by hiring");
+  if(n.cost>=7)parts.push("but expensive to start");
+  if(n.crowd>=8)parts.push("but crowded");
+  return parts.slice(0,4).join(", ").replace(/^./,c=>c.toUpperCase())+".";
+}
+function renderOpenings(){
+  const D=data().filter(n=>n.cat!=="giant").sort((a,b)=>b.opp-a.opp).slice(0,7);
+  document.getElementById("rank").innerHTML=D.map((n,i)=>`<div class="rk sub"><span class="pos num">${i+1}</span><div style="min-width:0;display:flex;flex-direction:column;gap:3px"><h3 style="font-size:14px">${esc(n.name)}</h3><span class="why">${whyLine(n)} ~${fmt(n.rcount)} competitors.</span></div><div class="w" role="img" aria-label="Opportunity ${Math.round(n.opp)} out of 10"><span class="label">Opportunity</span>${widget(n.opp,0,mode.openings)}</div></div>`).join("");
+  renderIdea();
+}
+function renderIdea(){
+  const q=document.getElementById("idea").value.toLowerCase().trim(),out=document.getElementById("ideaOut");
+  if(!q){out.innerHTML=`<p class="small">Example ideas from the top openings: an AI agent that handles insurance claims for small brokers, or scheduling software for vet clinics.</p>`;return}
+  const D=data();let best=null,bs=0;
+  D.forEach(n=>{let s=0;n.k.forEach(w=>{if(q.includes(w))s+=w.length});if(s>bs){bs=s;best=n}});
+  if(!best){out.innerHTML=`<p class="small">No match yet. Try naming what it does and who it's for, like "app", "AI", "software", "agency", "store" or "device".</p>`;return}
+  const n=best;
+  const verdict=n.zone==="giant"?"Giants own this market. Look for a narrow corner they ignore, or pick another niche.":n.zone==="crowded"?"Crowded. You'd need a sharp angle: one specific customer type or a 10x better product.":n.zone==="open"?"Good sign. There is room here for a new company.":"Contested. Doable if you focus on one industry or customer type.";
+  out.innerHTML=`<div style="display:flex;flex-direction:column;gap:10px"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center"><div style="min-width:0"><span class="label">Closest niche</span><h3 style="font-size:15px">${esc(n.name)}</h3></div>${widget(n.opp,0,"num")}</div><div class="chips">${zoneChip(n)}<span class="chip num">~${fmt(n.rcount)} competitors</span></div><p class="small">${verdict}</p><div class="factors tight">${["crowd","giant","growth","scale"].map(k=>factor(n,F.find(f=>f.k===k),mode.openings)).join("")}</div></div>`;
+}
+
+function card(n,m){
+  return `<article class="sub card"><div class="top"><div style="display:flex;flex-direction:column;gap:6px;min-width:0"><span class="cat"><i style="background:${CATS[n.cat].c}"></i>${CATS[n.cat].name}</span><h3>${esc(n.name)}</h3><div class="chips">${zoneChip(n)}<span class="chip num">~${fmt(n.rcount)} competitors</span></div></div><div class="opp"><span class="label">Opportunity</span>${widget(n.opp,0,"num")}</div></div><p class="small"><b style="color:var(--ink)">Who you'd face:</b> ${esc(n.giants)}.</p><div class="factors tight">${F.map(f=>factor(n,f,m)).join("")}</div></article>`;
+}
+function renderGiants(){
+  const D=data().filter(n=>n.cat==="giant").sort((a,b)=>b.giant-a.giant);
+  document.getElementById("giantCards").innerHTML=D.map(n=>card(n,mode.giants)).join("");
+}
+const FILTERS=[["all","All niches"],["soft","Software & AI"],["svc","Agencies & consulting"],["com","E-commerce & consumer"],["deep","Hardware & deep tech"],["giant","Giant-owned"]];
+const SORTS=[["opp","Best opportunity"],["crowd","Least crowded"],["giant","Least giant control"],["growth","Fastest growth"],["count","Fewest competitors"]];
+function renderCards(){
+  const fv=document.getElementById("filter").value,sv=document.getElementById("sort").value;
+  let D=data().filter(n=>fv==="all"||n.cat===fv);
+  const sorters={opp:(a,b)=>b.opp-a.opp,crowd:(a,b)=>a.crowd-b.crowd,giant:(a,b)=>a.giant-b.giant,growth:(a,b)=>b.growth-a.growth,count:(a,b)=>a.rcount-b.rcount};
+  D.sort(sorters[sv]);
+  document.getElementById("cards").innerHTML=D.map(n=>card(n,mode.cards)).join("");
+}
+
+// ---------- Investment ----------
+// Startup types: growth, market, team, valuation (higher = fairer entry price), safety (higher = lower risk)
+const IM=[["overall","Overall"],["growth","Growth"],["market","Market"],["team","Team"],["valuation","Valuation"],["risk","Risk"]];
+const TYPES=[
+ {name:"AI agents for regulated industries",niche:"vai",stage:"Seed",meta:"Insurance, accounting, legal, mortgage back offices",growth:9,market:9,team:8,valuation:4,risk:5},
+ {name:"Security for AI agents",niche:"sec",stage:"Seed",meta:"Guardrails, identity and audit for companies running agents",growth:9,market:8,team:8,valuation:4,risk:5},
+ {name:"Vertical SaaS for overlooked industries",niche:"vsaas",stage:"Pre-seed / seed",meta:"Freight brokers, vet clinics, specialty manufacturers",growth:6,market:6,team:6,valuation:8,risk:7},
+ {name:"Clinic and hospital admin automation",niche:"health",stage:"Seed",meta:"Prior authorization, billing, scheduling",growth:8,market:8,team:7,valuation:6,risk:6},
+ {name:"AI evaluation and data tooling",niche:"data",stage:"Seed",meta:"Testing and monitoring AI before it ships",growth:8,market:7,team:8,valuation:5,risk:5},
+ {name:"Fintech compliance and underwriting AI",niche:"fin",stage:"Seed",meta:"KYC, fraud, lending decisions",growth:7,market:8,team:7,valuation:5,risk:5},
+ {name:"Coding agents and dev workflow",niche:"dev",stage:"Seed",meta:"Code review, migration, testing agents",growth:9,market:8,team:8,valuation:3,risk:4},
+ {name:"Energy and grid software",niche:"climate",stage:"Seed",meta:"Load management, data center power, solar ops",growth:7,market:7,team:7,valuation:7,risk:6},
+ {name:"Warehouse and farm robotics",niche:"robot",stage:"Seed",meta:"Picking, sorting, harvesting",growth:8,market:8,team:7,valuation:4,risk:3},
+ {name:"Invented consumer gadgets (crowdfunded)",niche:"gadget",stage:"Pre-seed",meta:"Wefunder and Kickstarter hardware brands",growth:5,market:5,team:5,valuation:7,risk:3},
+ {name:"AI tutoring and skills training",niche:"edu",stage:"Pre-seed / seed",meta:"Test prep, workforce upskilling",growth:6,market:6,team:6,valuation:7,risk:4},
+ {name:"Consumer AI apps",niche:"aiapp",stage:"Pre-seed",meta:"Chat, photo and companion apps",growth:7,market:6,team:5,valuation:4,risk:2},
+ {name:"DTC e-commerce brands",niche:"dtc",stage:"Pre-seed",meta:"Apparel, beauty, food sold online",growth:4,market:5,team:5,valuation:7,risk:3}
+];
+// Named seed startups reported in 2026 funding news. Team and valuation aren't public, so they're not scored.
+const REAL=[
+ {name:"WithAI",niche:"vai",stage:"Seed",round:6,meta:"New York · AI tools for investment firms and asset managers",src:"https://www.cbinsights.com/company/withai"},
+ {name:"Iridius",niche:"vai",stage:"Seed",round:8.6,meta:"AI for regulated workflows",src:"https://qubit.capital/blog/us-seed-weekly-funding-roundup-week-1-may-2026"},
+ {name:"Balerion AI",niche:"fin",stage:"Seed",round:6,meta:"AI for mortgage lending",src:"https://qubit.capital/blog/us-seed-weekly-funding-roundup-week-1-may-2026"},
+ {name:"Dextr AI",niche:"vai",stage:"Seed",round:6.7,meta:"India · vertical AI",src:"https://startupfeed.in/?p=12086"},
+ {name:"Aina",niche:"vai",stage:"Seed",round:5.5,meta:"India · vertical AI",src:"https://startupfeed.in/?p=12086"},
+ {name:"NeoCognition",niche:"vai",stage:"Seed (large)",round:40,meta:"Enterprise agents that learn from their own work · about 15 people",src:"https://blog.innmind.com/ai-seed-funding-2026-insights/"}
+];
+let invTab="types",invMetric="overall";
+function nicheOf(id){return data().find(n=>n.id===id)}
+function realScores(r){
+  const n=nicheOf(r.niche);
+  return{growth:n.growth,market:Math.min(10,(n.growth+n.funding)/2+1),team:null,valuation:null,
+    risk:clamp(10-(r.round>=20?6:r.round>=8?4:3)-(n.fail-5)*.5)};
+}
+function score(o,k){
+  const s=invTab==="types"?o:realScores(o);
+  if(k==="overall"){const v=["growth","market","team","valuation","risk"].map(x=>s[x]).filter(v=>v!=null);return v.reduce((a,b)=>a+b,0)/v.length}
+  return s[k];
+}
+function renderInvest(){
+  document.getElementById("invTab").innerHTML=[["types","Startup types"],["real","Named startups"]].map(([k,l])=>`<button type="button" data-t="${k}" aria-pressed="${invTab===k}">${l}</button>`).join("");
+  document.getElementById("invMetric").innerHTML=IM.map(([k,l])=>`<button type="button" data-k="${k}" aria-pressed="${invMetric===k}">${l}</button>`).join("");
+  const notes={overall:"Average of every metric.",growth:"How fast the company or its market can grow.",market:"How big the market it sells into is.",team:"How strong founding teams in this space tend to be.",valuation:"Higher means a fairer entry price. Hot sectors score low because you pay more for the same share.",risk:"Higher means safer. Every seed-stage company is risky, so even a high score here means high risk."};
+  document.getElementById("invNote").textContent=(invTab==="real"?"Reported 2026 seed rounds, ranked by their niche's outlook. Team and valuation aren't public, so research those yourself before investing. ":"Typical startups in each space, not specific companies. ")+notes[invMetric];
+  const L=(invTab==="types"?TYPES:REAL).slice();
+  L.sort((a,b)=>(score(b,invMetric)??-1)-(score(a,invMetric)??-1));
+  document.getElementById("invList").innerHTML=L.map((o,i)=>{
+    const v=score(o,invMetric),n=nicheOf(o.niche);
+    const w=v==null?`<span class="na">Not public</span>`:`<div role="img" aria-label="${IM.find(x=>x[0]===invMetric)[1]} ${Math.round(v)} out of 10">${widget(v,0,mode.invest)}</div>`;
+    return `<div class="irow"><span class="pos num">${i+1}</span><div style="min-width:0;display:flex;flex-direction:column;gap:3px"><h3>${esc(o.name)}</h3><span class="meta">${esc(o.meta)}${o.src?` · <a href="${o.src}" target="_blank" rel="noopener">source</a>`:""}</span></div><div class="meta2" style="display:flex;flex-direction:column;gap:4px;min-width:0"><span class="chips"><span class="chip">${esc(o.stage)}</span>${o.round?`<span class="chip num">$${o.round}M round</span>`:""}</span><span class="small">Niche: ${esc(n.short)} · ${ZONES[n.zone].t}</span></div><div class="w">${w}</div></div>`;
+  }).join("");
+}
+document.getElementById("invTab").addEventListener("click",e=>{const b=e.target.closest("button");if(b){invTab=b.dataset.t;renderInvest()}});
+document.getElementById("invMetric").addEventListener("click",e=>{const b=e.target.closest("button");if(b){invMetric=b.dataset.k;renderInvest()}});
+
+// ---------- wiring ----------
+const regSel=document.getElementById("region");
+regSel.innerHTML=Object.entries(R).map(([k,r])=>`<option value="${k}">${r.name}</option>`).join("");
+regSel.addEventListener("change",()=>{region=regSel.value;renderAll()});
+document.getElementById("filter").innerHTML=FILTERS.map(([k,l])=>`<option value="${k}">${l}</option>`).join("");
+document.getElementById("sort").innerHTML=SORTS.map(([k,l])=>`<option value="${k}">${l}</option>`).join("");
+["filter","sort"].forEach(id=>document.getElementById(id).addEventListener("change",renderCards));
+document.getElementById("countSort").addEventListener("change",renderBars);
+document.getElementById("idea").addEventListener("input",renderIdea);
+
+function renderAll(){
+  document.getElementById("regionNote").textContent=R[region].note;
+  renderSegs();renderScatter();renderDetail();renderBars();renderOpenings();renderGiants();renderCards();renderInvest();
+}
+renderLegend();renderAll();
+})();
+</script>
