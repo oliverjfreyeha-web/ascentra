@@ -145,6 +145,19 @@ input[type=text]{width:100%}
 .foot{display:flex;flex-direction:column;gap:10px;font-size:13px;color:var(--muted)}
 .foot ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
 
+/* Weights */
+.wbox{margin-bottom:16px}
+.wbox summary{cursor:pointer;display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;list-style:none}
+.wbox summary::-webkit-details-marker{display:none}
+.wbox summary::before{content:"+";font-family:var(--mono);color:var(--frost);width:1em}
+.wbox[open] summary::before{content:"−"}
+.wbox[open]>*+*{margin-top:12px}
+.wgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px 20px}
+.wrow{display:flex;flex-direction:column;gap:4px;min-width:0}
+.wrow .wl{display:flex;justify-content:space-between;font-size:12.5px;color:var(--muted)}
+.wrow .wl b{color:var(--ink);font-weight:600}
+.wrow input[type=range]{width:100%;accent-color:#A0BDDB}
+
 /* What fits me */
 .fitbox{display:flex;flex-direction:column;gap:12px;margin-bottom:16px}
 .fithead{display:flex;flex-wrap:wrap;gap:8px 16px;justify-content:space-between;align-items:center}
@@ -175,13 +188,14 @@ input[type=text]{width:100%}
 
 @media (max-width:900px){
   .fit{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .wgrid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .indrow{grid-template-columns:2em minmax(0,1fr)}
   .indrow .indf,.indrow .w{grid-column:2}
   .hero,.mapgrid,.split{grid-template-columns:1fr}
   .irow{grid-template-columns:2em minmax(0,1fr);}
   .irow .meta2,.irow .w{grid-column:2}
 }
-@media (max-width:480px){.fit{grid-template-columns:1fr}.indf{grid-template-columns:repeat(2,minmax(0,1fr))}.cards{grid-template-columns:1fr}.bar{grid-template-columns:minmax(0,7.5em) minmax(0,1fr) 4.2em}}
+@media (max-width:480px){.fit{grid-template-columns:1fr}.wgrid{grid-template-columns:1fr}.indf{grid-template-columns:repeat(2,minmax(0,1fr))}.cards{grid-template-columns:1fr}.bar{grid-template-columns:minmax(0,7.5em) minmax(0,1fr) 4.2em}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 
@@ -201,6 +215,7 @@ input[type=text]{width:100%}
         <div class="seg" role="group" aria-labelledby="allLbl" data-scope="all"></div>
       </div>
       <p class="small" id="regionNote"></p>
+      <p class="small">Last updated October 19, 2026. Startup list refreshed monthly.</p>
     </div>
   </header>
 
@@ -253,6 +268,12 @@ input[type=text]{width:100%}
         <div class="seg" role="group" aria-labelledby="opLbl" data-scope="openings"></div>
       </div>
     </div>
+    <details class="sub wbox" id="wbox">
+      <summary><h3>Adjust what matters</h3><span class="small" id="wState">Default weights</span></summary>
+      <p class="small">Change how much each factor counts. Every opportunity score on the page updates: the map, the rankings and the niche cards.</p>
+      <div class="wgrid" id="wgrid"></div>
+      <div><button type="button" class="btn" id="wReset">Reset weights</button></div>
+    </details>
     <div class="sub fitbox">
       <div class="fithead">
         <h3>What fits me</h3>
@@ -364,6 +385,11 @@ input[type=text]{width:100%}
       </select>
       <label class="chk"><input type="checkbox" id="invSmall"> Small rounds only (under $10M)</label>
       <label class="chk"><input type="checkbox" id="invOpen"> Open to anyone only</label>
+      <select id="invConf" aria-label="Filter by source strength">
+        <option value="all">Any source</option>
+        <option value="high">Strong sources only</option>
+        <option value="medium">Medium or strong</option>
+      </select>
       <span class="small num" id="invCount"></span>
     </div>
     <div class="inv" id="invList"></div>
@@ -377,6 +403,7 @@ input[type=text]{width:100%}
       <li>Region views apply each region's share of companies and local adjustments (VC depth, local giants, cost of building) to the global estimate.</li>
       <li>Opportunity score weights giant control most, then crowding and growth, then margins, scalability, funding, failure risk, speed and startup cost.</li>
       <li>Named startups come from 2026 funding news and deal trackers (Qubit Capital, CB Insights, Dealroom, raising.fi, Axios Pro, PitchBook, funding.tech.eu and others). Each row links its source. Round sizes were not checked against company announcements, and euro and pound rounds are converted to dollars approximately. Rounds of $20M or more are tagged "Seed (large)" because they are no longer small.</li>
+      <li>Source tags on named startups: high means a news outlet or the company's own announcement, medium means a deal database, low means a list site or a single promotional page.</li>
       <li>Not financial advice. Early-stage startups fail more often than not. Only invest money you can afford to lose.</li>
     </ul>
   </footer>
@@ -447,7 +474,12 @@ const R={
  sea:{name:"Southeast Asia",share:.04,crowd:{soft:-1,svc:0},giant:{com:1.5},funding:-1,cost:-1,note:"Fast-growing and young. Shopee, Grab and Sea control consumer."},
  au:{name:"Australia",share:.02,crowd:{soft:-2,svc:-1,com:-1},giant:{},funding:-1,cost:.5,note:"Small, wealthy market. Easy launchpad, small ceiling."}
 };
-const W={crowd:1.2,giant:1.6,cost:.6,margin:.9,scale:1.1,speed:.5,funding:.8,growth:1.2,fail:.8};
+const BASE_W={crowd:1.2,giant:1.6,cost:.6,margin:.9,scale:1.1,speed:.5,funding:.8,growth:1.2,fail:.8};
+// Viewer's multipliers on each factor's weight (0 = ignore, 1 = default, 2 = double)
+const MW={};try{Object.assign(MW,JSON.parse(localStorage.getItem("mm-weights")||"{}"))}catch(e){}
+const W={};
+function applyWeights(){for(const k in BASE_W)W[k]=BASE_W[k]*(MW[k]??1)}
+applyWeights();
 
 const clamp=v=>Math.max(1,Math.min(10,v));
 let region="global";
@@ -601,6 +633,24 @@ function whyLine(n){
   if(n.crowd>=8)parts.push("but crowded");
   return parts.slice(0,4).join(", ").replace(/^but /,"").replace(/^./,c=>c.toUpperCase())+".";
 }
+// ---------- Weights ----------
+const WLBL=v=>v===0?"Ignore":v<1?"Less":v===1?"Normal":v<2?"More":"Most";
+function renderWeights(){
+  document.getElementById("wgrid").innerHTML=F.map(f=>{const v=MW[f.k]??1;return `<div class="wrow"><label class="wl" for="w_${f.k}"><span>${f.n}${f.inv?" (lower is better)":""}</span><b id="wv_${f.k}">${WLBL(v)}</b></label><input type="range" id="w_${f.k}" min="0" max="2" step="0.25" value="${v}" data-k="${f.k}"></div>`}).join("");
+  updateWState();
+}
+function updateWState(){
+  const changed=F.filter(f=>(MW[f.k]??1)!==1).map(f=>`${f.n} ${WLBL(MW[f.k]).toLowerCase()}`);
+  document.getElementById("wState").textContent=changed.length?"Custom: "+changed.join(", "):"Default weights";
+}
+document.getElementById("wgrid").addEventListener("input",e=>{
+  const el=e.target;if(!el.dataset.k)return;
+  MW[el.dataset.k]=parseFloat(el.value);document.getElementById("wv_"+el.dataset.k).textContent=WLBL(MW[el.dataset.k]);
+  try{localStorage.setItem("mm-weights",JSON.stringify(MW))}catch(e){}
+  applyWeights();updateWState();renderAll();
+});
+document.getElementById("wReset").addEventListener("click",()=>{for(const k in MW)delete MW[k];try{localStorage.removeItem("mm-weights")}catch(e){}applyWeights();renderWeights();renderAll()});
+
 // ---------- Hiring reality ----------
 // First 3-5 hires, their yearly cost in $k at US pay (salary plus taxes and benefits), and team size at about $1M revenue
 const HIRE={
@@ -882,6 +932,17 @@ const REAL=[
  {name:"Pickmybrain",niche:"creator",stage:"Seed",round:2.1,meta:"Turns creators' knowledge into AI products · April 2026",src:"https://newmarketpitch.com/blogs/news/creator-economy-list-deals"}
 ];
 let invTab="types",invMetric="overall";
+// How much to trust each row's source: news outlets and company announcements are high,
+// deal databases medium, list sites and promotional pages low. Flags in the row text lower it one step.
+const SRC_HIGH=["techcrunch.com","securityweek.com","newswire.com","axios.com","therobotreport.com","prnewswire.com","geekwire.com","fiercehealthcare.com","destroai.com","crowdfundinsider.com","calcalistech.com","technical.ly","tech.eu","quickture.com","pocketgamer.biz","pitchbook.com","pitchbook.brightspotcdn.com","fortune.com","fintech.global"];
+const SRC_LOW=["projectstartups.com","tryfundable.ai","newmarketpitch.com","neuronfeed.com","startupfeed.in","angelinvestorsnetwork.com","fundedstartupsdaily.com","tech-insider.org","nordic9.com","mugglehead.com","blog.innmind.com","aifunding.me"];
+const CONF=["low","medium","high"];
+function confidence(o){
+  const h=new URL(o.src).hostname.replace(/^www\./,"");
+  let c=SRC_HIGH.includes(h)?2:SRC_LOW.includes(h)?0:1;
+  if(/verify first|unclear|self-reported|inconsistent|only one source/i.test(o.meta))c=Math.max(0,c-1);
+  return CONF[c];
+}
 function nicheOf(id){return data().find(n=>n.id===id)}
 function realScores(r){
   const n=nicheOf(r.niche);
@@ -902,7 +963,7 @@ function renderInvest(){
   document.getElementById("invFilters").hidden=!real;document.getElementById("howInvest").hidden=!real;
   let L=(real?REAL:TYPES).slice();
   if(real){
-    const open=document.getElementById("invOpen").checked,q=document.getElementById("invQ").value.toLowerCase().trim(),nf=document.getElementById("invNiche").value,sf=document.getElementById("invStage").value,small=document.getElementById("invSmall").checked;
+    const cf=document.getElementById("invConf").value,open=document.getElementById("invOpen").checked,q=document.getElementById("invQ").value.toLowerCase().trim(),nf=document.getElementById("invNiche").value,sf=document.getElementById("invStage").value,small=document.getElementById("invSmall").checked;
     L=L.filter(o=>{
       if(q&&!(o.name+" "+o.meta).toLowerCase().includes(q))return false;
       if(nf!=="all"&&o.niche!==nf)return false;
@@ -912,6 +973,8 @@ function renderInvest(){
       if(sf==="large"&&!(o.round>=20))return false;
       if(small&&!(o.round!=null&&o.round<10))return false;
       if(open&&!o.cf)return false;
+      if(cf==="high"&&confidence(o)!=="high")return false;
+      if(cf==="medium"&&confidence(o)==="low")return false;
       return true;
     });
     document.getElementById("invCount").textContent=`Showing ${L.length} of ${REAL.length}`;
@@ -921,7 +984,7 @@ function renderInvest(){
   document.getElementById("invList").innerHTML=L.map((o,i)=>{
     const v=score(o,invMetric),n=nicheOf(o.niche);
     const w=v==null?`<span class="na">Not public</span>`:`<div role="img" aria-label="${IM.find(x=>x[0]===invMetric)[1]} ${Math.round(v)} out of 10">${widget(v,0,mode.invest)}</div>`;
-    return `<div class="irow"><span class="pos num">${i+1}</span><div style="min-width:0;display:flex;flex-direction:column;gap:3px"><h3>${esc(o.name)}</h3><span class="meta">${esc(o.meta)}${o.src?` · <a href="${o.src}" target="_blank" rel="noopener">source</a>`:""}</span></div><div class="meta2" style="display:flex;flex-direction:column;gap:4px;min-width:0"><span class="chips"><span class="chip">${esc(o.stage)}</span>${invTab==="real"?(o.cf?(/testing/i.test(o.stage)?`<span class="chip gold" title="Not open yet. You can reserve a spot on ${o.cf}.">Reservations only · ${o.cf}</span>`:`<span class="chip ok" title="Anyone can invest through ${o.cf}, within yearly limits">Open to anyone · ${o.cf}</span>`):`<span class="chip" title="Private round led by venture investors. Usually accredited investors only.">Private · accredited only</span>`):""}${o.round?`<span class="chip num">$${o.round}M ${o.cf?"max raise":"round"}</span>`:""}</span><span class="small">Niche: ${esc(n.short)} · ${ZONES[n.zone].t}</span></div><div class="w">${w}</div></div>`;
+    return `<div class="irow"><span class="pos num">${i+1}</span><div style="min-width:0;display:flex;flex-direction:column;gap:3px"><h3>${esc(o.name)}</h3><span class="meta">${esc(o.meta)}${o.src?` · <a href="${o.src}" target="_blank" rel="noopener">source</a>`:""}</span></div><div class="meta2" style="display:flex;flex-direction:column;gap:4px;min-width:0"><span class="chips"><span class="chip">${esc(o.stage)}</span>${invTab==="real"?(()=>{const c=confidence(o);return `<span class="chip ${c==="high"?"ok":c==="low"?"bad":"gold"}" title="How strong this row's source is">Source: ${c}</span>`})():""}${invTab==="real"?(o.cf?(/testing/i.test(o.stage)?`<span class="chip gold" title="Not open yet. You can reserve a spot on ${o.cf}.">Reservations only · ${o.cf}</span>`:`<span class="chip ok" title="Anyone can invest through ${o.cf}, within yearly limits">Open to anyone · ${o.cf}</span>`):`<span class="chip" title="Private round led by venture investors. Usually accredited investors only.">Private · accredited only</span>`):""}${o.round?`<span class="chip num">$${o.round}M ${o.cf?"max raise":"round"}</span>`:""}</span><span class="small">Niche: ${esc(n.short)} · ${ZONES[n.zone].t}</span></div><div class="w">${w}</div></div>`;
   }).join("");
 }
 document.getElementById("invTab").addEventListener("click",e=>{const b=e.target.closest("button");if(b){invTab=b.dataset.t;renderInvest()}});
@@ -930,7 +993,7 @@ document.getElementById("invMetric").addEventListener("click",e=>{const b=e.targ
   const used=new Set(REAL.map(r=>r.niche));
   document.getElementById("invNiche").innerHTML=`<option value="all">Every niche</option>`+N.filter(n=>used.has(n.id)).map(n=>`<option value="${n.id}">${esc(n.name)}</option>`).join("");
   document.getElementById("invQ").addEventListener("input",renderInvest);
-  ["invNiche","invStage","invSmall","invOpen"].forEach(id=>document.getElementById(id).addEventListener("change",renderInvest));
+  ["invNiche","invStage","invSmall","invOpen","invConf"].forEach(id=>document.getElementById(id).addEventListener("change",renderInvest));
 }
 
 // ---------- wiring ----------
@@ -947,6 +1010,6 @@ function renderAll(){
   document.getElementById("regionNote").textContent=R[region].note;
   renderSegs();renderScatter();renderDetail();renderBars();renderOpenings();renderInds();renderGiants();renderCards();renderInvest();
 }
-renderLegend();renderAll();
+renderLegend();renderWeights();renderAll();
 })();
 </script>
