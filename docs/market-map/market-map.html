@@ -145,12 +145,43 @@ input[type=text]{width:100%}
 .foot{display:flex;flex-direction:column;gap:10px;font-size:13px;color:var(--muted)}
 .foot ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
 
+/* What fits me */
+.fitbox{display:flex;flex-direction:column;gap:12px;margin-bottom:16px}
+.fithead{display:flex;flex-wrap:wrap;gap:8px 16px;justify-content:space-between;align-items:center}
+.fit{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.fit .field{min-width:0}
+.fit select{width:100%;min-width:0}
+.btn{all:unset;cursor:pointer;font-size:13px;color:var(--frost);padding:6px 10px;border-radius:10px;transition:transform .12s var(--ease)}
+.btn:hover{color:var(--ink);background:rgba(255,255,255,.06)}
+.btn:active{transform:scale(.965)}
+.btn:focus-visible{outline:2px solid var(--frost)}
+.warn{color:#FFD08A}
+
+/* Industry breakdown */
+.ind{display:flex;flex-direction:column;gap:8px}
+.indrow{display:grid;grid-template-columns:2em minmax(0,1.25fr) minmax(0,1.5fr) 120px;gap:16px;align-items:center;padding:14px;border-radius:16px;background:rgba(10,10,32,.32)}
+.indrow .pos{font-family:var(--disp);font-size:18px;color:var(--frost)}
+.indrow h3{font-size:14px}
+.indrow .gap{font-size:12.5px;color:var(--muted)}
+.indrow .gap b{color:var(--ink);font-weight:600}
+.indf{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+
+/* Startup filters */
+.filters{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px}
+.filters input[type=text]{width:auto;flex:1 1 200px;min-width:0}
+.chk{display:inline-flex;gap:8px;align-items:center;font-size:13px;cursor:pointer}
+.chk input{width:16px;height:16px;accent-color:#A0BDDB}
+.empty{padding:18px;border-radius:16px;background:rgba(10,10,32,.32);color:var(--muted);font-size:14px}
+
 @media (max-width:900px){
+  .fit{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .indrow{grid-template-columns:2em minmax(0,1fr)}
+  .indrow .indf,.indrow .w{grid-column:2}
   .hero,.mapgrid,.split{grid-template-columns:1fr}
   .irow{grid-template-columns:2em minmax(0,1fr);}
   .irow .meta2,.irow .w{grid-column:2}
 }
-@media (max-width:480px){.cards{grid-template-columns:1fr}.bar{grid-template-columns:minmax(0,7.5em) minmax(0,1fr) 4.2em}}
+@media (max-width:480px){.fit{grid-template-columns:1fr}.indf{grid-template-columns:repeat(2,minmax(0,1fr))}.cards{grid-template-columns:1fr}.bar{grid-template-columns:minmax(0,7.5em) minmax(0,1fr) 4.2em}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 
@@ -222,6 +253,24 @@ input[type=text]{width:100%}
         <div class="seg" role="group" aria-labelledby="opLbl" data-scope="openings"></div>
       </div>
     </div>
+    <div class="sub fitbox">
+      <div class="fithead">
+        <h3>What fits me</h3>
+        <button type="button" class="btn" id="fitReset">Clear answers</button>
+      </div>
+      <p class="small">Answer any of these and the ranking re-sorts for your situation. Leave them blank to see the general ranking.</p>
+      <div class="fit">
+        <div class="field"><label class="label" for="fBudget">Money to start</label>
+          <select id="fBudget"><option value="">Not set</option><option value="low">Under $10k</option><option value="mid">$10k to $100k</option><option value="high">$100k to $1M</option><option value="vc">I'll raise $1M+</option></select></div>
+        <div class="field"><label class="label" for="fTech">Can you code?</label>
+          <select id="fTech"><option value="">Not set</option><option value="yes">Yes</option><option value="learn">Learning, or have a technical cofounder</option><option value="no">No</option></select></div>
+        <div class="field"><label class="label" for="fIncome">Need income within</label>
+          <select id="fIncome"><option value="">Not set</option><option value="3m">3 months</option><option value="12m">A year</option><option value="wait">I can wait 2+ years</option></select></div>
+        <div class="field"><label class="label" for="fHours">Time you can give</label>
+          <select id="fHours"><option value="">Not set</option><option value="full">Full-time</option><option value="part">Part-time</option></select></div>
+      </div>
+      <p class="small" id="fitNote" aria-live="polite"></p>
+    </div>
     <div class="split">
       <div class="rank" id="rank"></div>
       <div class="sub" style="display:flex;flex-direction:column;gap:12px">
@@ -231,6 +280,26 @@ input[type=text]{width:100%}
         <div id="ideaOut" aria-live="polite"></div>
       </div>
     </div>
+  </section>
+
+  <section class="g" id="industries">
+    <div class="sec-head">
+      <div class="t">
+        <h2>Inside vertical AI: which industries are still open</h2>
+        <p class="small">"Vertical AI agents" is the top opening, but it is really dozens of smaller markets. Some are already packed, others barely have a player. Ranked by opening score: few competitors, no giant, growing demand and customers who buy quickly.</p>
+      </div>
+      <div class="tools">
+        <select id="indSort" aria-label="Sort industries">
+          <option value="open">Best opening first</option>
+          <option value="crowd">Least crowded first</option>
+          <option value="growth">Fastest growth first</option>
+        </select>
+        <span class="label" id="indLbl">Scores</span>
+        <div class="seg" role="group" aria-labelledby="indLbl" data-scope="inds"></div>
+      </div>
+    </div>
+    <div class="ind" id="indList"></div>
+    <p class="small" style="margin-top:12px">Mostly US-focused estimates. Company names are examples of who you would meet in each industry, not complete lists.</p>
   </section>
 
   <section class="g" id="giants">
@@ -279,6 +348,18 @@ input[type=text]{width:100%}
       <div class="seg" role="group" aria-label="Rank by metric" id="invMetric"></div>
     </div>
     <p class="small" id="invNote" style="margin-bottom:12px"></p>
+    <div class="filters" id="invFilters">
+      <input type="text" id="invQ" placeholder="Search names, cities, investors" autocomplete="off" aria-label="Search startups">
+      <select id="invNiche" aria-label="Filter by niche"></select>
+      <select id="invStage" aria-label="Filter by stage">
+        <option value="all">Every stage</option>
+        <option value="pre">Pre-seed</option>
+        <option value="seed">Seed</option>
+        <option value="large">Large rounds ($20M+)</option>
+      </select>
+      <label class="chk"><input type="checkbox" id="invSmall"> Small rounds only (under $10M)</label>
+      <span class="small num" id="invCount"></span>
+    </div>
     <div class="inv" id="invList"></div>
   </section>
 
@@ -380,7 +461,7 @@ const ZONES={giant:{t:"Giant-owned",c:"bad"},crowded:{t:"Crowded",c:"gold"},open
 const data=()=>N.map(adj);
 
 // display modes per section
-const SCOPES=["map","counts","openings","giants","cards","invest"];
+const SCOPES=["map","counts","openings","inds","giants","cards","invest"];
 const MODES=[["meter","Meters"],["gauge","Gauges"],["num","1–10"]];
 const mode={};
 let saved={};try{saved=JSON.parse(localStorage.getItem("mm-modes")||"{}")}catch(e){}
@@ -512,13 +593,81 @@ function whyLine(n){
   if(n.scale>=8)parts.push("scales by hiring");
   if(n.cost>=7)parts.push("but expensive to start");
   if(n.crowd>=8)parts.push("but crowded");
-  return parts.slice(0,4).join(", ").replace(/^./,c=>c.toUpperCase())+".";
+  return parts.slice(0,4).join(", ").replace(/^but /,"").replace(/^./,c=>c.toUpperCase())+".";
 }
+// ---------- What fits me ----------
+// How much technical skill each niche needs to get started (1-10)
+const TECH={vai:7,vsaas:6,saas:7,aiapp:5,dev:9,sec:9,data:8,fin:7,health:6,edu:5,climate:7,creator:5,cons:4,webag:6,mktag:2,mobile:6,game:7,dtc:2,gadget:6,robot:10};
+const BUDGET_TOL={low:3,mid:5,high:7,vc:10};
+const P={budget:"",tech:"",income:"",hours:""};
+try{Object.assign(P,JSON.parse(localStorage.getItem("mm-fit")||"{}"))}catch(e){}
+const FIT_IDS={budget:"fBudget",tech:"fTech",income:"fIncome",hours:"fHours"};
+const fitOn=()=>Object.values(P).some(Boolean);
+function fit(n){
+  const w={...W},notes=[],good=[];let pen=0;
+  if(P.income==="3m"){w.speed*=3;w.funding*=.5}else if(P.income==="12m"){w.speed*=1.6}else if(P.income==="wait"){w.speed*=.3;w.funding*=1.4;w.growth*=1.3}
+  if(P.hours==="part"){w.speed*=1.4;w.cost*=1.4}
+  if(P.budget==="low"||P.budget==="mid")w.cost*=2;
+  let s=0,t=0;for(const f of F){const v=n[f.k];s+=(f.inv?11-v:v)*w[f.k];t+=w[f.k]}
+  if(P.budget){const tol=BUDGET_TOL[P.budget];if(n.cost>tol){pen+=(n.cost-tol)*.7;notes.push("needs more money than you have")}else good.push("fits your budget")}
+  const tk=TECH[n.id]||6;
+  if(P.tech==="learn"&&tk>6){pen+=(tk-6)*.35;notes.push("you'd likely need a technical cofounder")}
+  if(P.tech==="no"&&tk>4){pen+=(tk-4)*.5;notes.push("needs technical skills you'd have to hire")}
+  if(P.tech==="no"&&tk<=4)good.push("no coding needed to start");
+  if(P.income==="3m"){if(n.speed<5){pen+=(5-n.speed)*.5;notes.push("slow to first revenue")}else if(n.speed>=7)good.push("can earn quickly")}
+  if(P.hours==="part"&&(n.cat==="deep"||(n.funding>=9&&n.speed<5))){pen+=.8;notes.push("hard to do part-time")}
+  return{score:clamp(s/t-pen),notes,good};
+}
+function renderFitNote(){
+  document.getElementById("fitNote").textContent=fitOn()?"Ranked for your answers. Warnings show where a niche clashes with your situation.":"";
+  try{localStorage.setItem("mm-fit",JSON.stringify(P))}catch(e){}
+}
+Object.entries(FIT_IDS).forEach(([k,id])=>{
+  const el=document.getElementById(id);el.value=P[k]||"";
+  el.addEventListener("change",()=>{P[k]=el.value;renderOpenings()});
+});
+document.getElementById("fitReset").addEventListener("click",()=>{Object.keys(P).forEach(k=>{P[k]="";document.getElementById(FIT_IDS[k]).value=""});renderOpenings()});
+
 function renderOpenings(){
-  const D=data().filter(n=>n.cat!=="giant").sort((a,b)=>b.opp-a.opp).slice(0,7);
-  document.getElementById("rank").innerHTML=D.map((n,i)=>`<div class="rk sub"><span class="pos num">${i+1}</span><div style="min-width:0;display:flex;flex-direction:column;gap:3px"><h3 style="font-size:14px">${esc(n.name)}</h3><span class="why">${whyLine(n)} ~${fmt(n.rcount)} competitors.</span></div><div class="w" role="img" aria-label="Opportunity ${Math.round(n.opp)} out of 10"><span class="label">Opportunity</span>${widget(n.opp,0,mode.openings)}</div></div>`).join("");
+  const on=fitOn();
+  const D=data().filter(n=>n.cat!=="giant").map(n=>({n,f:on?fit(n):{score:n.opp,notes:[],good:[]}})).sort((a,b)=>b.f.score-a.f.score).slice(0,7);
+  const lbl=on?"Fit for you":"Opportunity";
+  document.getElementById("rank").innerHTML=D.map(({n,f},i)=>{
+    const extra=(f.good.length?` ${f.good.join(", ").replace(/^./,c=>c.toUpperCase())}.`:"")+(f.notes.length?` <span class="warn">Watch out: ${f.notes.join(", ")}.</span>`:"");
+    return `<div class="rk sub"><span class="pos num">${i+1}</span><div style="min-width:0;display:flex;flex-direction:column;gap:3px"><h3 style="font-size:14px">${esc(n.name)}</h3><span class="why">${whyLine(n)} ~${fmt(n.rcount)} competitors.${extra}</span></div><div class="w" role="img" aria-label="${lbl} ${Math.round(f.score)} out of 10"><span class="label">${lbl}</span>${widget(f.score,0,mode.openings)}</div></div>`;
+  }).join("");
+  renderFitNote();
   renderIdea();
 }
+
+// ---------- Industries inside vertical AI ----------
+// crowd/giant: lower is better; growth: demand growth; speed: how fast customers buy
+const INDS=[
+ {name:"Law firms",crowd:9,giant:6,growth:9,speed:5,who:"Harvey, Thomson Reuters CoCounsel, Clio, EvenUp, Spellbook",gap:"Small firms in one practice area, like immigration or family law"},
+ {name:"Medical notes and clinic admin",crowd:9,giant:7,growth:9,speed:3,who:"Abridge, Microsoft (Nuance DAX), Ambience, Suki",gap:"Specialties the big scribes skip, like physical therapy or home health"},
+ {name:"Dental practices",crowd:6,giant:5,growth:8,speed:6,who:"Arini, Pearl, Overjet, Henry Schein (Dentrix)",gap:"Insurance claims and billing follow-up for small practices"},
+ {name:"Veterinary clinics",crowd:4,giant:5,growth:7,speed:6,who:"ScribbleVet, Shepherd, IDEXX, Covetrus",gap:"Front desk and client follow-up for independent clinics"},
+ {name:"Insurance carriers",crowd:7,giant:6,growth:8,speed:3,who:"FurtherAI, Sixfold, Tractable, Guidewire",gap:"Specialty lines like crop, marine or pet insurance"},
+ {name:"Independent insurance agencies",crowd:4,giant:6,growth:7,speed:6,who:"Kinro, Applied Systems, Vertafore",gap:"Quoting and renewals for agencies with under 20 staff"},
+ {name:"Accounting and bookkeeping",crowd:8,giant:8,growth:8,speed:5,who:"Basis, Pilot, Intuit (QuickBooks), Puzzle",gap:"Tax-season grunt work for small CPA firms"},
+ {name:"Mortgage and lending",crowd:6,giant:7,growth:7,speed:4,who:"Balerion AI, Blend, ICE Mortgage Technology",gap:"Loan processing for small brokers and credit unions"},
+ {name:"Freight and logistics",crowd:6,giant:3,growth:8,speed:6,who:"HappyRobot, Pallet, Conduit",gap:"Small trucking fleets and owner-operators"},
+ {name:"Construction and home trades",crowd:6,giant:6,growth:7,speed:6,who:"ServiceTitan, Procore, Avoca, ProLine",gap:"Estimating and bidding for subcontractors"},
+ {name:"Property management",crowd:7,giant:7,growth:7,speed:6,who:"AppFolio, Yardi, EliseAI",gap:"Small landlords with 10 to 200 units"},
+ {name:"Restaurants and hotels",crowd:7,giant:7,growth:6,speed:7,who:"Toast, Slang.ai, Dextr AI",gap:"Independent hotels and small restaurant groups"},
+ {name:"Manufacturing",crowd:4,giant:6,growth:7,speed:3,who:"Squint, Siemens, Rockwell Automation",gap:"Quality checks and paperwork for small factories"},
+ {name:"Local government",crowd:3,giant:6,growth:6,speed:2,who:"Polimorphic, Tyler Technologies, CivicPlus",gap:"Permits and resident requests for small towns"},
+ {name:"Recruiting and staffing",crowd:9,giant:8,growth:7,speed:7,who:"Mercor, Workday (Paradox), LinkedIn",gap:"Hiring hourly workers in one industry"},
+ {name:"Auto repair shops",crowd:4,giant:3,growth:6,speed:7,who:"Tekmetric, Shopmonkey",gap:"Phone answering and estimate follow-up for independent shops"},
+ {name:"Farms and agriculture",crowd:3,giant:7,growth:6,speed:3,who:"Farmers Business Network, John Deere",gap:"Paperwork and compliance for mid-size farms"}
+].map(d=>({...d,open:clamp(((11-d.crowd)*1.3+(11-d.giant)*1.5+d.growth*1.1+d.speed*.6)/4.5)}));
+const IF=[{k:"crowd",n:"Crowding",inv:1},{k:"giant",n:"Giant control",inv:1},{k:"growth",n:"Growth",inv:0},{k:"speed",n:"Sales speed",inv:0}];
+function renderInds(){
+  const by=document.getElementById("indSort").value,m=mode.inds;
+  const L=INDS.slice().sort(by==="crowd"?(a,b)=>a.crowd-b.crowd||b.open-a.open:by==="growth"?(a,b)=>b.growth-a.growth||b.open-a.open:(a,b)=>b.open-a.open);
+  document.getElementById("indList").innerHTML=L.map((d,i)=>`<div class="indrow"><span class="pos num">${i+1}</span><div style="min-width:0;display:flex;flex-direction:column;gap:5px"><h3>${esc(d.name)}</h3><span class="gap"><b>Who's there:</b> ${esc(d.who)}</span><span class="gap"><b>Open angle:</b> ${esc(d.gap)}</span></div><div class="indf">${IF.map(f=>factor(d,f,m)).join("")}</div><div class="w" role="img" aria-label="Opening score ${Math.round(d.open)} out of 10"><span class="label">Opening</span>${widget(d.open,0,m)}</div></div>`).join("");
+}
+document.getElementById("indSort").addEventListener("change",renderInds);
 function renderIdea(){
   const q=document.getElementById("idea").value.toLowerCase().trim(),out=document.getElementById("ideaOut");
   if(!q){out.innerHTML=`<p class="small">Example ideas from the top openings: an AI agent that handles insurance claims for small brokers, or scheduling software for vet clinics.</p>`;return}
@@ -702,8 +851,25 @@ function renderInvest(){
   document.getElementById("invMetric").innerHTML=IM.map(([k,l])=>`<button type="button" data-k="${k}" aria-pressed="${invMetric===k}">${l}</button>`).join("");
   const notes={overall:"Average of every metric.",growth:"How fast the company or its market can grow.",market:"How big the market it sells into is.",team:"How strong founding teams in this space tend to be.",valuation:"Higher means a fairer entry price. Hot sectors score low because you pay more for the same share.",risk:"Higher means safer. Every seed-stage company is risky, so even a high score here means high risk."};
   document.getElementById("invNote").textContent=(invTab==="real"?"Reported 2026 seed rounds, ranked by their niche's outlook. Team and valuation aren't public, so research those yourself before investing. ":"Typical startups in each space, not specific companies. ")+notes[invMetric];
-  const L=(invTab==="types"?TYPES:REAL).slice();
+  const real=invTab==="real";
+  document.getElementById("invFilters").hidden=!real;
+  let L=(real?REAL:TYPES).slice();
+  if(real){
+    const q=document.getElementById("invQ").value.toLowerCase().trim(),nf=document.getElementById("invNiche").value,sf=document.getElementById("invStage").value,small=document.getElementById("invSmall").checked;
+    L=L.filter(o=>{
+      if(q&&!(o.name+" "+o.meta).toLowerCase().includes(q))return false;
+      if(nf!=="all"&&o.niche!==nf)return false;
+      const st=o.stage.toLowerCase();
+      if(sf==="pre"&&!st.includes("pre-seed"))return false;
+      if(sf==="seed"&&!(st.includes("seed")&&!st.startsWith("pre-seed")&&!(o.round>=20)))return false;
+      if(sf==="large"&&!(o.round>=20))return false;
+      if(small&&!(o.round!=null&&o.round<10))return false;
+      return true;
+    });
+    document.getElementById("invCount").textContent=`Showing ${L.length} of ${REAL.length}`;
+  }
   L.sort((a,b)=>(score(b,invMetric)??-1)-(score(a,invMetric)??-1));
+  if(!L.length){document.getElementById("invList").innerHTML=`<div class="empty">No startups match these filters. Clear the search or pick another niche or stage.</div>`;return}
   document.getElementById("invList").innerHTML=L.map((o,i)=>{
     const v=score(o,invMetric),n=nicheOf(o.niche);
     const w=v==null?`<span class="na">Not public</span>`:`<div role="img" aria-label="${IM.find(x=>x[0]===invMetric)[1]} ${Math.round(v)} out of 10">${widget(v,0,mode.invest)}</div>`;
@@ -712,6 +878,12 @@ function renderInvest(){
 }
 document.getElementById("invTab").addEventListener("click",e=>{const b=e.target.closest("button");if(b){invTab=b.dataset.t;renderInvest()}});
 document.getElementById("invMetric").addEventListener("click",e=>{const b=e.target.closest("button");if(b){invMetric=b.dataset.k;renderInvest()}});
+{
+  const used=new Set(REAL.map(r=>r.niche));
+  document.getElementById("invNiche").innerHTML=`<option value="all">Every niche</option>`+N.filter(n=>used.has(n.id)).map(n=>`<option value="${n.id}">${esc(n.name)}</option>`).join("");
+  document.getElementById("invQ").addEventListener("input",renderInvest);
+  ["invNiche","invStage","invSmall"].forEach(id=>document.getElementById(id).addEventListener("change",renderInvest));
+}
 
 // ---------- wiring ----------
 const regSel=document.getElementById("region");
@@ -725,7 +897,7 @@ document.getElementById("idea").addEventListener("input",renderIdea);
 
 function renderAll(){
   document.getElementById("regionNote").textContent=R[region].note;
-  renderSegs();renderScatter();renderDetail();renderBars();renderOpenings();renderGiants();renderCards();renderInvest();
+  renderSegs();renderScatter();renderDetail();renderBars();renderOpenings();renderInds();renderGiants();renderCards();renderInvest();
 }
 renderLegend();renderAll();
 })();
