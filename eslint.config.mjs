@@ -21,7 +21,8 @@ const eslintConfig = defineConfig([
       ],
     },
   },
-  globalIgnores([".next/**", "out/**", "build/**", "next-env.d.ts", "reference/**"]),
+  // Root-level design prototypes (Earth.jsx, app13.jsx, audio.js, ...) are references, not app code.
+  globalIgnores([".next/**", "out/**", "build/**", "next-env.d.ts", "reference/**", "*.jsx", "*.js"]),
 ]);
 
 export default eslintConfig;
