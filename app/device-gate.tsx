@@ -99,7 +99,7 @@ export function DeviceGate({ children }: { children: ReactNode }) {
   }, [ended, signOut]);
 
   // Until Clerk has loaded, the page renders as before (its API calls enforce the same rules).
-  if (isLoaded && isSignedIn && beat === null) return <main><p className="muted">Checking this device…</p></main>;
+  if (isLoaded && isSignedIn && beat === null) return <main className="ds-page ds-page--calm"><p className="muted">Checking this device…</p></main>;
   const live = beat === "none" || beat === "error" || beat === null ? null : beat;
   const e = live?.enforcement;
   if (live && e) {
@@ -145,7 +145,7 @@ function others(beat: Beat) {
 function Paused({ beat, onDone }: { beat: Beat; onDone: () => void }) {
   const [busy, setBusy] = useState(false);
   return (
-    <main>
+    <main className="ds-page ds-page--calm">
       <section className="notice" role="alert">
         <h1>ASCENTRA is open on another device.</h1>
         <p>A session started on {others(beat)}. ASCENTRA allows one session at a time, so this one is paused. Nothing here is lost.</p>
@@ -194,7 +194,7 @@ function Verify({ enforcement, onDone }: { enforcement: Enforcement; onDone: () 
   const verify = useReverification(call);
   const [message, setMessage] = useState<string | null>(null);
   return (
-    <main>
+    <main className="ds-page ds-page--calm">
       <section className="notice" role="alert">
         <h1>Confirm it&apos;s you</h1>
         <p>{enforcement.text}</p>
@@ -227,7 +227,7 @@ function NotTrusted({ beat, onDone }: { beat: Beat; onDone: () => void }) {
 
   if (d.why === "limited") {
     return (
-      <main>
+      <main className="ds-page ds-page--calm">
         <section className="notice" role="alert">
           <h1>New devices are paused</h1>
           <p>{beat.enforcement.text} Until {when(beat.enforcement.limitUntil)}.</p>
@@ -239,7 +239,7 @@ function NotTrusted({ beat, onDone }: { beat: Beat; onDone: () => void }) {
     );
   }
   return (
-    <main>
+    <main className="ds-page ds-page--calm">
       <section className="notice" role="alert">
         <h1>Replace a trusted device?</h1>
         <p>
@@ -283,7 +283,7 @@ function NotTrusted({ beat, onDone }: { beat: Beat; onDone: () => void }) {
 
 function Suspended({ enforcement }: { enforcement: Enforcement }) {
   return (
-    <main>
+    <main className="ds-page ds-page--calm">
       <section className="notice" role="alert">
         <h1>This account is suspended</h1>
         <p>{enforcement.text}</p>

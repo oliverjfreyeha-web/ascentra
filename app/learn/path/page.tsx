@@ -5,7 +5,7 @@ import { Reveal } from "../../ui/reveal";
 
 export default function MyPathPage() {
   return (
-    <main className="ui-main-wide">
+    <main className="ui-main-wide ds-page">
       <Reveal selector=".ui-block, .ui-course, .ui-path > li" />
       <nav className="ui-crumbs" aria-label="Breadcrumb"><Link href="/">Home</Link> · <Link href="/learn">Learn</Link></nav>
       <header className="ui-page-head">

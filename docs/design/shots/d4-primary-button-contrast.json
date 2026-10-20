@@ -1,0 +1,22 @@
+{
+ "iris/frost/1280": {
+  "ink": "rgb(255, 255, 255)",
+  "worst": 5.12,
+  "median": 5.87
+ },
+ "iris/liquid/1280": {
+  "ink": "rgb(255, 255, 255)",
+  "worst": 4.98,
+  "median": 5.94
+ },
+ "iris/frost/390": {
+  "ink": "rgb(255, 255, 255)",
+  "worst": 5.04,
+  "median": 6.92
+ },
+ "mono/frost/1280": {
+  "ink": "rgb(26, 20, 8)",
+  "worst": 9.84,
+  "median": 12.19
+ }
+}

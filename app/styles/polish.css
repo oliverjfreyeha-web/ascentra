@@ -11,15 +11,15 @@
 
 /* ── Buttons: one system (older plain buttons now match .ui-btn) ────── */
 .ui-btn:not(.ui-btn--primary):not(.ui-btn--quiet):not(.ui-btn--danger),
-button:not(.link):not(.primary):not([class*="ui-"]) {
+button:not(.link):not(.primary):not([class*="ui-"]):not([class*="ds-"]) {
   border: 1px solid transparent;
   background: linear-gradient(var(--btn-bg, var(--color-surface)), var(--btn-bg, var(--color-surface))) padding-box, var(--edge-light) border-box;
 }
 .ui-btn:not(.ui-btn--primary):not(.ui-btn--quiet):not(.ui-btn--danger):hover:not(:disabled),
-button:not(.link):not(.primary):not([class*="ui-"]):hover:not(:disabled) {
+button:not(.link):not(.primary):not([class*="ui-"]):not([class*="ds-"]):hover:not(:disabled) {
   background: linear-gradient(var(--color-raised), var(--color-raised)) padding-box, var(--edge-light-strong) border-box;
 }
-button:not(.link):not(.primary):not([class*="ui-"]),
+button:not(.link):not(.primary):not([class*="ui-"]):not([class*="ds-"]),
 button.primary {
   display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2);
   min-height: 2.5rem; font-size: var(--text-sm); font-weight: var(--weight-medium); line-height: 1.2;
@@ -31,7 +31,7 @@ button.primary { font-weight: var(--weight-semibold); }
 .ui-btn--primary:focus-visible, button.primary:focus-visible { box-shadow: var(--focus-ring); }
 .ui-btn--primary:disabled, button.primary:disabled { box-shadow: none; }
 /* Press feedback and hover lift, shared. */
-button:not(.link):not([class*="ui-"]):active:not(:disabled), button.primary:active:not(:disabled) { transform: translateY(0) scale(0.985); transition-duration: var(--duration-micro); }
+button:not(.link):not([class*="ui-"]):not([class*="ds-"]):active:not(:disabled), button.primary:active:not(:disabled) { transform: translateY(0) scale(0.985); transition-duration: var(--duration-micro); }
 .ui-btn--quiet { background: transparent; }
 /* Icons get a tiny nudge on hover. */
 .ui-icon { transition: transform var(--duration-fast) var(--ease-smooth-out); }

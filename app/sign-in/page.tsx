@@ -4,7 +4,7 @@ import { SignedInGate } from "../signed-in-gate";
 
 export default function SignInPage() {
   return (
-    <main>
+    <main className="ds-page ds-page--calm">
       <div className="ui-auth">
         <div className="ui-auth__halo" aria-hidden="true" />
         <div className="ui-auth__card">

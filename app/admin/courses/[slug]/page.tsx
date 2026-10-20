@@ -6,7 +6,7 @@ import { CourseStudio } from "./course-studio";
 export default async function CoursePage({ params }: PageProps<"/admin/courses/[slug]">) {
   const { slug } = await params;
   return (
-    <main className="wide ui-admin">
+    <main className="wide ui-admin ds-page ds-page--calm">
       <p className="muted">
         <Link href="/">Home</Link> · <Link href="/admin/courses">Course builder</Link> · <Link href="/admin/sources">Source library</Link> · <Link href="/admin/catalog">Topic catalog</Link> · <Link href="/admin/review">Owner review</Link>
       </p>

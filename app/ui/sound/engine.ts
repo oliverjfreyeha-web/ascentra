@@ -314,7 +314,12 @@ export class SoundEngine {
   }
   private writePrefs() {
     const { trackId, volume, shuffle, loop } = this.state;
-    try { this.deps.storage?.setItem(PREFS_KEY, JSON.stringify({ track: trackId, volume, shuffle, loop })); } catch { /* not remembered */ }
+    try {
+      // Design rebuild D2: the same preference also holds the UI sounds switch ("effects", app/ui/sound/ui-sounds.ts); keep it.
+      let effects: unknown;
+      try { effects = (JSON.parse(this.deps.storage?.getItem(PREFS_KEY) ?? "{}") as { effects?: unknown }).effects; } catch { effects = undefined; }
+      this.deps.storage?.setItem(PREFS_KEY, JSON.stringify({ track: trackId, volume, shuffle, loop, ...(typeof effects === "boolean" ? { effects } : {}) }));
+    } catch { /* not remembered */ }
   }
 }
 

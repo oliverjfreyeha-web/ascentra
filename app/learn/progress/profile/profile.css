@@ -1,0 +1,147 @@
+/*
+ * Design rebuild D5 · The Profile dashboard (My progress). D1–D4 primitives and tokens only. Widget accents are cool in
+ * Iris and warm in Mono (--widget-*). Widgets never tilt (decision 6). Motion stops when html[data-reduced] is "1".
+ */
+main.ui-main-wide.pf-page { max-width: 76rem; }
+.pf { display: grid; gap: var(--space-4); margin: 0 0 var(--space-6); }
+.pf__head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.pf__title { margin: 0; font-size: var(--text-xl); letter-spacing: 0.05em; }
+
+/* Four columns on wide screens; one on phones. */
+.pf-grid { display: grid; gap: var(--space-4); grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: stretch; }
+.pf-w { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; padding: var(--space-4); border-radius: var(--radius-glass); --wa: var(--color-frost); }
+.pf-w--globe { grid-column: span 2; }
+.pf-w--activity { grid-column: span 3; }
+.pf-w--map { grid-column: 1 / -1; }
+@media (max-width: 70rem) { .pf-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .pf-w--activity { grid-column: 1 / -1; } }
+@media (max-width: 40rem) { .pf-grid { grid-template-columns: minmax(0, 1fr); } .pf-w--globe { grid-column: auto; } }
+
+.pf-w__head { display: flex; align-items: center; gap: var(--space-2); }
+.pf-w__title { margin: 0; flex: 1; color: var(--color-ink-muted); }
+.pf-w__ico { display: grid; place-items: center; width: 2.25rem; height: 2.25rem; border-radius: 12px;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--wa) 45%, var(--color-surface)), var(--color-base));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.35), 0 0 22px -4px color-mix(in srgb, var(--wa) 55%, transparent); }
+/* The X: shown on hover or keyboard focus of its widget; always on touch screens. */
+.pf-w__x { opacity: 0; transition: opacity var(--duration-hover) var(--ease-glide); }
+.pf-w:hover .pf-w__x, .pf-w:focus-within .pf-w__x { opacity: 1; }
+@media (hover: none), (pointer: coarse) { .pf-w__x { opacity: 1; } }
+
+.pf-big { margin: 0; font-size: var(--text-3xl); color: var(--color-ink); text-shadow: 0 0 26px color-mix(in srgb, var(--wa) 40%, transparent); }
+.pf-w p { margin: 0; }
+.pf-bar { height: 6px; border-radius: var(--radius-pill); background: rgb(255 255 255 / 0.1); overflow: hidden; }
+.pf-bar i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, color-mix(in srgb, var(--wa) 70%, #000), var(--wa), #fff); }
+
+/* Chooser */
+.pf-menu { position: relative; }
+.pf-menu__pop { position: absolute; right: 0; top: calc(100% + 8px); z-index: var(--z-popover); display: grid; gap: var(--space-2); min-width: 15rem; padding: var(--space-4); border-radius: var(--radius-glass-sm); }
+.pf-menu__pop p { margin: 0; }
+.pf-menu__opt { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-sm); color: var(--color-ink); }
+
+/* Globe: the poster is a drawn sphere (no image); the WebGL globe fades in over it where effects are full. */
+.pf-globe { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: var(--space-4); }
+.pf-globe__stage { position: relative; width: 260px; height: 260px; }
+.pf-globe__poster { position: absolute; inset: 14px; border-radius: 50%;
+  background: radial-gradient(circle at 34% 30%, color-mix(in srgb, var(--wa) 60%, var(--color-base)), color-mix(in srgb, var(--wa) 24%, var(--color-base)) 46%, var(--color-base) 72%);
+  box-shadow: inset -18px -24px 50px rgb(0 0 0 / 0.55), 0 0 60px -10px color-mix(in srgb, var(--wa) 55%, transparent); }
+.pf-globe__canvas { position: absolute; inset: 0; opacity: 0; transition: opacity 900ms var(--ease-glide); }
+.pf-globe__canvas[data-on] { opacity: 1; }
+.pf-globe__hud { display: grid; gap: var(--space-2); }
+@media (max-width: 40rem) { .pf-globe { grid-template-columns: minmax(0, 1fr); justify-items: center; text-align: center; } .pf-globe__hud { justify-items: center; width: 100%; } .pf-globe__hud .pf-bar { width: 100%; } }
+
+/* Streak: the last 7 days. */
+.pf-days { list-style: none; display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin: auto 0 0; padding: var(--space-2) 0 0; }
+.pf-days li { display: grid; justify-items: center; gap: 4px; font-size: var(--text-xs); color: var(--color-ink-muted); }
+.pf-days i { width: 100%; max-width: 28px; aspect-ratio: 1; border-radius: 8px; background: rgb(255 255 255 / 0.08); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.1); }
+.pf-days li[data-on] i { background: linear-gradient(160deg, color-mix(in srgb, var(--wa) 85%, #fff), var(--wa)); box-shadow: 0 0 14px -2px color-mix(in srgb, var(--wa) 70%, transparent), inset 0 1px 0 rgb(255 255 255 / 0.6); }
+.pf-days li[data-today] i { outline: 2px solid var(--color-ink); outline-offset: 2px; }
+
+/* Points sparkline */
+.pf-spark { width: 100%; height: 56px; margin-top: auto; overflow: visible; color: var(--wa); }
+.pf-spark__area { fill: color-mix(in srgb, var(--wa) 22%, transparent); }
+.pf-spark__line { fill: none; stroke: var(--wa); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.pf-spark__dot { fill: #fff; }
+
+/* Rank ladder: the ten named tiers, rising; reached ones lit, the learner's own outlined. Never a position. */
+.pf-ladder { list-style: none; display: flex; align-items: flex-end; gap: 5px; height: 56px; margin: var(--space-2) 0 0; padding: 0; }
+.pf-ladder li { flex: 1; height: var(--h); display: flex; }
+.pf-ladder i { flex: 1; border-radius: 5px; background: rgb(255 255 255 / 0.1); }
+.pf-ladder li[data-reached] i { background: color-mix(in srgb, var(--wa) 55%, rgb(255 255 255 / 0.1)); }
+.pf-ladder li[data-current] i { background: linear-gradient(180deg, #fff, var(--wa)); box-shadow: 0 0 16px var(--wa); }
+.pf-rank__links { margin-top: auto !important; padding-top: var(--space-2); }
+.pf-rank__links .ds-btn { text-decoration: none; }
+
+/* Activity grid (points per day). Colours from DESIGN.md (the --activity-* tokens). */
+.pf-act { display: grid; gap: var(--space-3); min-width: 0; }
+.pf-act__bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.pf-act__total { color: var(--color-ink-muted); }
+.pf-act__scroll { overflow-x: auto; padding: 4px 2px; }
+.pf-ac { --cc: var(--activity-rest); display: block; border-radius: 3px; background: var(--cc); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.06); transition: transform var(--duration-hover) var(--ease-glide); }
+.pf-ac--rest { --cc: var(--activity-rest); }
+.pf-ac--miss { --cc: var(--activity-miss); }
+.pf-ac--short { --cc: var(--activity-short); }
+.pf-ac--steady { --cc: var(--activity-steady); }
+.pf-ac--focus { --cc: var(--activity-focus); }
+.pf-ac--grind { --cc: var(--activity-grind); box-shadow: inset 0 0 0 1px rgb(150 240 175 / 0.55); }
+.pf-ac--today { outline: 2px solid #fff; outline-offset: 1px; }
+:root:not([data-reduced="1"]) .pf-ac:hover, .pf-ac:focus-visible { transform: scale(1.18); position: relative; z-index: 1; }
+.pf-ac:focus-visible { outline: 2px solid var(--focus-color); outline-offset: 2px; }
+.pf-ag--week { display: grid; grid-template-columns: repeat(7, minmax(2.75rem, 1fr)); gap: 8px; }
+.pf-ag__col { display: grid; gap: 4px; justify-items: center; font-size: var(--text-xs); color: var(--color-ink-muted); }
+.pf-ag--week .pf-ac { width: 100%; aspect-ratio: 1; display: grid; place-content: center; text-align: center; border-radius: 10px; }
+.pf-ag--month .pf-ac { aspect-ratio: 1; display: grid; place-items: center; border-radius: 8px; }
+.pf-ac b { font-size: var(--text-sm); font-weight: var(--weight-semibold); color: #0c1a10; }
+.pf-ac small { font-size: 10px; color: #0c1a10; }
+.pf-ac--rest b, .pf-ac--rest small, .pf-ac--grind b, .pf-ac--grind small, .pf-ac--focus b, .pf-ac--focus small, .pf-ac--miss b, .pf-ac--miss small { color: #fff; }
+.pf-ag__dow, .pf-ag__mgrid { display: grid; grid-template-columns: repeat(7, minmax(2rem, 1fr)); gap: 6px; }
+.pf-ag__dow small { text-align: center; font-size: var(--text-xs); color: var(--color-ink-muted); }
+.pf-ag--year { display: grid; gap: 4px; width: max-content; }
+.pf-ag__months, .pf-ag__ygrid { display: grid; grid-template-columns: repeat(var(--weeks), 12px); gap: 3px; }
+.pf-ag__ygrid { grid-auto-flow: column; grid-template-rows: repeat(7, 12px); }
+.pf-ag__months small { font-size: 10px; color: var(--color-ink-muted); white-space: nowrap; }
+.pf-ag--year .pf-ac { width: 12px; height: 12px; }
+.pf-act__tip { min-height: 1.4em; color: var(--color-ink); margin: 0; }
+.pf-act__legend { list-style: none; display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); margin: 0; padding: 0; font-size: var(--text-xs); color: var(--color-ink); }
+.pf-act__legend li { display: inline-flex; align-items: center; gap: 6px; }
+.pf-act__legend .pf-ac { width: 12px; height: 12px; }
+
+/* Course map: scrolls sideways in its own box when wider than the widget. */
+.pf-map { display: grid; gap: var(--space-2); min-width: 0; }
+.pf-map__scroll { overflow-x: auto; overscroll-behavior-x: contain; border-radius: var(--radius-md); }
+.pf-map__scroll:focus-visible { outline: 2px solid var(--focus-color); outline-offset: 2px; }
+.pf-tree { display: block; max-width: none; }
+.pf-branch__trk { fill: none; stroke: rgb(255 255 255 / 0.14); stroke-width: 2; stroke-dasharray: 4 6; }
+.pf-branch__lit { fill: none; stroke: var(--c); stroke-width: 3; stroke-linecap: round; filter: drop-shadow(0 0 6px var(--c)); }
+.pf-branch__t { fill: var(--color-ink); font-size: 14px; font-weight: 600; }
+.pf-branch__s { fill: var(--color-ink-muted); font-size: 11.5px; }
+.pf-node__dot { fill: color-mix(in srgb, var(--color-surface) 80%, transparent); stroke: rgb(255 255 255 / 0.35); stroke-width: 1.5; }
+.pf-node--done .pf-node__dot { fill: var(--c); stroke: #fff; }
+.pf-node--now .pf-node__dot { fill: color-mix(in srgb, var(--c) 35%, var(--color-surface)); stroke: #fff; stroke-width: 2.5; }
+.pf-node--next .pf-node__dot { stroke: var(--c); }
+.pf-node--locked .pf-node__dot { stroke-dasharray: 3 3; opacity: 0.7; }
+.pf-node__ck { fill: none; stroke: #0b0c1a; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.pf-node__lock { fill: none; stroke: var(--color-ink-muted); stroke-width: 1.4; }
+.pf-node__n { fill: var(--color-ink); font-size: 12px; font-weight: 700; text-anchor: middle; }
+.pf-node__l { fill: var(--color-ink-muted); font-size: 11px; text-anchor: middle; }
+.pf-node__pulse { fill: none; stroke: var(--c); stroke-width: 2; }
+.pf-node__a { cursor: pointer; }
+.pf-node__a:focus-visible { outline: none; }
+.pf-node__a:focus-visible .pf-node__dot { stroke: var(--focus-color); stroke-width: 3; }
+.pf-node__a:hover .pf-node__dot { stroke: #fff; }
+.pf-root__ring { fill: none; stroke: var(--color-frost); stroke-width: 1.5; opacity: 0.6; }
+.pf-root__core { fill: var(--color-frost); }
+.pf-root__t { fill: var(--color-ink); font-size: 12px; text-anchor: middle; font-weight: 600; }
+.pf-map__foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.pf-map__foot .ds-btn { text-decoration: none; }
+
+/* Motion (only while motion is on): nodes pop in after their branch draws; the current node's ring breathes. */
+:root:not([data-reduced="1"]) .pf-node { transform-box: fill-box; animation: pf-pop 600ms var(--ease-glide) both; animation-delay: calc(var(--bd, 0ms) + var(--d) * 70ms + 300ms); }
+:root:not([data-reduced="1"]) .pf-branch__lit { animation-delay: var(--bd, 0ms); }
+:root:not([data-reduced="1"]) .pf-node__pulse { transform-box: fill-box; transform-origin: center; animation: pf-pulse 2.4s ease-in-out infinite; }
+@keyframes pf-pop { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pf-pulse { 0%, 100% { opacity: 0.9; transform: scale(1); } 50% { opacity: 0; transform: scale(1.7); } }
+@media (prefers-reduced-motion: reduce) { .pf-node, .pf-node__pulse, .pf-branch__lit { animation: none !important; } }
+/* Mono: the branches take the warm widget accents (Iris keeps its cool section accents). */
+[data-theme="mono"] .pf-branch:nth-of-type(4n + 1) { --c: var(--widget-streak) !important; }
+[data-theme="mono"] .pf-branch:nth-of-type(4n + 2) { --c: var(--widget-points) !important; }
+[data-theme="mono"] .pf-branch:nth-of-type(4n + 3) { --c: var(--widget-next) !important; }
+[data-theme="mono"] .pf-branch:nth-of-type(4n + 4) { --c: var(--widget-rank) !important; }

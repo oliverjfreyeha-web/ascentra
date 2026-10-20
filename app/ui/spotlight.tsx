@@ -1,35 +1,93 @@
 "use client";
 
 import { useEffect } from "react";
+import { pointerVars } from "./glass/pointer";
+import { FX_TARGETS, isCalmPage } from "./shell/cursor-fx";
 
 const SURFACES = ".ui-card, .ui-panel, .ui-block, .ui-choice, .ui-rows, .ui-path > li, .ui-tile, .ui-auth__card, .ui-hero";
+/** Design rebuild D2: the rebuild's surfaces that read the pointer (glass rim and gloss, button highlight, tilt). */
+const DS_SURFACES = [".ds-glass", ".ds-btn--primary", ".ds-tilt"] as const;
 
 /**
  * D2b: a soft spotlight that follows the cursor across cards (desktop pointers only; off with reduced motion). It only
  * sets two CSS variables on the card under the pointer; the light itself is the --spotlight background layer.
+ * Design rebuild D2: the same single listener (one for the whole page, never one per panel) also feeds the rebuild's
+ * glass (--mx, --my, and the rim angle --ds-ang), the primary button's highlight, and the tilt of clickable tiles and
+ * section cards (--tx, --ty, -1..1). Nothing is set while html[data-reduced] is "1".
+ * Design rebuild D3: and the backdrop's small parallax (--px, --py on .bd) and the cursor glow (.fx-glow, shown only
+ * over cards and buttons). Still one listener.
+ * Design rebuild D6: on calm pages (main.ds-page--calm: admin, billing, safety, Guardian, sign-in) the pointer moves
+ * nothing: no rim turning, button highlight, tilt, backdrop lean or glow. The older surface spotlight is off there in CSS.
  */
 export function Spotlight() {
   useEffect(() => {
     if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const root = document.documentElement;
     let current: HTMLElement | null = null;
+    let dsCurrent = new Set<HTMLElement>();
     let frame = 0;
     let last: PointerEvent | null = null;
+    const clearDs = (el: HTMLElement) => { for (const p of ["--mx", "--my", "--ds-ang", "--tx", "--ty"]) el.style.removeProperty(p); };
     const paint = () => {
       frame = 0;
       if (!last) return;
-      const el = (last.target as Element | null)?.closest?.(SURFACES) as HTMLElement | null;
+      const target = last.target as Element | null;
+      const el = target?.closest?.(SURFACES) as HTMLElement | null;
       if (current && current !== el) { current.style.removeProperty("--mx"); current.style.removeProperty("--my"); }
       current = el;
-      if (!el) return;
-      const r = el.getBoundingClientRect();
-      el.style.setProperty("--mx", `${last.clientX - r.left}px`);
-      el.style.setProperty("--my", `${last.clientY - r.top}px`);
+      if (el) {
+        const r = el.getBoundingClientRect();
+        el.style.setProperty("--mx", `${last.clientX - r.left}px`);
+        el.style.setProperty("--my", `${last.clientY - r.top}px`);
+      }
+      // The rebuild's surfaces: the nearest of each kind under the pointer (a button inside a glass panel gets both).
+      const next = new Set<HTMLElement>();
+      const calm = isCalmPage();
+      if (root.getAttribute("data-reduced") !== "1" && !calm) {
+        for (const sel of DS_SURFACES) {
+          const hit = target?.closest?.(sel) as HTMLElement | null;
+          if (hit) next.add(hit);
+        }
+      }
+      // D3: the backdrop leans toward the pointer; the glow follows it over cards and buttons only.
+      const bd = document.querySelector<HTMLElement>(".bd"), glow = document.querySelector<HTMLElement>(".fx-glow");
+      const moving = root.getAttribute("data-reduced") !== "1" && !calm;
+      if (bd) {
+        bd.style.setProperty("--px", moving ? ((last.clientX / window.innerWidth) * 2 - 1).toFixed(3) : "0");
+        bd.style.setProperty("--py", moving ? ((last.clientY / window.innerHeight) * 2 - 1).toFixed(3) : "0");
+      }
+      if (glow) {
+        const over = moving && !!target?.closest?.(FX_TARGETS);
+        glow.toggleAttribute("data-on", over);
+        if (over) glow.style.transform = `translate3d(${last.clientX}px, ${last.clientY}px, 0)`;
+      }
+      for (const old of dsCurrent) if (!next.has(old)) clearDs(old);
+      dsCurrent = next;
+      for (const hit of next) {
+        const v = pointerVars(hit.getBoundingClientRect(), last.clientX, last.clientY);
+        hit.style.setProperty("--mx", `${v.x}px`);
+        hit.style.setProperty("--my", `${v.y}px`);
+        if (hit.matches(".ds-glass")) hit.style.setProperty("--ds-ang", `${v.angle}deg`);
+        if (hit.matches(".ds-tilt") && !hit.matches(".ds-glass--hud, .ds-widget")) {
+          hit.style.setProperty("--tx", v.tx.toFixed(3));
+          hit.style.setProperty("--ty", v.ty.toFixed(3));
+        }
+      }
     };
     const onMove = (e: PointerEvent) => { last = e; if (!frame) frame = requestAnimationFrame(paint); };
+    // Leaving the window: every tilt settles back and the lights return to rest.
+    const onLeave = () => {
+      for (const el of dsCurrent) clearDs(el);
+      dsCurrent = new Set();
+      document.querySelector(".fx-glow")?.removeAttribute("data-on");
+    };
     document.addEventListener("pointermove", onMove, { passive: true });
+    document.documentElement.addEventListener("pointerleave", onLeave);
     return () => {
       document.removeEventListener("pointermove", onMove);
+      document.documentElement.removeEventListener("pointerleave", onLeave);
       if (frame) cancelAnimationFrame(frame);
+      onLeave();
     };
   }, []);
   return null;
