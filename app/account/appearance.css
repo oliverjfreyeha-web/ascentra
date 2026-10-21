@@ -1,0 +1,24 @@
+/* Design rebuild D3 · Account → Appearance: the controls beside a small live glass preview. */
+.ap { display: grid; gap: var(--space-5); grid-template-columns: minmax(0, 1fr) minmax(15rem, 20rem); align-items: start; margin-top: var(--space-4); }
+.ap__controls { display: grid; gap: var(--space-5); min-width: 0; }
+.ap__row { display: grid; gap: var(--space-2); justify-items: start; }
+.ap__row p { margin: 0; }
+.ap__label { margin: 0; }
+.ap__row .ds-seg { max-width: 100%; flex-wrap: wrap; }
+.ap__preview { position: sticky; top: 6rem; isolation: isolate; overflow: hidden; display: grid; padding: var(--space-5) var(--space-4); border-radius: var(--radius-glass); }
+/* A busy little backdrop so the glass has something to blur (and, with Liquid, to bend). */
+.ap__stage { position: absolute; inset: 0; z-index: -1; background: var(--theme-wall); }
+/* D7: the stripes at half strength (was 0.9): still busy enough to show the blur and the bend, and the sample text reads. */
+.ap__stage i { position: absolute; width: 45%; height: 130%; top: -15%; border-radius: 40%; opacity: 0.5; }
+.ap__stage i:nth-child(1) { left: -10%; background: linear-gradient(var(--accent-1), transparent 72%); transform: rotate(16deg); }
+.ap__stage i:nth-child(2) { left: 32%; background: linear-gradient(transparent 10%, var(--accent-2), transparent 90%); transform: rotate(-12deg); }
+.ap__stage i:nth-child(3) { left: 70%; background: linear-gradient(var(--accent-3), transparent 75%); transform: rotate(20deg); }
+.ap__glass { display: grid; gap: var(--space-2); justify-items: start; padding: var(--space-4); }
+.ap__glass p { margin: 0; }
+/* D7: the preview's sample text is full ink, so it reads at 4.5:1 over the busy sample backdrop in both themes. */
+.ap__glass :is(p, .muted, .ds-caps) { color: var(--color-ink); text-shadow: 0 0 2px rgb(0 0 0 / 0.7), 0 1px 10px rgb(0 0 0 / 0.6); }
+.ap__title { font-weight: var(--weight-semibold); }
+@media (max-width: 47.5rem) {
+  .ap { grid-template-columns: minmax(0, 1fr); }
+  .ap__preview { position: relative; top: 0; order: -1; }
+}

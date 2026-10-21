@@ -5,7 +5,7 @@ import { ProGate } from "./pro-gate";
 // trial accounts get 403 and see why.
 export default function ProPage() {
   return (
-    <main>
+    <main className="ds-page ds-page--calm">
       <nav className="ui-crumbs" aria-label="Breadcrumb"><Link href="/">Home</Link> · <Link href="/account">Account</Link></nav>
       <header className="ui-page-head"><h1>Pro tools</h1></header>
       <div className="ui-block"><ProGate /></div>

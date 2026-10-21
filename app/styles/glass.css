@@ -1,5 +1,5 @@
 /*
- * D5 · Glass: two materials, chosen by the learner (html[data-glass], saved in this browser; default Liquid).
+ * D5 · Glass: two materials, chosen by the learner (html[data-glass], saved in this browser; default Frosted since the D1 rebuild).
  *   Liquid   clear glass whose rim bends the scene behind it like the edge of a thick lens (an SVG displacement map
  *            per element, built from its real size and corner radius by app/ui/glass-lens.tsx), a slight colour split at
  *            the edge, a lit conic rim, a soft sky reflection and a slow sheen. The lens needs SVG filters in
@@ -93,5 +93,5 @@ main.ui-main-wide::before { content: none; }
 .closing { background: none; }
 
 /* Browser surfaces in the palette: text selection and scrollbars. */
-::selection { background: var(--color-accent); color: var(--color-on-accent); }
-html { scrollbar-color: rgb(160 189 219 / 0.35) var(--color-base); }
+::selection { background: var(--selection-bg); color: var(--selection-ink); }
+html { scrollbar-color: var(--scrollbar-thumb) var(--color-base); }

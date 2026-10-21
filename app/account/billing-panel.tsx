@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useReverification } from "@clerk/nextjs";
 import { call } from "../call";
-import { mentorAddonFrom, usd as fmt, type AddonCents, type MentorAddonInfo } from "../billing-api";
+import { mentorAddonFrom, planLabel, usd as fmt, type AddonCents, type MentorAddonInfo } from "../billing-api";
 import { AddonChanger, AllowanceMeter, CheckoutAddon } from "./mentor-addon";
 import { Loading } from "../ui/loading";
 
@@ -27,7 +27,6 @@ type Billing = {
 
 const usd = (c: number) => `$${(c / 100).toFixed(2)}`;
 const day = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" }) : "—");
-const PLAN_LABEL = { trial: "14-day free trial (converts to Basic)", basic: "Basic", pro: "Pro" } as const;
 const STATUS_LABEL = { trialing: "Trial", active: "Active", past_due: "Payment failed: Stripe is retrying. Update your payment method.", canceled: "Canceled" } as const;
 const TIER_LABEL = { none: "No plan", trial: "Trial (Basic features)", basic: "Basic", pro: "Pro", full: "Full access (Owner)" } as const;
 
@@ -118,14 +117,14 @@ export function BillingPanel({ returnTo }: { returnTo?: "welcome" } = {}) {
   const withAddon = addon > 0 ? ` (${fmt(chosen?.cents ?? 0)} plan + ${fmt(addon)} Mentor allowance)` : "";
 
   return (
-    <section aria-labelledby="billing-h" className="ui-block">
+    <section aria-labelledby="billing-h" className="ui-block" id="billing">
       <h2 id="billing-h">Billing</h2>
       {message && <p role="status">{message}</p>}
       <dl className="ui-facts">
         <div><dt>Access</dt><dd>{TIER_LABEL[data.tier]}{data.source === "role" ? " (from your role)" : ""}</dd></div>
         {s && (
           <>
-            <div><dt>Plan</dt><dd>{PLAN_LABEL[s.plan]}</dd></div>
+            <div><dt>Plan</dt><dd>{planLabel(s.plan, data.trialDays, data.plans)}</dd></div>
             <div><dt>Status</dt><dd>{STATUS_LABEL[s.status]}</dd></div>
             {s.trialEndsAt && (<div><dt>Trial ends</dt><dd>{day(s.trialEndsAt)}</dd></div>)}
             {s.nextChargeAt && (<div><dt>Next charge</dt><dd>{s.nextChargeCents != null ? `${usd(s.nextChargeCents)} on ` : ""}{day(s.nextChargeAt)}</dd></div>)}

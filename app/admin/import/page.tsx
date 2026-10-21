@@ -4,7 +4,7 @@ import "./import.css";
 
 export default function ImportCoursePage() {
   return (
-    <main className="wide ui-admin">
+    <main className="wide ui-admin ds-page ds-page--calm">
       <p className="muted"><Link href="/">Home</Link> · <Link href="/admin">Admin</Link> · <Link href="/admin/topics">Topics</Link> · <Link href="/admin/review">Owner review</Link></p>
       <h1>Import course</h1>
       <div className="import__about">

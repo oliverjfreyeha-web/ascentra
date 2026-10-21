@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
-import { readPrefs, type Prefs } from "./prefs";
+import { readPrefs, syncReduced, type Prefs } from "./prefs";
 import type { EnvHandle, EnvScene } from "./env-gl";
 import "./env.css";
 
@@ -23,6 +23,12 @@ function lowPower(): boolean {
 
 export function EnvRoot() {
   const path = usePathname() ?? "/";
+  // D1 (rebuild): keep html[data-reduced] in step when the device's reduced-motion setting changes.
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    mq.addEventListener("change", syncReduced);
+    return () => mq.removeEventListener("change", syncReduced);
+  }, []);
   if (path.startsWith("/admin")) return null;
   return <EnvLayer landing={path === "/"} />;
 }
@@ -48,6 +54,7 @@ function EnvLayer({ landing }: { landing: boolean }) {
     try { auto = sessionStorage.getItem(AUTO_KEY); } catch { /* storage blocked */ }
     if (!auto && lowPower()) auto = "device";
     if (auto) root.setAttribute("data-motion-auto", "simple"); else root.removeAttribute("data-motion-auto");
+    syncReduced();
     if (prefs.scene === "hall" || prefs.motion !== "full" || reduce || auto) return;
     let handle: EnvHandle | null = null, cancelled = false, idle = 0;
     const start = () => {
@@ -61,6 +68,7 @@ function EnvLayer({ landing }: { landing: boolean }) {
               onSlow: () => {
                 try { sessionStorage.setItem(AUTO_KEY, "slow"); } catch { /* storage blocked */ }
                 root.setAttribute("data-motion-auto", "simple");
+                syncReduced();
                 el.removeAttribute("data-on");
                 handle?.destroy(); handle = null;
               },

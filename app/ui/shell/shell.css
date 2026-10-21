@@ -1,0 +1,101 @@
+/*
+ * Design rebuild D3 · The app shell: the navigation HUD, the cursor glow and the click spark. Built on the tokens and
+ * the D2 glass (.ds-glass--hud: heavier blur, idle gloss, never moves). Etched glass: a crisp inner hairline and a
+ * lit top edge, no textures.
+ */
+.app-hud {
+  position: sticky;
+  top: var(--space-3);
+  z-index: var(--z-hud);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: min(76rem, calc(100% - 2 * var(--space-4)));
+  min-height: 3.5rem;
+  margin: var(--space-3) auto 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: 22px;
+  box-shadow: var(--shadow-glass), inset 0 0 0 1px rgb(255 255 255 / 0.06);
+}
+/* On the landing the Hall is the visitor's hero (with its own navigation): the HUD appears only once signed in. */
+:root:has([data-landing]:not([data-auth="in"])) .app-hud[data-landing-home] { display: none; }
+
+.app-hud__brand { display: inline-flex; align-items: center; gap: var(--space-2); flex: none; color: var(--color-ink); text-decoration: none; border-radius: 12px; }
+.app-hud__word { font-size: 1.125rem; letter-spacing: 0.08em; }
+.app-hud__emblem { flex: none; filter: drop-shadow(0 0 6px var(--icon-glow)); }
+
+.app-hud__tabs { display: flex; align-items: center; gap: 2px; min-width: 0; margin-inline: auto; }
+.app-hud__tab, .app-hud .staff-nav a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 2.5rem;
+  padding: 0 0.875rem;
+  border-radius: var(--radius-pill);
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color var(--duration-hover) var(--ease-glide), color var(--duration-hover) var(--ease-glide);
+}
+.app-hud__tab:hover, .app-hud .staff-nav a:hover { color: var(--color-ink); background: rgb(255 255 255 / 0.08); }
+.app-hud__tab[aria-current="page"] { color: var(--seg-selected-ink); background: var(--seg-selected); box-shadow: var(--shadow-press); }
+.app-hud__tab[aria-current="page"] .ds-icon { filter: none; }
+/* The staff navigation (the Admin link, unchanged) sits beside the tabs as one more tab. */
+.app-hud .staff-nav { max-width: none; margin: 0; padding: 0; text-align: left; font-size: inherit; }
+.app-hud__actions { display: flex; gap: var(--space-2); flex: none; }
+.app-hud a:focus-visible { outline: 2px solid var(--focus-color); outline-offset: 2px; }
+
+/* The active tab breathes softly while motion is on (opacity of its halo only). */
+:root:not([data-reduced="1"]) .app-hud__tab[aria-current="page"]::after {
+  content: ""; position: absolute; inset: -3px; border-radius: inherit; pointer-events: none;
+  box-shadow: 0 0 14px 1px var(--icon-glow); animation: hud-tab 3.2s ease-in-out infinite;
+}
+.app-hud__tab { position: relative; }
+@keyframes hud-tab { 0%, 100% { opacity: 0.25; } 50% { opacity: 0.7; } }
+
+/* Phones (560px and below): emblem only, icon-only tabs (their names stay for screen readers), tighter spacing. */
+@media (max-width: 35rem) {
+  .app-hud { top: var(--space-2); gap: var(--space-1); width: calc(100% - 2 * var(--space-2)); margin-top: var(--space-2); padding: 6px 8px; min-height: 3.25rem; border-radius: 18px; }
+  .app-hud__word { display: none; }
+  .app-hud__tabs { gap: 0; }
+  .app-hud__tab, .app-hud .staff-nav a { padding: 0 0.625rem; min-height: 2.5rem; }
+  .app-hud__label { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+  .app-hud__actions { gap: 4px; }
+}
+
+/* ── Cursor glow (cards and buttons only) and click spark ───────────── */
+.fx-glow {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: var(--z-scene); /* behind the content, above the backdrop: it lights the glass from behind */
+  width: 420px;
+  height: 420px;
+  margin: -210px 0 0 -210px;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(circle, rgb(150 170 255 / 0.16), rgb(120 140 255 / 0.05) 40%, transparent 68%);
+  mix-blend-mode: screen;
+  opacity: 0;
+  transition: opacity var(--duration-hover) var(--ease-glide), transform 160ms var(--ease-glide);
+}
+[data-theme="mono"] .fx-glow { background: radial-gradient(circle, rgb(255 240 220 / 0.14), rgb(255 230 200 / 0.04) 40%, transparent 68%); }
+.fx-glow[data-on] { opacity: 1; }
+:root[data-reduced="1"] .fx-glow { display: none; }
+
+.fx-burst { position: fixed; z-index: var(--z-toast); width: 0; height: 0; pointer-events: none; }
+.fx-burst i {
+  position: absolute; left: -2px; top: -2px; width: 4px; height: 4px; border-radius: 50%;
+  background: #cfe0ff; box-shadow: 0 0 8px 2px rgb(150 170 255 / 0.8);
+  animation: fx-spark 600ms var(--ease-glide) both;
+}
+[data-theme="mono"] .fx-burst i { background: #fff3e0; box-shadow: 0 0 8px 2px rgb(255 214 160 / 0.8); }
+@keyframes fx-spark { from { transform: translate(0, 0) scale(1); opacity: 1; } to { transform: translate(var(--dx), var(--dy)) scale(0.2); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .fx-glow, .fx-burst { display: none; } .app-hud__tab::after { animation: none !important; } }
+
+/* D7: in Mono the HUD sits in front of the light; its words get the same dark halo as the page titles (4.5:1). */
+[data-theme="mono"] .app-hud :is(.app-hud__tab:not([aria-current="page"]), .app-hud__brand, .staff-nav a) { text-shadow: 0 0 2px rgb(0 0 0 / 0.9), 0 0 8px rgb(0 0 0 / 0.8), 0 0 18px rgb(0 0 0 / 0.6); }
+/* D7: tab names in the HUD use the glass muted ink (4.5:1 on the HUD glass in both themes). */
+.app-hud__tab:not([aria-current="page"]):not(:hover), .app-hud .staff-nav a:not(:hover) { color: var(--glass-ink-muted); }

@@ -1,0 +1,149 @@
+{
+ "sampled": 399,
+ "below": [],
+ "primaries": [
+  {
+   "route": "/admin (owner)",
+   "theme": "iris",
+   "glass": "liquid",
+   "what": "primary button",
+   "text": "Send invite",
+   "ink": "rgb(255, 255, 255)",
+   "large": false,
+   "worst": 7.47,
+   "need": 4.5
+  },
+  {
+   "route": "/admin/audit (owner)",
+   "theme": "iris",
+   "glass": "liquid",
+   "what": "primary button",
+   "text": "Search",
+   "ink": "rgb(255, 255, 255)",
+   "large": false,
+   "worst": 7.67,
+   "need": 4.5
+  },
+  {
+   "route": "/account (learner)",
+   "theme": "iris",
+   "glass": "liquid",
+   "what": "primary button",
+   "text": "Continue",
+   "ink": "rgb(255, 255, 255)",
+   "large": false,
+   "worst": 6.17,
+   "need": 4.5
+  },
+  {
+   "route": "/guardian (guardian)",
+   "theme": "iris",
+   "glass": "liquid",
+   "what": "primary button",
+   "text": "Agree",
+   "ink": "rgb(255, 255, 255)",
+   "large": false,
+   "worst": 7.74,
+   "need": 4.5
+  },
+  {
+   "route": "/sign-in (visitor)",
+   "theme": "iris",
+   "glass": "liquid",
+   "what": "primary button",
+   "text": "Sign in with a passkey",
+   "ink": "rgb(255, 255, 255)",
+   "large": false,
+   "worst": 7.68,
+   "need": 4.5
+  },
+  {
+   "route": "/welcome (learner)",
+   "theme": "iris",
+   "glass": "liquid",
+   "what": "primary button",
+   "text": "Continue",
+   "ink": "rgb(255, 255, 255)",
+   "large": false,
+   "worst": 7.53,
+   "need": 4.5
+  },
+  {
+   "route": "/missing (visitor)",
+   "theme": "iris",
+   "glass": "liquid",
+   "what": "primary button",
+   "text": "Go to Home",
+   "ink": "rgb(255, 255, 255)",
+   "large": false,
+   "worst": 8.26,
+   "need": 4.5
+  },
+  {
+   "route": "/learn/00000000-0000-4000-8000-000000000060 (learner)",
+   "theme": "iris",
+   "glass": "liquid",
+   "what": "primary button",
+   "text": "Mark as done",
+   "ink": "rgb(255, 255, 255)",
+   "large": false,
+   "worst": 7.41,
+   "need": 4.5
+  },
+  {
+   "route": "/learn/00000000-0000-4000-8000-000000000060 (learner)",
+   "theme": "iris",
+   "glass": "liquid",
+   "what": "primary button",
+   "text": "Mark as done",
+   "ink": "rgb(255, 255, 255)",
+   "large": false,
+   "worst": 7.34,
+   "need": 4.5
+  },
+  {
+   "route": "/ (learner)",
+   "theme": "iris",
+   "glass": "liquid",
+   "what": "primary button",
+   "text": "Continue: Cold email",
+   "ink": "rgb(255, 255, 255)",
+   "large": false,
+   "worst": 6.33,
+   "need": 4.5
+  },
+  {
+   "route": "/ (learner)",
+   "theme": "iris",
+   "glass": "liquid",
+   "what": "primary button",
+   "text": "Create an account",
+   "ink": "rgb(8, 8, 19)",
+   "large": false,
+   "worst": 10.24,
+   "need": 4.5
+  },
+  {
+   "route": "/ (visitor)",
+   "theme": "iris",
+   "glass": "liquid",
+   "what": "primary button",
+   "text": "Create an account",
+   "ink": "rgb(8, 8, 19)",
+   "large": false,
+   "worst": 10.24,
+   "need": 4.5
+  },
+  {
+   "route": "/learn/progress (learner)",
+   "theme": "iris",
+   "glass": "liquid",
+   "what": "primary button",
+   "text": "Continue: Cold outreach",
+   "ink": "rgb(255, 255, 255)",
+   "large": false,
+   "worst": 6.2,
+   "need": 4.5
+  }
+ ]
+}

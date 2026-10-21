@@ -10,7 +10,9 @@ import { build } from "esbuild";
 import { expect, test, type Page } from "@playwright/test";
 
 const CSS = ["app/styles/tokens.css", "app/styles/components.css", "app/globals.css", "app/styles/polish.css", "app/styles/glass.css", "app/ui/neo.css",
-  "app/learn/c2.css", "app/learn/choose/choose.css"].map((f) => readFileSync(f, "utf8")).join("\n");
+  "app/learn/c2.css", "app/learn/choose/choose.css",
+  // Design rebuild D5: the stylesheets the rebuilt My progress uses (the real app loads them on every page).
+  "app/styles/design.css", "app/styles/primitives.css", "app/styles/pages.css", "app/learn/progress/profile/profile.css"].map((f) => readFileSync(f, "utf8")).join("\n");
 const AXE = readFileSync(resolve("node_modules/axe-core/axe.min.js"), "utf8");
 let bundle = "";
 

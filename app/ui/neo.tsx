@@ -16,13 +16,16 @@ export function NeoWell({ children, className = "" }: { children: ReactNode; cla
   return <div className={`neo-well ${className}`.trim()}>{children}</div>;
 }
 
-/** A progress bar: a pressed track with a raised fill. The native <progress> carries the value for assistive tech. */
+/**
+ * A progress bar: a pressed track with a raised fill. The native <progress> carries the value for assistive tech.
+ * D7: the fill grows by transform (scaleX from the left), not width, so a change never lays the page out again.
+ */
 export function NeoProgress({ value, max = 100, label }: { value: number; max?: number; label: string }) {
   const pct = Math.max(0, Math.min(100, (value / max) * 100));
   return (
     <div className="neo-progress">
       <progress className="sr-only" value={value} max={max} aria-label={label}>{Math.round(pct)}%</progress>
-      <div className="neo-progress__track" aria-hidden="true"><div className="neo-progress__fill" style={{ width: `${pct}%` }} /></div>
+      <div className="neo-progress__track" aria-hidden="true"><div className="neo-progress__fill" style={{ transform: `scaleX(${pct / 100})` }} /></div>
     </div>
   );
 }

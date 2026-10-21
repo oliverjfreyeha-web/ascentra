@@ -7,7 +7,7 @@ export const metadata: Metadata = { title: "Art and sound credits · ASCENTRA" }
 /** D2c/D2e: where the site's art and music come from. Kept in step with docs/design/ASSETS.md and app/ui/sound/tracks.ts. */
 export default function CreditsPage() {
   return (
-    <main>
+    <main className="ds-page ds-page--calm">
       <nav className="ui-crumbs" aria-label="Breadcrumb"><Link href="/">Home</Link></nav>
       <header className="ui-page-head">
         <h1>Art and sound credits</h1>

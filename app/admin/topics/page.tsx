@@ -3,7 +3,7 @@ import { TopicsAdmin } from "./topics-admin";
 
 export default function TopicsPage() {
   return (
-    <main className="wide ui-admin">
+    <main className="wide ui-admin ds-page ds-page--calm">
       <p className="muted"><Link href="/">Home</Link> · <Link href="/admin/catalog">Topic catalog</Link> · <Link href="/admin/course-requests">Course requests</Link> · <Link href="/admin/missions">Missions and leaderboard</Link></p>
       <h1>Topics</h1>
       <p className="muted">

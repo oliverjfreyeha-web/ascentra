@@ -6,6 +6,7 @@ import { DevicesPanel } from "./devices-panel";
 import { PrivacyCenter } from "./privacy-center";
 import { AppearancePanel } from "./appearance-panel";
 import { ProgressSettings } from "./progress-settings";
+import { LearnCrumbs } from "./learn-crumbs";
 import { ProtectTip } from "../ui/protect-tip";
 import { SiteFooter } from "../ui/site-footer";
 import { Reveal } from "../ui/reveal";
@@ -13,10 +14,10 @@ import { Reveal } from "../ui/reveal";
 // Passkeys, password and second factor are managed by Clerk. ASCENTRA stores none of them.
 export default function AccountPage() {
   return (
-    <main className="ui-main-wide">
+    <main className="ui-main-wide ds-page ds-page--calm">
       <Reveal selector=".ui-block, .ui-course, .ui-path > li" />
       <nav className="ui-crumbs" aria-label="Breadcrumb">
-        <Link href="/">Home</Link> · <SignOut />
+        <Link href="/">Home</Link> · <LearnCrumbs /><SignOut />
       </nav>
       <header className="ui-page-head">
         <h1>Account and devices</h1>

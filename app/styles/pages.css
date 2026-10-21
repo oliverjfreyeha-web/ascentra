@@ -1,0 +1,160 @@
+/*
+ * Design rebuild D4 · Restyled pages (main.ds-page: Home and the Library). Their existing D2b–D5 surfaces (.ui-block,
+ * .ui-tile, .ui-rows, …) had a hard-coded dark-blue fill and frost-blue edge; here they take the theme tokens, so Mono
+ * is graphite and Iris looks as before. Other pages are untouched until they are restyled.
+ */
+main.ds-page :is(.ui-card, .ui-panel, .ui-block, .ui-choice, .ui-rows, .ui-path > li, .ui-tile, .ui-hero) {
+  --surface: color-mix(in srgb, var(--color-surface) 94%, transparent);
+  --edge: linear-gradient(155deg, color-mix(in srgb, var(--color-frost) 42%, transparent), color-mix(in srgb, var(--color-frost) 10%, transparent) 28%, color-mix(in srgb, var(--color-frost) 4%, transparent) 62%, color-mix(in srgb, var(--color-frost) 16%, transparent));
+  --spotlight: radial-gradient(22rem circle at var(--mx, 50%) var(--my, -30%), color-mix(in srgb, var(--color-frost) 9%, transparent), transparent 45%);
+}
+main.ds-page :is(.ui-card--interactive:hover, .ui-choice:hover, .ui-tile:hover) {
+  --edge: linear-gradient(155deg, color-mix(in srgb, var(--color-accent-strong) 70%, transparent), color-mix(in srgb, var(--color-frost) 16%, transparent) 30%, color-mix(in srgb, var(--color-frost) 6%, transparent) 65%, color-mix(in srgb, var(--color-frost) 24%, transparent));
+}
+/* No spotlight on touch screens or with reduced motion (as the D2b rule on :root, which this page rule would outrank). */
+@media (hover: none), (pointer: coarse), (prefers-reduced-motion: reduce) {
+  main.ds-page :is(.ui-card, .ui-panel, .ui-block, .ui-choice, .ui-rows, .ui-path > li, .ui-tile, .ui-hero) { --spotlight: linear-gradient(transparent, transparent); }
+}
+/* Lesson rows inside a glass card sit on a lighter, see-through surface so they don't read as a second panel. */
+main.ds-page .ds-glass .ui-rows { --surface: color-mix(in srgb, var(--color-base) 45%, transparent); }
+
+/*
+ * ── Design rebuild D6 · Every remaining route (main.ds-page; Home keeps its D4 look, so .landing is left out) ──
+ * The same surfaces, controls and type as D4/D5, mapped onto the theme tokens here, scoped to main.ds-page:not(.landing) so a page
+ * that is not restyled keeps its old look. Nothing below changes a layout, a label or what a control does.
+ *   ds-page--calm  Admin, Account (billing), Guardian Center, sign-in and onboarding, legal and state pages: glass
+ *                  panels and clear hierarchy, but no decorative motion beyond the shared entrance, no tilt, no cursor
+ *                  glow or spark (app/ui/spotlight.tsx and app/ui/shell/cursor-fx.tsx read the class), no drift.
+ */
+main.ds-page:not(.landing) {
+  /* Derived tokens, rebuilt from the theme (in Iris they equal the D1 values; in Mono they turn neutral). */
+  --tint-accent: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  --edge-light: linear-gradient(155deg, color-mix(in srgb, var(--color-frost) 42%, transparent), color-mix(in srgb, var(--color-frost) 10%, transparent) 28%, color-mix(in srgb, var(--color-frost) 4%, transparent) 62%, color-mix(in srgb, var(--color-frost) 16%, transparent));
+  --edge-light-strong: linear-gradient(155deg, color-mix(in srgb, var(--color-accent-strong) 70%, transparent), color-mix(in srgb, var(--color-frost) 16%, transparent) 30%, color-mix(in srgb, var(--color-frost) 6%, transparent) 65%, color-mix(in srgb, var(--color-frost) 24%, transparent));
+  --edge-quiet: linear-gradient(color-mix(in srgb, var(--color-line) 90%, transparent), color-mix(in srgb, var(--color-line) 90%, transparent));
+  --focus-ring: 0 0 0 2px var(--color-base), 0 0 0 4px var(--color-accent), 0 0 16px 3px color-mix(in srgb, var(--color-accent) 35%, transparent);
+  --gradient-surface: linear-gradient(color-mix(in srgb, var(--color-surface) 94%, transparent), color-mix(in srgb, var(--color-surface) 94%, transparent));
+  --gradient-raised: linear-gradient(color-mix(in srgb, var(--color-raised) 96%, transparent), color-mix(in srgb, var(--color-raised) 96%, transparent));
+  /* Wells: the darker insets inside a panel (fields, facts, consents, steps, notes). */
+  --ds-well: color-mix(in srgb, var(--color-base) 45%, transparent);
+  --ds-well-deep: color-mix(in srgb, var(--color-base) 70%, transparent);
+}
+/* The page wall behind the backdrop follows the theme (admin has no backdrop, so there it is the background). */
+:root:has(main.ds-page:not(.landing)) { background: var(--theme-light), var(--theme-wall); background-color: var(--color-base); background-attachment: fixed; }
+
+/* Surfaces that D4 didn't cover. Legal, AI and Mentor notices keep their own meaning colours. */
+main.ds-page:not(.landing) :is(.ui-practice, .ui-lesson-end, .ui-takeaways, .ui-act[data-graded="true"]) { --surface: color-mix(in srgb, var(--color-surface) 94%, transparent); }
+main.ds-page:not(.landing) :is(.ui-card--raised, .ui-panel--raised, .ui-msg--mentor) { --surface: color-mix(in srgb, var(--color-raised) 96%, transparent); }
+main.ds-page:not(.landing) :is(.ui-facts > div, .ui-consent, .ui-answers, .ui-steps > li) { --surface: color-mix(in srgb, var(--color-base) 70%, var(--color-surface)); --edge: var(--edge-quiet); }
+main.ds-page:not(.landing) :is(.ui-choice:has(input:checked), .ui-consent:has(input:checked), .ui-steps > li[data-state="now"]) { --surface: color-mix(in srgb, var(--color-raised) 92%, var(--color-accent)); --edge: var(--edge-light-strong); }
+main.ds-page:not(.landing) :is(.ui-lesson .ui-takeaways, .ui-lesson .ui-lesson-end, .ui-lesson .ui-practice) { --edge: var(--edge-quiet); }
+main.ds-page:not(.landing) .ui-ai-notice { --surface: color-mix(in srgb, var(--color-raised) 92%, var(--color-accent)); --edge: linear-gradient(155deg, color-mix(in srgb, var(--color-accent) 75%, transparent), color-mix(in srgb, var(--color-accent) 30%, transparent) 40%, color-mix(in srgb, var(--color-accent) 40%, transparent)); }
+main.ds-page:not(.landing) .ui-act[data-graded="true"] { --edge: linear-gradient(155deg, color-mix(in srgb, var(--color-accent) 70%, transparent), color-mix(in srgb, var(--color-accent) 25%, transparent) 45%, color-mix(in srgb, var(--color-accent) 40%, transparent)); box-shadow: none; }
+main.ds-page:not(.landing) .ui-act[data-graded="true"] .ui-act__grade { background: color-mix(in srgb, var(--color-accent) 16%, transparent); }
+main.ds-page:not(.landing) .ui-act[data-graded="false"] { background: color-mix(in srgb, var(--color-surface) 90%, var(--color-base)); }
+main.ds-page:not(.landing) .ui-act__card { background: linear-gradient(color-mix(in srgb, var(--color-raised) 96%, transparent), color-mix(in srgb, var(--color-raised) 96%, transparent)) padding-box, var(--edge-light-strong) border-box; }
+main.ds-page:not(.landing) .ui-loading { background: color-mix(in srgb, var(--color-surface) 60%, transparent); }
+main.ds-page:not(.landing) :is(.ui-form fieldset, fieldset.ui-group, .ui-empty--inline, .ui-state, .ui-msg:not(.ui-msg--mentor), .ui-practice blockquote, .ui-act__pair, .ui-act__doc,
+  .ui-act[data-type="teach_back"] .ui-act__prompt, .c2-stats > div, .c2-notice, .choose__note, .choose__step, .choose__card, .ui-art__tag) { background-color: var(--ds-well); background-image: none; }
+main.ds-page:not(.landing) :is(.c2-notice, .choose__note, .choose__card, .choose__step) { background-color: var(--ds-well-deep); }
+main.ds-page:not(.landing) .ui-badge--accent { border-color: color-mix(in srgb, var(--color-accent) 45%, transparent); }
+main.ds-page:not(.landing) .ui-skeleton { background-image: linear-gradient(100deg, var(--color-raised) 20%, color-mix(in srgb, var(--color-accent) 12%, transparent) 40%, var(--color-raised) 60%); }
+
+/* Glass panels and the sign-in style cards: the same glass, its shade from the theme instead of Black Iris. */
+main.ds-page:not(.landing) :is(.ui-panel, .ui-auth__card) {
+  background: var(--glass-light) padding-box, linear-gradient(color-mix(in srgb, var(--color-base) calc(var(--glass-shade) * 100%), transparent), color-mix(in srgb, var(--color-base) calc(var(--glass-shade) * 100%), transparent)) padding-box;
+}
+
+/* Fields, selects, checkboxes and radios sit in a well of the theme's base. */
+main.ds-page:not(.landing) :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea, .ui-input, .ui-select, .ui-check input, input[type="checkbox"], input[type="radio"]) { background-color: var(--ds-well-deep); }
+main.ds-page:not(.landing) :is(input:not([type="checkbox"]):not([type="radio"]):not([class*="ui-"]), select:not([class*="ui-"]), textarea:not([class*="ui-"])):focus-visible { box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.35), 0 0 0 3px color-mix(in srgb, var(--color-accent) 25%, transparent); }
+main.ds-page:not(.landing) :is(input[type="checkbox"], input[type="radio"]):checked { background-color: var(--color-accent); }
+main.ds-page:not(.landing) button.link { text-decoration-color: color-mix(in srgb, var(--color-accent) 40%, transparent); }
+/* D7: text-link buttons are at least 24px tall (WCAG 2.2 target size), with no change to how they read. */
+main.ds-page:not(.landing) button.link { min-height: 1.5rem; }
+
+/* Primary actions: the design system's primary (iridescent on a dark base in Iris, champagne in Mono). It drifts only on
+   learner pages while motion is on; calm pages keep it still. */
+main.ds-page:not(.landing) :is(.ui-btn--primary, button.primary) {
+  border-color: transparent;
+  color: var(--button-ink);
+  background: var(--button-fill), var(--button-base);
+  background-size: var(--button-fill-size), auto;
+  background-position: 0% 50%;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.45), inset 0 -1px 0 rgb(0 0 0 / 0.12), 0 10px 24px -14px rgb(0 0 0 / 0.6);
+}
+main.ds-page:not(.landing) :is(.ui-btn--primary, button.primary):hover:not(:disabled) { background: var(--button-fill), var(--button-base); background-size: var(--button-fill-size), auto; box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.55), inset 0 -1px 0 rgb(0 0 0 / 0.12), 0 12px 26px -14px rgb(0 0 0 / 0.7); }
+main.ds-page:not(.landing) :is(.ui-btn--primary, button.primary):focus-visible { box-shadow: var(--focus-ring); }
+:root:not([data-reduced="1"]) main.ds-page:not(.landing):not(.ds-page--calm) :is(.ui-btn--primary, button.primary) { animation: ds-irid var(--duration-irid) linear infinite; }
+:root:not([data-reduced="1"]) main.ds-page:not(.landing):not(.ds-page--calm) :is(.ui-btn--primary, button.primary):is(:hover, :focus-visible) { animation-duration: var(--duration-irid-hover); }
+@media (prefers-reduced-motion: reduce) { main.ds-page:not(.landing) :is(.ui-btn--primary, button.primary) { animation: none !important; } }
+
+/* Type (decision 2): page titles and section headings in the Ascentra font, small-caps labels too; body stays Geist. */
+main.ds-page:not(.landing) :is(h1, h2):not([class]),
+main.ds-page:not(.landing) :is(.ui-label, .ui-eyebrow), main.ds-page.ui-admin thead th { font-family: var(--font-ascentra); font-weight: var(--weight-regular); text-transform: uppercase; }
+main.ds-page:not(.landing) :is(h1, h2):not([class]) { letter-spacing: 0.03em; line-height: var(--leading-tight); color: var(--color-ink); }
+main.ds-page:not(.landing) :is(.ui-label, .ui-eyebrow), main.ds-page.ui-admin thead th { letter-spacing: var(--tracking-caps); }
+/* D7: breadcrumbs sit on the page over the backdrop; the brighter muted ink keeps them at 4.5:1. */
+main.ds-page:not(.landing) :is(.ui-crumbs, .ui-crumbs a) { color: var(--color-ink-muted); }
+main.ds-page:not(.landing) .ui-crumbs a:hover { color: var(--color-ink); }
+
+/* D7: Mono's light sits behind the page titles and the HUD (68% across, 13vh down). Text there gets a dark halo, so it
+   keeps its contrast against the light (WCAG counts a halo as the text's background); controls keep their own ink. */
+[data-theme="mono"] main.ds-page:not(.landing) { text-shadow: 0 0 2px rgb(0 0 0 / 0.9), 0 0 8px rgb(0 0 0 / 0.8), 0 0 18px rgb(0 0 0 / 0.6); }
+[data-theme="mono"] main.ds-page:not(.landing) :is(button, .ds-btn, .ui-btn, input, select, textarea, .ds-seg) { text-shadow: none; }
+/* D7: the admin header bar's links read at 4.5:1 on its glass. */
+main.ds-page:not(.landing).ui-admin > p.muted:first-child a { color: var(--color-ink-muted); }
+
+/* Admin: the D3 dense layout, now on glass panels (no blur: there is no backdrop behind admin, and it stays fast). */
+main.ds-page.ui-admin > p.muted:first-child { border-color: transparent; background: var(--glass-fill); box-shadow: var(--shadow-glass); border-radius: var(--radius-glass); }
+main.ds-page.ui-admin > section, main.ds-page.ui-admin > form, main.ds-page.ui-admin > div:not(.table-wrap):not(.ui-loading) > section,
+main.ds-page.ui-admin :is(.ui-block, .ui-card, .ui-panel, .ui-rows, .ui-choice, .ui-tile) {
+  border-color: transparent;
+  border-radius: var(--radius-glass);
+  background: var(--glass-fill) padding-box;
+  box-shadow: var(--shadow-glass);
+}
+main.ds-page.ui-admin :is(.ui-block, .ui-card, .ui-panel, .ui-rows, .ui-choice, .ui-tile) :is(.ui-block, .ui-card, .ui-panel, .ui-rows, .ui-choice, .ui-tile) { background: var(--ds-well) padding-box; box-shadow: inset 0 0 0 1px var(--color-line); }
+main.ds-page.ui-admin .filters { background: var(--ds-well); border-color: var(--color-line); }
+main.ds-page.ui-admin :is(.table-wrap, .ui-table-wrap) { background: color-mix(in srgb, var(--color-surface) 92%, transparent); }
+main.ds-page.ui-admin tbody tr:nth-child(even) { background: color-mix(in srgb, var(--color-text) 2%, transparent); }
+/* Admin home: the pages as a grid of glass tiles with an icon (links only; which links show is unchanged). */
+main.ds-page:not(.landing) .admin-home__links { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr)); gap: var(--space-3); }
+main.ds-page:not(.landing) .admin-home__links a { display: flex; align-items: center; gap: var(--space-3); min-height: 3.25rem; padding: var(--space-3) var(--space-4); border-radius: calc(var(--radius-glass) - 6px);
+  background: var(--ds-well); box-shadow: inset 0 0 0 1px var(--color-line); color: var(--color-ink); font-weight: var(--weight-medium); text-decoration: none; }
+main.ds-page:not(.landing) .admin-home__links a:hover { box-shadow: inset 0 0 0 1px var(--color-line-strong); background: color-mix(in srgb, var(--color-raised) 80%, transparent); }
+
+/* D7: no side stripes. Each one becomes a full border or a tint in the same colour, so what it marks stays visible:
+   notes and the overlap note, quotes and source documents in practice, graded activities (their solid frame and filled
+   chip already say "graded"), state messages, error rows in tables, the source a link jumped to, and toasts. */
+main.ds-page:not(.landing) :is(.c2-notice, .choose__note) { border-left: 0; border: 1px solid color-mix(in srgb, var(--color-accent) 45%, transparent); border-radius: var(--radius-md); }
+main.ds-page:not(.landing) .choose__overlap { border-left: 0; padding-left: 0; }
+main.ds-page:not(.landing) .ui-practice blockquote { border-left: 0; border: 1px solid var(--color-line-strong); border-radius: var(--radius-sm); }
+main.ds-page:not(.landing) .ui-act__doc { border-left: 1px solid var(--color-line); }
+main.ds-page:not(.landing) .ui-state { padding-left: var(--space-4); }
+main.ds-page:not(.landing) .ui-state::before { content: none; }
+main.ds-page:not(.landing) .ui-state--error { border-color: color-mix(in srgb, var(--color-danger) 75%, transparent); background-color: color-mix(in srgb, var(--color-danger) 8%, var(--ds-well)); }
+main.ds-page:not(.landing) .ui-table tbody tr.is-error td:first-child { box-shadow: none; }
+main.ds-page:not(.landing) .ui-table tbody tr.is-error { background: var(--tint-danger); }
+main.ds-page:not(.landing) .ui-sources ol > li:target { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-accent) 60%, transparent); }
+:root:has(main.ds-page:not(.landing)) .ui-toast { border-left: 1px solid color-mix(in srgb, var(--toast-hue, var(--color-accent)) 70%, transparent); border-color: color-mix(in srgb, var(--toast-hue, var(--color-accent)) 70%, transparent); }
+
+/* Calm pages: no decorative motion beyond the shared entrance. */
+main.ds-page--calm { --tilt-max: 0deg; --spotlight: linear-gradient(transparent, transparent); }
+main.ds-page--calm :is(.ui-card, .ui-panel, .ui-block, .ui-choice, .ui-rows, .ui-path > li, .ui-tile, .ui-hero) { --spotlight: linear-gradient(transparent, transparent); }
+main.ds-page--calm [data-reveal] { opacity: 1 !important; transform: none !important; }
+main.ds-page--calm :is(.ds-glass, .ui-glass)::after, main.ds-page--calm .ds-btn--primary { animation: none !important; }
+main.ds-page--calm .ds-tilt { transform: none !important; }
+main.ds-page--calm :is(.ds-icon, .ds-icon *) { animation: none !important; }
+:root:has(main.ds-page--calm) :is(.bd__orb, .bd__dust i, .bd__rays, .bd__core) { animation: none !important; }
+:root:has(main.ds-page--calm) .bd__dust { display: none; }
+:root:has(main.ds-page--calm) .bd__orbs { transform: none; transition: none; }
+:root:has(main.ds-page--calm) .fx-glow { display: none; }
+:root:has(main.ds-page--calm) :is(.ds-glass--hud, .app-hud__tab)::after { animation: none !important; }
+
+/* The shared page entrance follows the Motion setting on restyled pages (it used to follow only the device setting). */
+:root[data-reduced="1"] main.ds-page:not(.landing) { animation: none; }
+:root[data-reduced="1"] main.ds-page [data-reveal] { opacity: 1 !important; transform: none !important; }
+/* D7: Reduced and Off stop everything that still moved on restyled pages (meter fills, loading shimmer, Home's lower
+   sections and their reveals): no animation at all, and no transition of position or fade. Colour changes on hover stay. */
+:root[data-reduced="1"] main.ds-page *, :root[data-reduced="1"] main.ds-page *::before, :root[data-reduced="1"] main.ds-page *::after { animation: none !important; transition-property: color, background-color, border-color, box-shadow, text-decoration-color !important; }

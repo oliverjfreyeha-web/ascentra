@@ -5,7 +5,7 @@ import { SignedInGate } from "../signed-in-gate";
 // Clerk's sign-up form. After it, /welcome asks for the date of birth before anything else unlocks.
 export default function SignUpPage() {
   return (
-    <main>
+    <main className="ds-page ds-page--calm">
       <div className="ui-auth ui-auth--wide">
         <div className="ui-auth__halo" aria-hidden="true" />
         <div className="ui-auth__card">

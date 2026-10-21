@@ -1,24 +1,36 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { GLASSES, MOTIONS, SCENE_INFO, SCENES, type Glass, type Motion } from "../env/prefs";
+import { useEffect, useState, useSyncExternalStore } from "react";
+import { EFFECTS, EFFECTS_LABEL, GLASSES, MOTION_LABEL, MOTIONS, THEME_LABEL, THEMES, type Glass } from "../env/prefs";
 import { usePrefs } from "../landing/world/world-controls";
+import { Segmented } from "../ui/design/segmented";
+import { Glass as GlassPanel } from "../ui/design/glass-panel";
+import { Button } from "../ui/design/button";
+import { uiSounds } from "../ui/sound/ui-sounds";
+import "./appearance.css";
 
 const GLASS_LABEL: Record<Glass, string> = { liquid: "Liquid", frost: "Frosted" };
-const MOTION_LABEL: Record<Motion, string> = { full: "Full", simple: "Simple", off: "Off" };
+const noop = () => () => {};
 
 /**
- * D5 · Appearance: the wallpaper scene, the glass material and how much the wallpaper moves. Saved in this browser only
- * (saving to the account comes later). When the device asked for less motion or ran slowly, it says so here.
+ * Appearance (D5; design rebuild D3): theme, glass, motion, effects and interface sounds, saved in this browser only
+ * (saving to the account comes later), through the one preferences module (app/env/prefs.ts) and the existing sound
+ * preference. Iris and Mono replace the D5 scenes (Owner decision 1), so there is no scene choice any more; a scene saved
+ * before is simply ignored. Motion's middle level reads "Reduced" (stored as "simple", so saved choices still work).
+ * When the device asked for less motion, ran slowly or counts as a Lite device, it says so here.
  */
 export function AppearancePanel() {
   const [prefs, set] = usePrefs();
   const [auto, setAuto] = useState(false);
+  const [lite, setLite] = useState(false);
+  const sounds = uiSounds();
+  const soundOn = useSyncExternalStore(sounds?.subscribe ?? noop, () => sounds?.enabled ?? false, () => false);
   useEffect(() => {
-    const read = () => setAuto(document.documentElement.hasAttribute("data-motion-auto"));
+    const root = document.documentElement;
+    const read = () => { setAuto(root.hasAttribute("data-motion-auto")); setLite(root.getAttribute("data-lite") === "1"); };
     read();
     const mo = new MutationObserver(read);
-    mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-motion-auto"] });
+    mo.observe(root, { attributes: true, attributeFilter: ["data-motion-auto", "data-lite"] });
     return () => mo.disconnect();
   }, []);
   if (!prefs) return <p className="muted">Loading your appearance settings…</p>;
@@ -26,27 +38,45 @@ export function AppearancePanel() {
     <>
       <h2 id="appearance-h">Appearance</h2>
       <p className="muted">Saved in this browser only.</p>
-      <div className="ui-appearance">
-        <div role="group" aria-labelledby="ap-scene">
-          <p id="ap-scene" className="ui-appearance__label">Scene</p>
-          <div className="ui-actions">
-            {SCENES.map((s) => <button key={s} type="button" className="ui-btn ui-btn--sm" aria-pressed={prefs.scene === s} onClick={() => set("scene", s)}>{SCENE_INFO[s].label}</button>)}
+      <div className="ap">
+        <div className="ap__controls">
+          <div className="ap__row">
+            <p id="ap-theme" className="ds-caps ap__label">Theme</p>
+            <Segmented label="Theme" value={prefs.theme} onChange={(v) => set("theme", v)} options={THEMES.map((t) => [t, THEME_LABEL[t]] as const)} />
+            <p className="small muted">Iris is deep blue-violet. Mono is black and graphite with one warm white light.</p>
+          </div>
+          <div className="ap__row">
+            <p className="ds-caps ap__label">Glass</p>
+            <Segmented label="Glass" value={prefs.glass} onChange={(v) => set("glass", v)} options={GLASSES.map((g) => [g, GLASS_LABEL[g]] as const)} />
+            <p className="small muted">Frosted is softer and easiest to read. Liquid bends what is behind it at the edges, in Chrome, Edge and other Chromium browsers; elsewhere it shows a lighter glass.</p>
+          </div>
+          <div className="ap__row">
+            <p className="ds-caps ap__label">Motion</p>
+            <Segmented label="Motion" value={prefs.motion} onChange={(v) => set("motion", v)} options={MOTIONS.map((m) => [m, MOTION_LABEL[m]] as const)} />
+            <p className="small muted">Full: the background drifts and panels shimmer. Reduced: everything holds still and numbers simply show. Off: the same, for the whole page. Reduced motion on your device always means still.</p>
+            {auto && prefs.motion === "full" && <p className="small" role="status">Motion is simplified on this device.</p>}
+          </div>
+          <div className="ap__row">
+            <p className="ds-caps ap__label">Effects</p>
+            <Segmented label="Effects" value={prefs.effects} onChange={(v) => set("effects", v)} options={EFFECTS.map((e) => [e, EFFECTS_LABEL[e]] as const)} />
+            <p className="small muted">Automatic uses lighter glass and no Liquid on phones and slower devices. Always full keeps every effect.</p>
+            {lite && prefs.effects === "auto" && <p className="small" role="status">Lighter effects are on for this device.</p>}
+          </div>
+          <div className="ap__row">
+            <p className="ds-caps ap__label">Sound</p>
+            <Segmented label="Interface sounds" value={soundOn ? "on" : "off"} onChange={(v) => sounds?.setEnabled(v === "on")} options={[["on", "On"], ["off", "Off"]] as const} />
+            <p className="small muted">Soft clicks on buttons, and a short sound when you claim a reward. Never plays on its own. Separate from motion and from the ambient music.</p>
           </div>
         </div>
-        <div role="group" aria-labelledby="ap-glass">
-          <p id="ap-glass" className="ui-appearance__label">Glass</p>
-          <div className="ui-actions">
-            {GLASSES.map((g) => <button key={g} type="button" className="ui-btn ui-btn--sm" aria-pressed={prefs.glass === g} onClick={() => set("glass", g)}>{GLASS_LABEL[g]}</button>)}
-          </div>
-          <p className="small muted">Liquid bends the scene at its edges. Frosted is softer and easiest to read.</p>
-        </div>
-        <div role="group" aria-labelledby="ap-motion">
-          <p id="ap-motion" className="ui-appearance__label">Motion</p>
-          <div className="ui-actions">
-            {MOTIONS.map((m) => <button key={m} type="button" className="ui-btn ui-btn--sm" aria-pressed={prefs.motion === m} onClick={() => set("motion", m)}>{MOTION_LABEL[m]}</button>)}
-          </div>
-          <p className="small muted">Full: the scene moves. Simple: the photo drifts slowly. Off: a still photo. Reduced motion on your device always means still.</p>
-          {auto && prefs.motion === "full" && <p className="small" role="status">Motion is simplified on this device.</p>}
+        {/* A picture of the choices, not a control: inert (not focusable, hidden from assistive technology). */}
+        <div className="ap__preview" inert>
+          <div className="ap__stage" aria-hidden="true"><i /><i /><i /></div>
+          <GlassPanel className="ap__glass">
+            <p className="ds-caps">Preview</p>
+            <p className="ap__title">Section 2 · Cold email</p>
+            <p className="small muted">This is how panels look with your choices.</p>
+            <Button variant="primary" size="sm" icon="book" sfx="none">Continue</Button>
+          </GlassPanel>
         </div>
       </div>
     </>
