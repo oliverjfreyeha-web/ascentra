@@ -65,3 +65,10 @@ export function teenAllowancesFrom(body: unknown): Record<string, TeenAllowance 
 
 export const usd = (c: number) => `$${(c / 100).toFixed(2)}`;
 export const addonName = (c: number) => (c ? `${usd(c)} per month` : "None");
+
+/** Account → Billing: the plan's name. The trial reads its length and Basic's price from GET /api/v1/billing (lib/billing-terms.ts), never typed here. */
+export function planLabel(plan: "trial" | "basic" | "pro", trialDays: number, plans: { key: string; cents: number }[]): string {
+  if (plan !== "trial") return plan === "basic" ? "Basic" : "Pro";
+  const basic = plans.find((p) => p.key === "basic");
+  return `${trialDays}-day free trial, then Basic${basic ? ` ($${basic.cents / 100}/mo)` : ""}`;
+}

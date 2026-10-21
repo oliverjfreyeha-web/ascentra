@@ -62,13 +62,16 @@ describe("design tokens", () => {
 });
 
 describe("the style guide page", () => {
-  it("is for the Owner and Super Admins, read through meFrom, linked from the Home header line for those two only", () => {
+  it("is for the Owner and Super Admins, read through meFrom, linked from the Home header line for those two only (via app/admin-links.ts)", () => {
     const page = readFileSync("app/admin/style-guide/style-guide.tsx", "utf8");
     expect(page).toMatch(/meFrom\(/);
     expect(page).toMatch(/if \(role !== "owner" && role !== "superAdmin"\) return <p>The style guide is for the Owner and Super Admins\.<\/p>;/);
     expect(page.match(/fetch\(/g)).toHaveLength(1); // only the role check: sample data, nothing else is read or saved
     const panel = readFileSync("app/account-panel.tsx", "utf8");
-    expect(panel).toMatch(/me\?\.roleKey === "owner" \|\| me\?\.roleKey === "superAdmin"\) && \(\s*<>\s*<Link href="\/admin\/audit">Audit log<\/Link> · <Link href="\/admin\/safety">Safety review<\/Link> · <Link href="\/admin\/style-guide">Style guide<\/Link>/);
+    // Small fixes: the Home line's admin links come from app/admin-links.ts, where the style guide is for those two only.
+    expect(panel).toMatch(/adminLinksFor\(me\.roleKey\)/);
+    const links = readFileSync("app/admin-links.ts", "utf8");
+    expect(links).toMatch(/\{ href: "\/admin\/style-guide", label: "Style guide", roles: \["owner", "superAdmin"\] \}/);
   });
 });
 

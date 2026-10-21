@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
+import { Fragment, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
 import { ROLE_LABEL } from "@/lib/caps";
+import { adminLinksFor } from "./admin-links";
 import { SignOut } from "./sign-out";
 import type { Me } from "./me";
 import { useMe } from "./use-me";
@@ -41,45 +42,16 @@ export function AccountPanel() {
     <>
     <p className="muted">
       {me ? `Signed in as ${me.displayName} (${ROLE_LABEL[me.roleKey]}) · ` : failed ? "Couldn't load your account. " : "Checking your account… "}
-      {/* S1: the one Admin link (Owner and staff only) is the staff navigation on every signed-in page (app/staff-nav.tsx). */}
-      {(me?.roleKey === "owner" || me?.roleKey === "superAdmin") && (
-        <>
-          <Link href="/admin/audit">Audit log</Link> · <Link href="/admin/safety">Safety review</Link> · <Link href="/admin/style-guide">Style guide</Link> ·{" "}
-        </>
-      )}
-      {me && ["owner", "superAdmin", "courseAdmin", "reviewer"].includes(me.roleKey) && (
-        <>
-          <Link href="/admin/sources">Source library</Link> · <Link href="/admin/courses">Course builder</Link> ·{" "}
-        </>
-      )}
-      {me && ["owner", "courseAdmin", "reviewer"].includes(me.roleKey) && (
-        <>
-          <Link href="/admin/catalog">Topic catalog</Link> ·{" "}
-        </>
-      )}
-      {me?.roleKey === "owner" && (
-        <>
-          <Link href="/admin/review">Owner review</Link> ·{" "}
-        </>
-      )}
-      {me && ["owner", "courseAdmin"].includes(me.roleKey) && (
-        <>
-          <Link href="/admin/course-requests">Course requests</Link> ·{" "}
-        </>
-      )}
-      {me && ["owner", "superAdmin", "courseAdmin"].includes(me.roleKey) && (
-        <>
-          <Link href="/admin/topics">Topics</Link> ·{" "}
-        </>
-      )}
+      {/* S1: the one Admin link (Owner and staff only) is the staff navigation on every signed-in page (app/staff-nav.tsx).
+          These are the same per-role pages the admin home lists (app/admin-links.ts), so the two can't drift. */}
+      {me && adminLinksFor(me.roleKey).map((l) => (
+        <Fragment key={l.href}>
+          <Link href={l.href}>{l.label}</Link> ·{" "}
+        </Fragment>
+      ))}
       {me && me.roleKey !== "guardian" && (
         <>
-          <Link href="/learn">Learn</Link> · <Link href="/learn/path">My path</Link> · <Link href="/learn/choose">Choose your path</Link> ·{" "}
-        </>
-      )}
-      {(me?.roleKey === "owner" || me?.roleKey === "superAdmin" || me?.roleKey === "support") && (
-        <>
-          <Link href="/admin/security">Account safeguards</Link> ·{" "}
+          <Link href="/learn">Learn</Link> · <Link href="/learn/path">My path</Link> · <Link href="/learn/choose">Choose your path</Link> · <Link href="/learn/progress">Progress</Link> ·{" "}
         </>
       )}
       {me?.roleKey === "guardian" && (

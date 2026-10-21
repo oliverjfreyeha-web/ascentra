@@ -26,7 +26,7 @@ export function BillingBanner() {
     <div role="alert" className="notice banner">
       {alerts.map((a) => (
         <p key={a.forAccountId + a.kind}>
-          {a.message} <Link href={a.href}>{a.href === "/guardian" ? "Guardian Center" : "Plan and billing"}</Link>
+          {a.message} <Link href={a.href}>{a.href === "/guardian" ? "Guardian Center" : "Billing"}</Link>
         </p>
       ))}
     </div>
