@@ -181,6 +181,18 @@ export function streaks(days: string[], today: string): { current: number; longe
   return { current: last && last.end >= t - 1 ? last.len : 0, longest };
 }
 
+/** How many days of points per day "My progress" returns (design rebuild D5: the activity grid's Year view). */
+export const POINTS_WINDOW_DAYS = 365;
+
+/**
+ * Points per local day for the last `days` calendar days, ending today (the learner's time zone), oldest first. Only
+ * days with points are listed. Read-only: the same completions the streak is computed from.
+ */
+export function pointsWindow(byDay: Map<string, number>, today: string, days = POINTS_WINDOW_DAYS): { day: string; points: number }[] {
+  const t = dayNumber(today), from = t - days + 1;
+  return [...byDay.entries()].filter(([d]) => { const n = dayNumber(d); return n >= from && n <= t; }).sort(([a], [b]) => (a < b ? -1 : 1)).map(([day, points]) => ({ day, points }));
+}
+
 // ============ Notebook ============
 
 /** Where an item's note goes in the Notebook. */

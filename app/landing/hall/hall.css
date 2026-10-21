@@ -180,3 +180,8 @@
 .home-head__title em { font-family: var(--font-accent); font-style: italic; color: var(--color-accent); }
 .home-head__account p { margin: 0; }
 @media (max-width: 40rem) { .home-head { padding: 5rem var(--space-4) var(--space-5); } }
+
+/* D3 rebuild (moved from world/world.css, which the landing no longer loads): below the hero the page settles onto the
+ * theme's base colour, so long reading never sits on a bright picture. */
+.landing__rest { position: relative; background: linear-gradient(180deg, rgb(8 8 19 / 0.82), var(--color-base) 14rem); }
+[data-landing][data-auth="in"] .landing__rest { background: linear-gradient(180deg, rgb(8 8 19 / 0.7), var(--color-base) 22rem); }

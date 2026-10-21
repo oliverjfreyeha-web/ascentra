@@ -2,13 +2,14 @@ import Link from "next/link";
 import { AccountPanel } from "./account-panel";
 import { ServiceStatus } from "./service-status";
 import { Hall } from "./landing/hall/hall";
-import { WorldHero } from "./landing/world/world-hero";
-import { HallSlot } from "./landing/world/world-controls";
+import { AuthSwitch } from "./landing/world/world-controls";
 import { Icon, type IconName } from "./ui/icons";
 import { ART, Picture } from "./ui/picture";
 import { SiteFooter } from "./ui/site-footer";
 import { Reveal } from "./ui/reveal";
 import { AmbientPause } from "./ui/ambient-pause";
+import { HomeProgress } from "./home-progress";
+import "./home.css";
 
 // D2b: every line here describes how ASCENTRA already works (the screens and notices it links to say the same).
 const FEATURES: { n: string; label: string; icon: IconName; title: string; body: string; size: "wide" | "tall" | "small"; art?: "left" | "right" }[] = [
@@ -35,19 +36,24 @@ const STEPS = [
 ];
 
 export default function Home() {
-  // D5: visitors who are not signed in see the living-world hero (or the Hall, if they chose it as their scene);
-  // signed-in visitors see Home (the account line and its links). Chosen before first paint, then confirmed by Clerk.
+  // D3 rebuild: visitors who are not signed in see the Hall (the only home hero now; Iris and Mono replace the five
+  // scenes, and the D5 world hero is no longer loaded); signed-in visitors see Home (the account line and its links).
+  // Chosen before first paint by the Hall's boot script, then confirmed by Clerk (app/landing/hall/hall-life.tsx).
   return (
-    <main className="landing" data-landing suppressHydrationWarning>
+    <main className="landing ds-page" data-landing suppressHydrationWarning>
       <Reveal />
       <AmbientPause />
-      <WorldHero />
-      <HallSlot><Hall preloadImage={false} /></HallSlot>
+      {/* Bug fix kept: the server's answer also counts, so a signed-in person sees Home even when Clerk's browser state lags. */}
+      <AuthSwitch />
+      <Hall />
       <div className="landing__rest">
       <header className="home-head">
         <div className="home-head__inner">
+          <p className="ds-caps home-head__eyebrow">Home</p>
           <h1 className="home-head__title">ASCENTRA <em>Founders</em> Academy</h1>
           <div className="home-head__account"><AccountPanel /></div>
+          {/* D4 rebuild: Up next, the stats strip and the current sections, from the learner's real progress. */}
+          <HomeProgress />
         </div>
       </header>
 

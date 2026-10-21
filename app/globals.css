@@ -149,7 +149,7 @@ button {
   cursor: pointer;
 }
 
-button:not(.link):not(.primary):not([class*="ui-"]) {
+button:not(.link):not(.primary):not([class*="ui-"]):not([class*="ds-"]) {
   padding: var(--space-2) var(--space-4);
   border: var(--border-control);
   border-radius: var(--radius-sm);
@@ -159,13 +159,13 @@ button:not(.link):not(.primary):not([class*="ui-"]) {
     transform var(--duration-fast) var(--ease-smooth-out), box-shadow var(--duration-fast) var(--ease-smooth-out);
 }
 
-button:not(.link):not(.primary):not([class*="ui-"]):hover:not(:disabled) {
+button:not(.link):not(.primary):not([class*="ui-"]):not([class*="ds-"]):hover:not(:disabled) {
   background-color: var(--color-raised);
   border-color: var(--color-accent);
   transform: translateY(-1px);
 }
 
-button:not(.link):not([class*="ui-"]):active:not(:disabled) {
+button:not(.link):not([class*="ui-"]):not([class*="ds-"]):active:not(:disabled) {
   transform: translateY(0);
   box-shadow: var(--elev-1);
 }

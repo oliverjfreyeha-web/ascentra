@@ -27,6 +27,7 @@ import * as topicsRoute from "@/app/api/v1/topics/route";
 import * as topicRoute from "@/app/api/v1/topics/[id]/route";
 import * as orderRoute from "@/app/api/v1/topics/order/route";
 import * as learnerRoute from "@/app/api/v1/topics/learner/route";
+import * as courseRoute from "@/app/api/v1/topics/[id]/course/route";
 import {
   SKILL_LIMIT_BASIC, applyPause, applyPick, checkPathAnswers, pickPlanOf, rankBusinesses, reconcile, scoreBusiness,
   type PathAnswers, type PickRow, type TopicRow,
@@ -391,5 +392,28 @@ describe("the Owner changes a learner's business", () => {
   it("the teen rule holds for the Owner too", async () => {
     db.data.accounts.find((a) => a.id === LEARNER)!.is_minor = true;
     expect((await call(learnerRoute, "POST", "/api/v1/topics/learner", "owner", { accountId: LEARNER, slug: "amazon-fba", reason: "Checking the teen rule" })).status).toBe(404);
+  });
+});
+
+describe("Start course (Topics admin)", () => {
+  it("refuses a skill: a track is made only by importing it; nothing is linked, queued or estimated", async () => {
+    const t = db.data.topics.find((x) => x.slug === "copywriting")!;
+    expect(t.kind).toBe("skill");
+    const before = JSON.stringify({ topics: db.data.topics, catalog: db.data.catalog_topics ?? [], jobs: db.data.catalog_jobs ?? [] });
+    for (const role of ["owner", "courseAdmin"] as RoleKey[]) {
+      for (const body of [{ sizeTier: "standard" }, { confirm: true, expectedTotalUsd: 1, sizeTier: "standard" }]) {
+        const r = await call(courseRoute, "POST", `/api/v1/topics/${String(t.id)}/course`, role, body, { id: String(t.id) });
+        expect(r.status, role).toBe(400);
+        expect(r.body.reason).toMatch(/A skill is a track of 3 Rounds: import it from Import course\./);
+      }
+    }
+    expect(JSON.stringify({ topics: db.data.topics, catalog: db.data.catalog_topics ?? [], jobs: db.data.catalog_jobs ?? [] })).toBe(before);
+    expect(audit("catalog.queue").every((e) => e.result === "blocked")).toBe(true);
+  });
+  it("still gives a business its estimate first (nothing recorded)", async () => {
+    const t = db.data.topics.find((x) => x.kind === "business")!;
+    const r = await call(courseRoute, "POST", `/api/v1/topics/${String(t.id)}/course`, "owner", { sizeTier: "standard" }, { id: String(t.id) });
+    expect(r.status).toBe(200);
+    expect(r.body.quote).toMatchObject({ totalUsd: expect.any(Number) });
   });
 });

@@ -389,6 +389,8 @@ export async function startTopicCourse(actor: Account, id: string, body: Record<
   const t = (await db.from("topics").select(TOPIC_COLS).eq("id", id).maybeSingle()).data as TopicDb | null;
   if (!t) return refused(404, "No such topic.", A);
   const target = { type: "topic", id, label: t.name };
+  // S1: a skill is one track of 3 Rounds, made only by importing it (Import course); never a module course queued here.
+  if (t.kind === "skill") return refused(400, "A skill is a track of 3 Rounds: import it from Import course.", A, target);
   const slug = t.catalog_slug ?? (t.slug.slice(0, 40).replace(/-+$/, "") || "topic");
   const existing = (await db.from("catalog_topics").select("slug").eq("slug", slug).maybeSingle()).data as { slug: string } | null;
   if (!t.catalog_slug && existing) {

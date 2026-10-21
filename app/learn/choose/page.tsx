@@ -5,7 +5,7 @@ import { SiteFooter } from "../../ui/site-footer";
 
 export default function ChooseYourPathPage() {
   return (
-    <main className="ui-main-wide">
+    <main className="ui-main-wide ds-page">
       <nav className="ui-crumbs" aria-label="Breadcrumb"><Link href="/">Home</Link> · <Link href="/learn">Learn</Link></nav>
       <header className="ui-page-head">
         <h1>Choose your path</h1>

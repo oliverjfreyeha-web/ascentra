@@ -6,7 +6,7 @@ import { Reveal } from "../ui/reveal";
 
 export default function GuardianPage() {
   return (
-    <main className="ui-main-wide">
+    <main className="ui-main-wide ds-page ds-page--calm">
       <Reveal selector=".ui-block, .ui-course, .ui-path > li" />
       <nav className="ui-crumbs" aria-label="Breadcrumb">
         <Link href="/">Home</Link> · <Link href="/account">Account and devices</Link> · <SignOut />

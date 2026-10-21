@@ -20,13 +20,13 @@ export const GET = withCap("billing.view", async (_req, _ctx, account) => {
   for (const s of (paying.data ?? []) as SubscriptionRow[]) {
     const teen = s.beneficiary_account_id !== account.id;
     alerts.push({
-      kind: "payment_failed", forAccountId: s.beneficiary_account_id, href: teen ? "/guardian" : "/account",
+      kind: "payment_failed", forAccountId: s.beneficiary_account_id, href: teen ? "/guardian" : "/account#billing",
       message: `The payment for ${teen ? `${await names(s.beneficiary_account_id)}'s` : "your"} plan failed. Stripe will try again; access continues meanwhile. Update the payment method in Manage billing.`,
     });
   }
   for (const s of (using.data ?? []) as SubscriptionRow[]) {
     if (s.payer_account_id === account.id) continue;
-    alerts.push({ kind: "payment_failed", forAccountId: account.id, href: "/account", message: "There's a problem with the payment for your plan. Your Guardian has been told. You keep access while it's fixed." });
+    alerts.push({ kind: "payment_failed", forAccountId: account.id, href: "/account#billing", message: "There's a problem with the payment for your plan. Your Guardian has been told. You keep access while it's fixed." });
   }
   // L5: a teen's Mentor allowance email (80% or 100%) that couldn't be sent (email not configured, or it failed) is
   // shown to the Guardian here instead, for the current period.

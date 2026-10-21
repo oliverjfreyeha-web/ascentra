@@ -3,7 +3,7 @@ import { SafetyQueue } from "./safety-queue";
 
 export default function SafetyPage() {
   return (
-    <main className="wide ui-admin">
+    <main className="wide ui-admin ds-page ds-page--calm">
       <p className="muted"><Link href="/">Home</Link> · <Link href="/admin/audit">Audit log</Link></p>
       <h1>Safety review</h1>
       <p className="muted">

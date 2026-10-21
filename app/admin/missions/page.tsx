@@ -3,7 +3,7 @@ import { MissionsAdmin } from "./missions-admin";
 
 export default function MissionsPage() {
   return (
-    <main className="wide ui-admin">
+    <main className="wide ui-admin ds-page ds-page--calm">
       <p className="muted"><Link href="/">Home</Link> · <Link href="/admin/topics">Topics</Link> · <Link href="/community">Community</Link></p>
       <h1>Missions and leaderboard</h1>
       <p className="muted">

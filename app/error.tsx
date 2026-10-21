@@ -5,7 +5,7 @@ import Link from "next/link";
 /** D3 · A calm error page in the house style, for an error inside a page (the layout and the sound keep running). */
 export default function ErrorPage({ reset }: { error: Error & { digest?: string }; reset: () => void }) {
   return (
-    <main>
+    <main className="ds-page ds-page--calm">
       <div className="ui-auth ui-state-page">
         <div className="ui-auth__halo" aria-hidden="true" />
         <div className="ui-auth__card" role="alert">

@@ -143,7 +143,7 @@ describe("notices", () => {
     expect(sent).toEqual([expect.objectContaining({ to: ["learner@example.com"], subject: "Payment failed for your ASCENTRA plan", key: "payment_failed:in_1" })]);
     expect(sent[0].text).toMatch(/Stripe will try again[\s\S]*https:\/\/ascentra\.test\/account/);
     expect(db.data.notices).toEqual([expect.objectContaining({ kind: "payment_failed", status: "sent", account_id: LEARNER, provider_message_id: "email_1" })]);
-    expect((await call(alertsRoute, "GET", "/api/v1/billing/alerts", "learner")).body.alerts).toEqual([expect.objectContaining({ kind: "payment_failed", href: "/account" })]);
+    expect((await call(alertsRoute, "GET", "/api/v1/billing/alerts", "learner")).body.alerts).toEqual([expect.objectContaining({ kind: "payment_failed", href: "/account#billing" })]);
     subs.sub_1 = sub("sub_1");
     await deliver("invoice.paid", { id: "in_1", object: "invoice", parent: { subscription_details: { subscription: "sub_1" } } });
     expect((await call(alertsRoute, "GET", "/api/v1/billing/alerts", "learner")).body.alerts).toEqual([]);

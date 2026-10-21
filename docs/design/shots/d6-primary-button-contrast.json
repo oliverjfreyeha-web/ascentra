@@ -1,0 +1,37 @@
+{
+ "sign-in/iris/frost/1280": {
+  "ink": "rgb(255, 255, 255)",
+  "worst": 7.39,
+  "median": 8.1
+ },
+ "sign-in/iris/liquid/1280": {
+  "ink": "rgb(255, 255, 255)",
+  "worst": 7.39,
+  "median": 8.1
+ },
+ "sign-in/iris/frost/390": {
+  "ink": "rgb(255, 255, 255)",
+  "worst": 7.39,
+  "median": 8.1
+ },
+ "sign-in/mono/frost/1280": {
+  "ink": "rgb(26, 20, 8)",
+  "worst": 9,
+  "median": 11.24
+ },
+ "section/iris/frost/1280": {
+  "ink": "rgb(255, 255, 255)",
+  "worst": 6.91,
+  "median": 7.93
+ },
+ "section/iris/liquid/1280": {
+  "ink": "rgb(255, 255, 255)",
+  "worst": 7.06,
+  "median": 8.11
+ },
+ "section/iris/frost/390": {
+  "ink": "rgb(255, 255, 255)",
+  "worst": 6.91,
+  "median": 8.13
+ }
+}

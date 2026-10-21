@@ -1,0 +1,138 @@
+{
+ "sampled": 361,
+ "below": [],
+ "primaries": [
+  {
+   "route": "/admin (owner)",
+   "theme": "mono",
+   "glass": "liquid",
+   "what": "primary button",
+   "text": "Send invite",
+   "ink": "rgb(26, 20, 8)",
+   "large": false,
+   "worst": 9.28,
+   "need": 4.5
+  },
+  {
+   "route": "/admin/audit (owner)",
+   "theme": "mono",
+   "glass": "liquid",
+   "what": "primary button",
+   "text": "Search",
+   "ink": "rgb(26, 20, 8)",
+   "large": false,
+   "worst": 9.74,
+   "need": 4.5
+  },
+  {
+   "route": "/account (learner)",
+   "theme": "mono",
+   "glass": "liquid",
+   "what": "primary button",
+   "text": "Continue",
+   "ink": "rgb(26, 20, 8)",
+   "large": false,
+   "worst": 8.83,
+   "need": 4.5
+  },
+  {
+   "route": "/guardian (guardian)",
+   "theme": "mono",
+   "glass": "liquid",
+   "what": "primary button",
+   "text": "Agree",
+   "ink": "rgb(26, 20, 8)",
+   "large": false,
+   "worst": 9.93,
+   "need": 4.5
+  },
+  {
+   "route": "/sign-in (visitor)",
+   "theme": "mono",
+   "glass": "liquid",
+   "what": "primary button",
+   "text": "Sign in with a passkey",
+   "ink": "rgb(26, 20, 8)",
+   "large": false,
+   "worst": 9.85,
+   "need": 4.5
+  },
+  {
+   "route": "/welcome (learner)",
+   "theme": "mono",
+   "glass": "liquid",
+   "what": "primary button",
+   "text": "Continue",
+   "ink": "rgb(26, 20, 8)",
+   "large": false,
+   "worst": 9.54,
+   "need": 4.5
+  },
+  {
+   "route": "/missing (visitor)",
+   "theme": "mono",
+   "glass": "liquid",
+   "what": "primary button",
+   "text": "Go to Home",
+   "ink": "rgb(26, 20, 8)",
+   "large": false,
+   "worst": 9.08,
+   "need": 4.5
+  },
+  {
+   "route": "/learn/00000000-0000-4000-8000-000000000060 (learner)",
+   "theme": "mono",
+   "glass": "liquid",
+   "what": "primary button",
+   "text": "Mark as done",
+   "ink": "rgb(26, 20, 8)",
+   "large": false,
+   "worst": 9.18,
+   "need": 4.5
+  },
+  {
+   "route": "/learn/00000000-0000-4000-8000-000000000060 (learner)",
+   "theme": "mono",
+   "glass": "liquid",
+   "what": "primary button",
+   "text": "Mark as done",
+   "ink": "rgb(26, 20, 8)",
+   "large": false,
+   "worst": 8.9,
+   "need": 4.5
+  },
+  {
+   "route": "/ (learner)",
+   "theme": "mono",
+   "glass": "liquid",
+   "what": "primary button",
+   "text": "Create an account",
+   "ink": "rgb(5, 5, 6)",
+   "large": false,
+   "worst": 14.84,
+   "need": 4.5
+  },
+  {
+   "route": "/ (visitor)",
+   "theme": "mono",
+   "glass": "liquid",
+   "what": "primary button",
+   "text": "Create an account",
+   "ink": "rgb(5, 5, 6)",
+   "large": false,
+   "worst": 14.84,
+   "need": 4.5
+  },
+  {
+   "route": "/learn/progress (learner)",
+   "theme": "mono",
+   "glass": "liquid",
+   "what": "primary button",
+   "text": "Continue: Cold outreach",
+   "ink": "rgb(26, 20, 8)",
+   "large": false,
+   "worst": 8.8,
+   "need": 4.5
+  }
+ ]
+}

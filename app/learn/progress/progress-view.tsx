@@ -8,11 +8,13 @@ import { Icon } from "../../ui/icons";
 import { Loading } from "../../ui/loading";
 import { Meter } from "../../ui/meter";
 import "../c2.css";
+import { ProfileDashboard } from "./profile/profile-dashboard";
 
 /**
  * C2: "My progress": rank, streak, each course with its modules (open, half open, locked with the reason), the plan
  * overview, skills, and scores over time. Everything here is decided on the server; this page only shows it. Private:
  * teens see the same, and nothing on this page is shown to anyone else.
+ * Design rebuild D5: the Profile dashboard (real data only) sits above the same sections, from the same single read.
  */
 export const STATE_LABEL: Record<ModuleState, string> = { open: "Open", half: "Half open", locked: "Locked" };
 
@@ -28,9 +30,12 @@ export function ProgressView() {
   }, []);
   if (failed) return <p role="status" className="ui-state ui-state--error">{failed}</p>;
   if (!p) return <Loading shape="list" />;
-  const best = Math.max(1, ...p.pointsByDay.map((d) => d.points));
+  // D5 rebuild: the API now returns up to 365 days (for the activity grid); this list keeps showing the last 30 days with points.
+  const recent = p.pointsByDay.slice(-30);
+  const best = Math.max(1, ...recent.map((d) => d.points));
   return (
     <>
+      <ProfileDashboard p={p} />
       <section className="ui-block" aria-labelledby="rank-h">
         <h2 id="rank-h">Rank and streak</h2>
         <dl className="c2-stats">
@@ -109,9 +114,9 @@ export function ProgressView() {
 
       <section className="ui-block" aria-labelledby="time-h">
         <h2 id="time-h">Over time</h2>
-        {p.pointsByDay.length ? (
+        {recent.length ? (
           <ul className="c2-bars" aria-label="Points by day, last 30 days">
-            {p.pointsByDay.map((d) => <li key={d.day}><span>{d.day}</span><Meter value={d.points} max={best} /><span>{d.points}</span></li>)}
+            {recent.map((d) => <li key={d.day}><span>{d.day}</span><Meter value={d.points} max={best} /><span>{d.points}</span></li>)}
           </ul>
         ) : <p className="muted small">Nothing finished yet.</p>}
         {p.scores.length > 0 && (
