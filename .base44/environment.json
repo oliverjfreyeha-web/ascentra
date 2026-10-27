@@ -1,0 +1,47 @@
+{
+  "previewPort": 3000,
+  "healthPath": "/",
+  "startCommand": "docker compose -f docker-compose.base44.yml up -d --build",
+  "secrets": [
+    {
+      "name": "CLERK_SECRET_KEY",
+      "description": "Clerk Backend API key (dashboard.clerk.com -> API keys, sk_test_...). Clerk is not emulated; without the real key the site renders signed out.",
+      "requiredAtBoot": true
+    },
+    {
+      "name": "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
+      "description": "Clerk publishable key, same dashboard page (pk_test_...). Public: it is built into the page.",
+      "requiredAtBoot": true
+    },
+    {
+      "name": "CLERK_WEBHOOK_SIGNING_SECRET",
+      "description": "Clerk webhook signing secret (dashboard.clerk.com -> Webhooks, whsec_...). Needed for /api/webhooks/clerk to sync Clerk users into accounts.",
+      "requiredAtBoot": true
+    },
+    {
+      "name": "OWNER_EMAIL",
+      "description": "The email of the one Owner account. The first verified Clerk sign-in with this address seeds the Owner.",
+      "requiredAtBoot": true
+    },
+    {
+      "name": "ANTHROPIC_API_KEY",
+      "description": "Optional. console.anthropic.com -> API keys (sk-ant-...). Without it AI features are off and the rest of the site works.",
+      "requiredAtBoot": false
+    },
+    {
+      "name": "RESEND_API_KEY",
+      "description": "Optional. resend.com -> API keys (re_...). Without it notices are recorded as skipped.",
+      "requiredAtBoot": false
+    },
+    {
+      "name": "STRIPE_SECRET_KEY",
+      "description": "Optional. dashboards.stripe.com -> Developers -> API keys, test mode (sk_test_...). Missing values switch billing off (503), not the site.",
+      "requiredAtBoot": false
+    },
+    {
+      "name": "STRIPE_WEBHOOK_SECRET",
+      "description": "Optional. Stripe webhook endpoint's signing secret (whsec_...), test mode.",
+      "requiredAtBoot": false
+    }
+  ]
+}
