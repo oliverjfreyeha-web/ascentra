@@ -5,6 +5,7 @@ import { readEmailEnv, sendEmail } from "@/lib/email";
 import { NOTICE_TIMINGS } from "@/lib/notice-config";
 import { PLANS, usd } from "@/lib/billing-terms";
 import type { SubscriptionRow } from "@/lib/billing";
+import type { WarningWindow } from "@/lib/age-up-rules";
 
 /**
  * B4: email notices (Resend). Each notice is one notices row, keyed so it goes out once however often a webhook or
@@ -14,7 +15,7 @@ import type { SubscriptionRow } from "@/lib/billing";
  */
 export type NoticeKind =
   | "trial_ending" | "renewal_upcoming" | "payment_failed" | "subscription_canceled" | "subscription_ended" | "guardian_consent_withdrawn"
-  | "mentor_allowance_80" | "mentor_allowance_100";
+  | "mentor_allowance_80" | "mentor_allowance_100" | "turning_18_notice" | "turned_18";
 export type NoticeOutcome = "sent" | "skipped" | "failed" | "duplicate";
 
 type Person = { id: string; email: string };
@@ -159,6 +160,51 @@ export async function noticeConsentWithdrawn(guardianId: string, teenId: string,
       text: `Your Guardian withdrew their consent on ${day(withdrawnAt)}, so your ASCENTRA account is paused. Nothing was deleted: your progress is kept. Only your Guardian can give consent again.`,
     }),
   ];
+}
+
+/**
+ * S2: the 18th-birthday switch, told to the teen and to the Guardian before it happens (30 and 7 days) and on the day.
+ * Once per window (the dedupe key). Plain statements of what changes; no promises about anything not built yet.
+ */
+export async function noticeTurning18(teenId: string, guardianId: string | null, window: WarningWindow, turns18On: string) {
+  const teen = await person(teenId);
+  if (!teen) return [];
+  const guardian = guardianId ? await person(guardianId) : null;
+  const when = day(`${turns18On}T00:00:00Z`);
+  const out: (NoticeOutcome | null)[] = [];
+  out.push(await notify({
+    kind: "turning_18_notice", to: teen, aboutId: teen.id, dedupeKey: `turning_18:${teen.id}:${window}:learner`,
+    subject: `You turn 18 soon: what changes on your ASCENTRA account`,
+    text: `You turn 18 around ${when}. On that day your ASCENTRA account becomes an adult account. Your Guardian will no longer be able to see your progress, devices or billing, or change your account. Your notes and Mentor chats stay private. If your Guardian pays for your plan, it ends at the end of the period they have paid for, with no further charges to them. To keep paid features after that, you choose and pay for your own plan.\n\n${where("/account", "Your account")}`,
+  }));
+  if (guardian) {
+    out.push(await notify({
+      kind: "turning_18_notice", to: guardian, aboutId: teen.id, dedupeKey: `turning_18:${teen.id}:${window}:guardian`,
+      subject: `${teen.name} turns 18 soon: your Guardian role will end`,
+      text: `${teen.name} turns 18 around ${when}. On that day your role as Guardian for ${teen.name} ends: you will no longer see ${teen.name}'s progress, devices or billing in the Guardian Center, and you can't change the account. If you pay for ${teen.name}'s plan, it ends at the end of the period you have paid for, and you won't be charged again. ${teen.name} can then choose their own plan.\n\n${where("/guardian", "Guardian Center")}`,
+    }));
+  }
+  return out;
+}
+
+export async function noticeTurned18(teenId: string, guardianId: string | null, guardianPlanEnds: boolean) {
+  const teen = await person(teenId);
+  if (!teen) return [];
+  const guardian = guardianId ? await person(guardianId) : null;
+  const out: (NoticeOutcome | null)[] = [];
+  out.push(await notify({
+    kind: "turned_18", to: teen, aboutId: teen.id, dedupeKey: `turned_18:${teen.id}:learner`,
+    subject: "Your ASCENTRA account is now an adult account",
+    text: `You're 18, so your ASCENTRA account is now an adult account. Your Guardian no longer has access to it. Your progress, notes and Mentor chats are kept, and your notes and chats stay private. ${guardianPlanEnds ? "The plan your Guardian paid for runs to the end of the period they paid for, and then ends. To keep paid features after that, choose your own plan." : "You can choose your own plan any time."}\n\n${where("/account", "Your account")}`,
+  }));
+  if (guardian) {
+    out.push(await notify({
+      kind: "turned_18", to: guardian, aboutId: teen.id, dedupeKey: `turned_18:${teen.id}:guardian`,
+      subject: `${teen.name} is now 18: your Guardian role has ended`,
+      text: `${teen.name} turned 18, so your role as Guardian has ended and ${teen.name}'s account is now an adult account. You no longer have access to it. ${guardianPlanEnds ? `The plan you pay for is set to end at the end of the current period, and you won't be charged again.` : "There is no plan of yours to end."}\n\n${where("/guardian", "Guardian Center")}`,
+    }));
+  }
+  return out;
 }
 
 /**

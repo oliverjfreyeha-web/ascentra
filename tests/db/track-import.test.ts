@@ -39,11 +39,12 @@ describe("the S1 bundle on the live I1 database", () => {
     owner = await acc("user_owner", "owner");
     admin = await acc("user_admin", "admin");
     await q(readSql("db/apply/S1.sql"));
+    await q(readSql("db/apply/S2.sql"));
   });
   afterAll(() => db.drop());
 
-  it("applies in one go; verify.sql reports S1 applied", async () => {
-    expect((await q(readSql("db/verify.sql"))).rows[0].table_name).toMatch(/^OK: .*S1 skill tracks are in place$/);
+  it("applies in one go; verify.sql reports S1 and S2 applied", async () => {
+    expect((await q(readSql("db/verify.sql"))).rows[0].table_name).toMatch(/^OK: .*S2 18th-birthday switch is in place$/);
   });
 
   it("a course can't be both a track and sized", async () => {

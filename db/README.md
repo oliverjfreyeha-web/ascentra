@@ -24,6 +24,7 @@ security is on for every table and denies by default.
 | `apply/L6.sql` | The one file to paste for L6: 0017 (the topic catalog seeded from the Academy Blueprint, the batch queue, the activity library with its review and variety rules, learners' attempts). Requires L5. |
 | `apply/L7.sql` | The one file to paste for L7: 0018 (learners' interview answers, their personalized paths of published courses, the anonymous course-request queue). Requires L6. |
 | `apply/L8.sql` | **The one file to paste for L8**: 0019 (the 24 businesses and 16 skills to pick, learners' picks with the plan rules held by the database, anonymous demand per topic per day, five answer columns on the profile). Requires L7. |
+| `apply/S2.sql` | **The one file to paste for S2**: 0024 (the 18th-birthday switch: `age_up_account`, `age_up_candidates`, two notice kinds, `aged_up_at` and `adult_agreement_due`). Requires S1. See `docs/AGE-UP.md`. |
 | `ops/create-test-learner.sql` | Owner-only, by hand: one adult test learner for an existing Clerk user (see below). Not a migration. |
 | `verify.sql` | Run after applying. First row is the verdict. |
 | `test/supabase-shim.sql` | Tests only: recreates Supabase's API roles and `auth.jwt()` on plain Postgres. Never apply it to Supabase. |

@@ -53,3 +53,9 @@ A running list of questions for a lawyer before launch. Nothing on the site clai
 - S1 · Rounds 2 and 3 give teens (14 to 17) the same simulated practice as Round 1, only harder. Practice spaces stay "Practice (simulated)", with made-up data only and never a live service. Counsel to confirm nothing more is needed for teens doing harder simulated practice.
 - S1 · Real-world sends or contact for teens (posting publicly, contacting a business, interviewing someone) stay behind the existing C2 rules: the Owner's state allow-list (off everywhere by default), the verified Guardian's approval for the course, and, for contact, the Guardian's approval of that one mission. Skill tracks add no new real-world steps and no exceptions. Counsel to confirm the existing per-state decisions also cover skill tracks.
 - S1 · Locked Rounds are labelled with the plans that include them ("Round 2 is part of Basic and Pro.", "Round 3 is part of Pro."), and the free trial includes the first half of Round 1. Prices are unchanged (Basic $20 a month, Pro $50 a month, a 14-day trial that converts to Basic). Counsel to confirm the labels and the trial description are clear enough for consumer-protection rules on subscriptions.
+
+## 18th-birthday switch (S2)
+- S2 · Ending the Guardian's role at 18: does the Guardian's earlier consent need any follow-up, and what happens to data collected under it? Consent records are kept (insert-only).
+- S2 · A plan the Guardian paid for runs to the end of the paid period, then ends unless the learner subscribes themselves. Counsel to confirm that is acceptable without the learner's own consent for that period.
+- S2 · The adult Terms and Privacy Notice the new adult must accept (not built yet, depends on the public legal pages).
+- S2 · Warning emails at 30 and 7 days before 18, and emails on the day, to both the learner and the Guardian: confirm content and timing.

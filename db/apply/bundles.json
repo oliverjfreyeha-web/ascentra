@@ -122,6 +122,12 @@
       "migrations": [
         "0023_skill_tracks"
       ]
+    },
+    "S2": {
+      "requires": "0023_skill_tracks",
+      "migrations": [
+        "0024_age_up"
+      ]
     }
   }
 }
