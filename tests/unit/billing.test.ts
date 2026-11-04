@@ -27,6 +27,7 @@ const stripe = vi.hoisted(() => ({ api: null as unknown }));
 vi.mock("@/lib/billing-env", async (orig) => ({ ...(await orig<object>()), stripeClient: () => stripe.api }));
 
 import * as billingRoute from "@/app/api/v1/billing/route";
+import { PLAN_INCLUDES } from "@/lib/plan-includes";
 import * as checkoutRoute from "@/app/api/v1/billing/checkout/route";
 import * as portalRoute from "@/app/api/v1/billing/portal/route";
 import * as proRoute from "@/app/api/v1/pro/route";
@@ -388,6 +389,8 @@ describe("Account → Billing and the customer portal", () => {
       subscription: { plan: "trial", status: "trialing", trialEndsAt: new Date(trialEnd * 1000).toISOString(), nextChargeAt: new Date(trialEnd * 1000).toISOString(), nextChargeCents: 2000 },
       terms: { version: RENEWAL_TERMS_VERSION, body: RENEWAL_TERMS_BODY },
     });
+    // What each plan opens for learning, from the rules' own numbers (lib/plan-includes.ts).
+    expect(body.includes).toEqual(PLAN_INCLUDES);
   });
 
   it("opens the portal for the learner's own customer after a second-factor check, and audits it", async () => {
