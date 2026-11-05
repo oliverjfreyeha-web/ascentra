@@ -22,13 +22,15 @@ type Billing = {
   trialDays: number;
   trialWouldEndAt: string;
   plans: Plan[];
+  /** What each plan opens for learning (lib/plan-includes.ts), from the server. */
+  includes?: { trial: string[]; basic: string[]; pro: string[] };
   terms: { title: string; version: string; body: string };
 };
 
 const usd = (c: number) => `$${(c / 100).toFixed(2)}`;
 const day = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" }) : "—");
 const STATUS_LABEL = { trialing: "Trial", active: "Active", past_due: "Payment failed: Stripe is retrying. Update your payment method.", canceled: "Canceled" } as const;
-const TIER_LABEL = { none: "No plan", trial: "Trial (Basic features)", basic: "Basic", pro: "Pro", full: "Full access (Owner)" } as const;
+const TIER_LABEL = { none: "No plan", trial: "Free trial", basic: "Basic", pro: "Pro", full: "Full access (Owner)" } as const;
 
 /** Account → Billing: current plan, trial end, next charge, checkout for a new plan, and Stripe's portal. */
 export function BillingPanel({ returnTo }: { returnTo?: "welcome" } = {}) {
@@ -132,6 +134,12 @@ export function BillingPanel({ returnTo }: { returnTo?: "welcome" } = {}) {
           </>
         )}
       </dl>
+      {data.includes && (data.tier === "trial" || data.tier === "basic" || data.tier === "pro") && (
+        <>
+          <h3 id="includes-h">What your plan includes</h3>
+          <ul className="small" aria-labelledby="includes-h">{data.includes[data.tier].map((l) => <li key={l}>{l}</li>)}</ul>
+        </>
+      )}
 
       {s && data.canManage && (
         <p className="ui-actions">
@@ -178,6 +186,11 @@ export function BillingPanel({ returnTo }: { returnTo?: "welcome" } = {}) {
                   <b className="ui-choice__title">{p.name}</b> <span className="ui-choice__price"><span className="sr-only">· </span>{usd(p.cents)}</span>{" "}
                   <span className="ui-choice__note">per month
                   {p.key === "basic" && data.trialEligible ? ` · starts with a free ${data.trialDays}-day trial` : ""}</span>
+                  {data.includes && data.includes[p.key].map((l) => <span key={l} className="ui-choice__note">{l}</span>)}
+                  {/* The trial differs from Basic only in its courses and skill tracks; the picks are the same. */}
+                  {data.includes && p.key === "basic" && data.trialEligible && (
+                    <span className="ui-choice__note"><b>During the free trial:</b> {data.includes.trial.filter((l) => !data.includes!.basic.includes(l)).join(" ")}</span>
+                  )}
                 </span>
               </label>
             ))}

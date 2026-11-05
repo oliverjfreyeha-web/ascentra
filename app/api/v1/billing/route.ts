@@ -7,6 +7,7 @@ import {
 import { LIVE_STATUSES, latestSubscription, tierOf, trialEligible } from "@/lib/billing";
 import { PLANS, RENEWAL_TERMS_BODY, RENEWAL_TERMS_TITLE, RENEWAL_TERMS_VERSION, TRIAL_DAYS } from "@/lib/billing-terms";
 import { ok } from "@/lib/http";
+import { PLAN_INCLUDES } from "@/lib/plan-includes";
 
 /**
  * Account → Plan and billing: what this account may use (read from the database now), its current
@@ -37,6 +38,8 @@ export const GET = withCap("billing.view", async (_req, _ctx, account) => {
     // The date the trial would end if it started now (shown next to the checkbox).
     trialWouldEndAt: new Date(Date.now() + TRIAL_DAYS * 86_400_000).toISOString(),
     plans: Object.entries(PLANS).map(([key, p]) => ({ key, name: p.name, cents: p.cents })),
+    // What each plan opens for learning (courses, skill tracks, picks), from the rules' own numbers.
+    includes: PLAN_INCLUDES,
     terms: { title: RENEWAL_TERMS_TITLE, version: RENEWAL_TERMS_VERSION, body: RENEWAL_TERMS_BODY },
     // L5: the Mentor allowance add-on. The meter is read from the database now; only the payer changes the add-on.
     mentorAddon: {
